@@ -26,6 +26,6 @@ for snp in snp_list:
     url = base_url + snp_query + population_query + token_query
     response = requests.get(url).text
     r2 = parseR2(response)
-    print(r2)
+    #print(r2)
     r2_pairs.append(r2)
     
