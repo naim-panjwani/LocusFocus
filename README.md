@@ -1,5 +1,5 @@
 # Explore GWAS Results with GTEx's eQTL Association Results 
-This app is to enable exploration of GWAS results and assessment of what gene and tissue are the most likely responsible candidates for the GWAS signal via integration with [GTEx eQTL association results](https://gtexportal.org/home/) (v6p and v7) into a single interactive plot, and application of the [Simple Sum method](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1008007) to visualize the results in a heatmap plot.
+This app is to enable exploration of GWAS results and assessment of what gene and tissue are the most likely responsible candidates for the GWAS signal via integration with [GTEx eQTL association results](https://gtexportal.org/home/) (v6p and v7) into a single interactive plot, and application of the [Simple Sum method](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1008007) (detailed script [here](http://slc.research.sickkids.ca/SimpleSum/Simple_Sum_Rscript.R)) to visualize the results in a heatmap plot.
 
 LD information is obtained from [LDlink's API](https://ldlink.nci.nih.gov/?tab=apiaccess) to enable viewing of LD given a lead SNP. The default lead SNP is the top SNP.
 
