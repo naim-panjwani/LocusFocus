@@ -3,7 +3,7 @@
   border: 1px solid #e3e3e3;
 }
 
-/* Sticky Footer rules (https://getbootstrap.com/examples/sticky-footer/) */
+
 html {
   position: relative;
   min-height: 100%;
@@ -14,6 +14,20 @@ body {
   padding-bottom: 80px;
 }
 
+h5 {
+  font-weight: bold;
+}
+
+.borderit {
+  margin-top:10px;
+  padding: 20px;
+  outline: 2px solid #ccc;
+  outline-offset: -10px;
+  -moz-outline-radius: 10px;
+  -webkit-outline-radius: 10px;
+}
+
+/* Sticky Footer rules (https://getbootstrap.com/examples/sticky-footer/) */
 #footer {
   position: absolute;
   bottom: 0;

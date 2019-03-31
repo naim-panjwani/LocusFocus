@@ -4,6 +4,21 @@ import pandas as pd
 import numpy as np
 import tokens
 
+from flask import Flask, jsonify, render_template
+from flask_sqlalchemy import SQLAlchemy
+import pymysql
+pymysql.install_as_MySQLdb()
+#thepwd = open('pwd.txt').readline().replace('\n', '')
+
+app = Flask(__name__)
+genomicWindowLimit = 2000000
+fileSizeLimit = 200e6
+
+
+####################################
+# LD Querying
+####################################
+
 def parseR2(urltext):
     temp = urltext.strip().split('\n')
     for t in temp:
@@ -29,3 +44,23 @@ for snp in snp_list:
     #print(r2)
     r2_pairs.append(r2)
     
+
+#####################################
+# API Routes
+#####################################
+
+@app.route("/")
+def index():
+    """Return the homepage."""
+    return render_template("index.html")
+
+@app.route("/populations")
+def get1KGPopulations():
+    populations = pd.read_csv('data/populations.tsv', sep='\t')
+    return jsonify(populations.to_dict(orient='list'))
+
+
+
+if __name__ == "__main__":
+    app.run()
+
