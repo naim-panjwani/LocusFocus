@@ -60,7 +60,6 @@ def get1KGPopulations():
     return jsonify(populations.to_dict(orient='list'))
 
 
-
 if __name__ == "__main__":
     app.run()
 
