@@ -23,7 +23,7 @@ def parseR2(urltext):
     temp = urltext.strip().split('\n')
     for t in temp:
         if t.strip().find('R2') != -1:
-            return(float(t.strip().split(':')[1].strip()))
+            return float(t.strip().split(':')[1].strip())
     return np.nan
 
 lead_snp = 'rs7512462'
@@ -57,6 +57,64 @@ def index():
 def get1KGPopulations():
     populations = pd.read_csv('data/populations.tsv', sep='\t')
     return jsonify(populations.to_dict(orient='list'))
+
+@app.route('/', methods=['GET', 'POST'])
+def upload_file():
+    data = {"success": False}
+    if request.method == 'POST':
+        if request.files.get('file'):
+            # read the file
+            file = request.files['file']
+
+            # read the filename
+            filename = file.filename
+
+            # create a path to the uploads folder
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+            file.save(filepath)
+
+            # Load the saved image using Keras and resize it to the Xception
+            # format of 299x299 pixels
+            image_size = (299, 299)
+            im = keras.preprocessing.image.load_img(filepath,
+                                                    target_size=image_size,
+                                                    grayscale=False)
+
+            # preprocess the image and prepare it for classification
+            image = prepare_image(im)
+
+            global graph
+            with graph.as_default():
+                preds = model.predict(image)
+                results = decode_predictions(preds)
+                # print the results
+                print(results)
+
+                data["predictions"] = []
+
+                # loop over the results and add them to the list of
+                # returned predictions
+                for (imagenetID, label, prob) in results[0]:
+                    r = {"label": label, "probability": float(prob)}
+                    data["predictions"].append(r)
+
+                # indicate that the request was a success
+                data["success"] = True
+
+        return jsonify(data)
+
+    return '''
+    <!doctype html>
+    <title>Upload new File</title>
+    <h1>Upload new File</h1>
+    <form method=post enctype=multipart/form-data>
+      <p><input type=file name=file>
+         <input type=submit value=Upload>
+    </form>
+    '''
+
+
 
 
 if __name__ == "__main__":
