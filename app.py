@@ -1,5 +1,5 @@
-import requests
 import json
+import requests
 import pandas as pd
 import numpy as np
 import tokens
@@ -24,7 +24,7 @@ def parseR2(urltext):
     for t in temp:
         if t.strip().find('R2') != -1:
             return(float(t.strip().split(':')[1].strip()))
-    return(np.nan)
+    return np.nan
 
 lead_snp = 'rs7512462'
 snp_list = ['rs61814953', 'rs1342063']
@@ -43,7 +43,6 @@ for snp in snp_list:
     r2 = parseR2(response)
     #print(r2)
     r2_pairs.append(r2)
-    
 
 #####################################
 # API Routes

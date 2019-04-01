@@ -6,21 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>GWAS eQTL Exploration App</title>
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
-  <!-- Bootstrap core CSS -->
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-  <!-- Material Design Bootstrap -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
-  <!-- DataTables -->
-  <link rel="stylesheet" href="http://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" type="text/css" href="../static/css/bootstrap-multiselect.css"/>
-  <link rel="stylesheet" type="text/css" href="../static/css/style.css">
-  <link rel="stylesheet" type="text/css" href="../static/css/d3Style.css">
-  
+  <link rel="shortcut icon" href="#" />
+   <!-- Font Awesome -->
+   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
+   <!-- Bootstrap core CSS -->
+   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+   <!-- Material Design Bootstrap -->
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
+   <!-- DataTables -->
+   <link rel="stylesheet" href="http://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
+   <link rel="stylesheet" type="text/css" href="../static/css/bootstrap-multiselect.css"/>
+   <link rel="stylesheet" type="text/css" href="../static/css/style.css">
+   <link rel="stylesheet" type="text/css" href="../static/css/d3Style.css">
+ 
 </head>
 
-<body>
+<body> 
   <div class="container">
     <div class="row">
       <div class="col-md-12 jumbotron text-center">
@@ -38,17 +39,21 @@
               <br>Max size: 200MB
             </p>
             <div class="row">
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label for="rsName" id="rsid">Marker Column Name:</label>
                 <input class="form-control" id="snp-col" type="text" placeholder="rsid">
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label for="p-value" id="p_value">P-value Column Name:</label>
                 <input class="form-control" id="pval-col" type="text" placeholder="p_value">
               </div>
-              <div class="col-md-4">
-                <label for="region" id="locusText">Genomic Region (hg19):</label>
+              <div class="col-md-3">
+                <label for="region" id="locusText">HG19 Coordinates</label>
                 <input class="form-control" id="locus" type="text" placeholder="1:205500000-206000000">
+              </div>
+              <div class="col-md-3">
+                <label for="lead-snp" id="lead_snp">Lead Marker Name:</label>
+                <input class="form-control" id="leadsnp" type="text" placeholder="default: top marker">
               </div>
             </div>
           </div>
@@ -63,12 +68,16 @@
               <optgroup id="EUR" value="EUR" label="(EUR) European"></optgroup>
               <optgroup id="SAS" value="SAS" label="(SAS) South Asian"></optgroup>
             </select>
+            <select id="ld-type">
+              <option id="r2" value="r2">r<sup>2</sup></option>
+              <option id="D-prime" value="Dprime">D'</option>
+            </select>
           </div>
         </div> <!-- row closing div -->
         <div class="row">
           <div class="col-md-12 borderit">
             <h5>Select GTEx Tissues to Render</h5>
-            <select id="GTEX-tissues" multiple="multiple"></select>
+            <select id="GTEx-tissues" multiple="multiple"></select>
           </div>
         </div> <!-- row closing div -->
         <div class="row">
@@ -106,10 +115,9 @@
     </div> <!-- row closing div -->
   </div> <!-- container closing div -->
 
+  <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
-  <!-- <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-    <!-- SCRIPTS -->
   <!-- JQuery -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
   <!-- Bootstrap tooltips -->
@@ -122,8 +130,6 @@
   <script type="text/javascript" src="http://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
   <!-- Multiselect -->
   <script src="{{ url_for('static', filename='js/bootstrap-multiselect.js') }}"></script>
-  <!-- <script type="text/javascript" src="../static/js/bootstrap-multiselect.js"></script> -->
-  <script src="{{ url_for('static', filename='js/final-touch.js') }}"></script>
 
 </body>
 
