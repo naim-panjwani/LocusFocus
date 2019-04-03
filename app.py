@@ -3,17 +3,19 @@ import requests
 import pandas as pd
 import numpy as np
 import tokens
+import os
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, request, redirect, url_for, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 import pymysql
 pymysql.install_as_MySQLdb()
 #thepwd = open('pwd.txt').readline().replace('\n', '')
 
-app = Flask(__name__)
 genomicWindowLimit = 2000000
 fileSizeLimit = 200e6
 
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'upload'
 
 ####################################
 # LD Querying
@@ -48,10 +50,10 @@ for snp in snp_list:
 # API Routes
 #####################################
 
-@app.route("/")
-def index():
-    """Return the homepage."""
-    return render_template("index.html")
+# @app.route("/")
+# def index():
+#     """Return the homepage."""
+#     return render_template("index.html")
 
 @app.route("/populations")
 def get1KGPopulations():
@@ -74,48 +76,24 @@ def upload_file():
 
             file.save(filepath)
 
-            # Load the saved image using Keras and resize it to the Xception
-            # format of 299x299 pixels
-            image_size = (299, 299)
-            im = keras.preprocessing.image.load_img(filepath,
-                                                    target_size=image_size,
-                                                    grayscale=False)
+            # Load
+            data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
+            #data.head()
 
-            # preprocess the image and prepare it for classification
-            image = prepare_image(im)
+            snpcol = request.form['snp-col']
+            pcol = request.form['pval-col']
+            lead_snp = request.form['leadsnp']
+            regiontext = request.form['locus']
 
-            global graph
-            with graph.as_default():
-                preds = model.predict(image)
-                results = decode_predictions(preds)
-                # print the results
-                print(results)
+            data['lead_snp'] = lead_snp
 
-                data["predictions"] = []
+            # indicate that the request was a success
+            success = True
 
-                # loop over the results and add them to the list of
-                # returned predictions
-                for (imagenetID, label, prob) in results[0]:
-                    r = {"label": label, "probability": float(prob)}
-                    data["predictions"].append(r)
+        return jsonify(data.to_dict(orient='list'))
 
-                # indicate that the request was a success
-                data["success"] = True
-
-        return jsonify(data)
-
-    return '''
-    <!doctype html>
-    <title>Upload new File</title>
-    <h1>Upload new File</h1>
-    <form method=post enctype=multipart/form-data>
-      <p><input type=file name=file>
-         <input type=submit value=Upload>
-    </form>
-    '''
-
-
-
+    return render_template("index.html")
+    
 
 if __name__ == "__main__":
     app.run()

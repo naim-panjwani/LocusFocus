@@ -34,26 +34,26 @@
         <div class="row">
           <div class="col-md-12 borderit">
             <h5>GWAS Summary Statistics:</h5>
-            <p><input type=file name=gwas-file>
+            <p><input type=file name=file>
               <br>Must be a tab-separated file
               <br>Max size: 200MB
             </p>
             <div class="row">
               <div class="col-md-3">
                 <label for="rsName" id="rsid">Marker Column Name:</label>
-                <input class="form-control" id="snp-col" type="text" placeholder="rsid">
+                <input class="form-control" id="snp-col" name="snp-col" type="text" placeholder="rsid">
               </div>
               <div class="col-md-3">
                 <label for="p-value" id="p_value">P-value Column Name:</label>
-                <input class="form-control" id="pval-col" type="text" placeholder="p_value">
+                <input class="form-control" id="pval-col" name="pval-col" type="text" placeholder="p_value">
               </div>
               <div class="col-md-3">
                 <label for="region" id="locusText">HG19 Coordinates</label>
-                <input class="form-control" id="locus" type="text" placeholder="1:205500000-206000000">
+                <input class="form-control" id="locus" name="locus" type="text" placeholder="1:205500000-206000000">
               </div>
               <div class="col-md-3">
                 <label for="lead-snp" id="lead_snp">Lead Marker Name:</label>
-                <input class="form-control" id="leadsnp" type="text" placeholder="default: top marker">
+                <input class="form-control" id="leadsnp" name="leadsnp" type="text" placeholder="default: top marker">
               </div>
             </div>
           </div>
