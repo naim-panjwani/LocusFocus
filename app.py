@@ -46,6 +46,36 @@ for snp in snp_list:
     #print(r2)
     r2_pairs.append(r2)
 
+
+####################################
+# Helper functions
+####################################
+def parseRegionText(regiontext):
+    chr = regiontext.split(':')[0].replace('chr','')
+    pos = regiontext.split(':')[1]
+    startbp = pos.split('-')[0]
+    endbp = pos.split('-')[1]
+    chromLengths = pd.read_csv('data/hg19_chrom_lengths.txt', sep="\t", encoding='utf-8')
+    chromLengths.set_index('sequence',inplace=True)
+    if chr == 'X':
+        chr = 23
+        maxChromLength = chromLengths.loc['chrX', 'length']
+    else:
+        try:
+            chr = int(chr)
+            maxChromLength = chromLengths.loc['chr'+str(chr), 'length']
+            startbp = int(startbp)
+            endbp = int(endbp)
+        except:
+            print("Invalid coordinates input")
+    if chr < 1 or chr > 23:
+        raise ValueError('Chromosome input must be between 1 and 23')
+    elif startbp > endbp:
+        raise ValueError('Starting chromosome basepair position is greater than ending basepair position')
+    elif startbp > maxChromLength or endbp > maxChromLength:
+        raise ValueError('Start and end coordinates are out of range')
+
+
 #####################################
 # API Routes
 #####################################
@@ -77,20 +107,28 @@ def upload_file():
             file.save(filepath)
 
             # Load
-            data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
-            #data.head()
+            gwas_data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
 
             snpcol = request.form['snp-col']
             pcol = request.form['pval-col']
             lead_snp = request.form['leadsnp']
             regiontext = request.form['locus']
+            chr, startbp, endbp = parseRegionText(regiontext)
+            pops = request.form.getlist('LD-populations')
+            gtex_tissues = request.form.getlist('GTEx-tissues')
 
+            # Make a data dictionary:
+            data = {}
+            data['gwas_data'] = gwas_data[[snpcol, pcol]]
             data['lead_snp'] = lead_snp
+            data['chr'] = chr
+            data['startbp'] = startbp
+            data['endbp'] = endbp
 
             # indicate that the request was a success
             success = True
 
-        return jsonify(data.to_dict(orient='list'))
+        return jsonify(pops)
 
     return render_template("index.html")
     
