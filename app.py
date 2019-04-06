@@ -74,6 +74,8 @@ def parseRegionText(regiontext):
         raise ValueError('Starting chromosome basepair position is greater than ending basepair position')
     elif startbp > maxChromLength or endbp > maxChromLength:
         raise ValueError('Start and end coordinates are out of range')
+    else:
+        return chr, startbp, endbp
 
 
 #####################################
