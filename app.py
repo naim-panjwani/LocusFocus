@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import numpy as np
 import os
+from tqdm import tqdm
 import tokens
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template
@@ -18,34 +19,55 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'upload'
 
 ####################################
-# LD Querying
+# LD Querying from ldlink.nci.nih.gov
 ####################################
 
-def parseR2(urltext):
-    temp = urltext.strip().split('\n')
+def parseR2(responseText):
+    temp = responseText.strip().split('\n')
     for t in temp:
         if t.strip().find('R2') != -1:
-            return float(t.strip().split(':')[1].strip())
+            catchR2 = t.strip().split(':')[1].strip()
+            try:
+                result = float(catchR2)
+            except:
+                result = np.nan
+            return result
     return np.nan
 
-lead_snp = 'rs7512462'
-snp_list = ['rs61814953', 'rs1342063']
-european_populations = ['CEU', 'TSI', 'FIN', 'GBR', 'IBS']
-ld_type = 'r2'
-base_url = 'https://ldlink.nci.nih.gov/LDlinkRest/ldpair?'
+def parsePosition(responseText, snpname):
+    temp = responseText.strip().split('\n')
+    for t in temp:
+        if t.strip().find(snpname) != -1:
+            catchPOS = t.split(':')[1].replace(')','').strip()
+            try:
+                result = int(catchPOS)
+            except:
+                result = np.nan
+            return result
+    return np.nan
 
-r2_pairs = []
-for snp in snp_list:
-    snp_query = 'var1=' + lead_snp + '&var2=' + snp
-    population_query = '&pop=' + "%2B".join(european_populations) 
-    #ld_query = '&r2_d=' + ld_type 
-    token_query = '&token=' + tokens.token
-    url = base_url + snp_query + population_query + token_query
-    response = requests.get(url).text
-    r2 = parseR2(response)
-    #print(r2)
-    r2_pairs.append(r2)
+def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'], ld_type='r2'):
+    base_url = 'https://ldlink.nci.nih.gov/LDlinkRest/ldpair?'
+    ld_values = []
+    positions = []
+    for snp in tqdm(snp_list):
+        snp_query = 'var1=' + lead_snp + '&var2=' + snp
+        population_query = '&pop=' + "%2B".join(populations) 
+        ld_query = '&r2_d=' + ld_type
+        token_query = '&token=' + tokens.token
+        url = base_url + snp_query + population_query + ld_query + token_query
+        response = requests.get(url).text
+        r2 = parseR2(response)
+        pos = parsePosition(response, snp)
+        ld_values.append(r2)
+        positions.append(pos)
+    return ld_values, positions
 
+# import timeit
+# start = timeit.timeit()
+# queryLD(lead_snp, snp_list)
+# end = timeit.timeit()
+# print(end - start)
 
 ####################################
 # Helper functions
@@ -143,6 +165,8 @@ def upload_file():
             pops = request.form.getlist('LD-populations')
             if len(pops) == 0: pops = ['CEU','TSI','FIN','GBR','IBS']
             print('Populations:', pops)
+            ld_type = request.form['ld-type']
+            print(ld_type)
             gtex_tissues = request.form.getlist('GTEx-tissues')
             print('GTEx tissues:',gtex_tissues)
             if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue')
@@ -151,10 +175,15 @@ def upload_file():
             gwas_data = gwas_data[[snpcol,pcol]]
             gwas_data.dropna(inplace=True)
 
+            # Get LD via API queries to LDlink:
+            ld_values, positions = queryLD(lead_snp, snp_list, pops, ld_type)
+
             # Make a data dictionary to return as JSON for javascript plot:
             data['snps'] = list(gwas_data[snpcol])
             data['pvalues'] = list(gwas_data[pcol])
             data['lead_snp'] = lead_snp
+            data['ld_values'] = ld_values
+            data['positions'] = positions
             data['chr'] = chr
             data['startbp'] = startbp
             data['endbp'] = endbp
@@ -165,7 +194,10 @@ def upload_file():
             data['success'] = True
             print('Loading a success')
 
-        return jsonify(data)
+            # Save data in JSON format for plotting
+            json.dump(data, open('data/form_data.json', 'w'))
+
+        return redirect("/", code=302)
 
     return render_template("index.html")
     
