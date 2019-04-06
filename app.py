@@ -3,6 +3,8 @@ import requests
 import pandas as pd
 import numpy as np
 import os
+import math
+import string
 from tqdm import tqdm
 import tokens
 
@@ -47,27 +49,79 @@ def parsePosition(responseText, snpname):
     return np.nan
 
 def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'], ld_type='r2'):
-    base_url = 'https://ldlink.nci.nih.gov/LDlinkRest/ldpair?'
-    ld_values = []
-    positions = []
-    for snp in tqdm(snp_list):
-        snp_query = 'var1=' + lead_snp + '&var2=' + snp
-        population_query = '&pop=' + "%2B".join(populations) 
+    base_url = 'https://ldlink.nci.nih.gov/LDlinkRest/ldmatrix?'
+    result_df = pd.DataFrame({'snp':[],'ld':[]})
+    allowed_requests = 300
+    num_requests = math.ceil(len(snp_list) / (allowed_requests-1))
+    for req in tqdm(np.arange(num_requests)):
+        ld_values = []
+        snps = []
+        start = req * allowed_requests
+        end = min(start+allowed_requests-1, len(snp_list))
+        curr_snp_list = []
+        curr_snp_list.extend(snp_list[start:end])
+        if lead_snp not in curr_snp_list:
+            curr_snp_list.append(lead_snp)
+        allowed_chars = 'rs' + string.digits
+        for snp in curr_snp_list:
+            if any([char not in allowed_chars for char in snp]):
+                curr_snp_list.pop(curr_snp_list.index(snp))
+        
+        # headers = {
+        # 'Content-Type': 'application/json',
+        # }
+        # params = (
+        #     ('token', tokens.token),
+        # )
+        # snpstring = "\\n".join(curr_snp_list)
+        # data = f'{{"snps": {snpstring}, "pop": "CEU","r2_d": "d"}}'
+
+        # response = requests.post('https://ldlink.nci.nih.gov/LDlinkRest/ldmatrix', headers=headers, params=params, data=data, verify=False)
+        snp_query = 'snps=' + '%0A'.join(curr_snp_list)
+        population_query = '&pop=' + "%2B".join(populations)
         ld_query = '&r2_d=' + ld_type
         token_query = '&token=' + tokens.token
         url = base_url + snp_query + population_query + ld_query + token_query
-        response = requests.get(url).text
-        r2 = parseR2(response)
-        pos = parsePosition(response, snp)
-        ld_values.append(r2)
-        positions.append(pos)
-    return ld_values, positions
+        response = requests.get(url)
+        if(response):
+            data = response.text.strip().split('\n')[1:]
+            tempSNPs = response.text.strip().split('\n')[0].split('\t')[1:]
+            if lead_snp in tempSNPs:
+                lead_snp_col = tempSNPs.index(lead_snp)
+                data.pop(lead_snp_col)
+            snps = [datum.strip().split('\t')[0] for datum in data if datum != '']
+            ld_values = [datum.split('\t')[lead_snp_col+1] for datum in data if datum != '']
+            for i in np.arange(len(ld_values)):
+                try:
+                    ld_values[i] = float(ld_values[i])
+                except:
+                    ld_values[i] = np.nan
+            result_df = result_df.append(pd.DataFrame({'snp': snps, 'ld': ld_values}), ignore_index=True)
+        merged_df = result_df.merge(pd.DataFrame({'snp':snp_list}),on='snp',sort=False,how='outer')
+    return merged_df
 
-# import timeit
-# start = timeit.timeit()
-# queryLD(lead_snp, snp_list)
-# end = timeit.timeit()
-# print(end - start)
+# def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'], ld_type='r2'):
+#     base_url = 'https://ldlink.nci.nih.gov/LDlinkRest/ldpair?'
+#     ld_values = []
+#     positions = []
+#     for snp in tqdm(snp_list):
+#         snp_query = 'var1=' + lead_snp + '&var2=' + snp
+#         population_query = '&pop=' + "%2B".join(populations) 
+#         ld_query = '&r2_d=' + ld_type
+#         token_query = '&token=' + tokens.token
+#         url = base_url + snp_query + population_query + ld_query + token_query
+#         response = requests.get(url).text
+#         r2 = parseR2(response)
+#         pos = parsePosition(response, snp)
+#         ld_values.append(r2)
+#         positions.append(pos)
+#     return ld_values, positions
+
+from timeit import default_timer as timer
+start = timer()
+ld = queryLD(lead_snp, snp_list)
+end = timer()
+print(end - start)
 
 ####################################
 # Helper functions
@@ -176,10 +230,11 @@ def upload_file():
             gwas_data.dropna(inplace=True)
 
             # Get LD via API queries to LDlink:
+            snp_list = list(gwas_data[snpcol])
             ld_values, positions = queryLD(lead_snp, snp_list, pops, ld_type)
 
             # Make a data dictionary to return as JSON for javascript plot:
-            data['snps'] = list(gwas_data[snpcol])
+            data['snps'] = snp_list
             data['pvalues'] = list(gwas_data[pcol])
             data['lead_snp'] = lead_snp
             data['ld_values'] = ld_values
