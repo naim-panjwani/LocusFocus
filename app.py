@@ -2,8 +2,8 @@ import json
 import requests
 import pandas as pd
 import numpy as np
-import tokens
 import os
+import tokens
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
@@ -67,13 +67,13 @@ def parseRegionText(regiontext):
             startbp = int(startbp)
             endbp = int(endbp)
         except:
-            print("Invalid coordinates input")
+            raise InvalidUsage("Invalid coordinates input", status_code=410)
     if chr < 1 or chr > 23:
-        raise ValueError('Chromosome input must be between 1 and 23')
+        raise InvalidUsage('Chromosome input must be between 1 and 23', status_code=410)
     elif startbp > endbp:
-        raise ValueError('Starting chromosome basepair position is greater than ending basepair position')
+        raise InvalidUsage('Starting chromosome basepair position is greater than ending basepair position', status_code=410)
     elif startbp > maxChromLength or endbp > maxChromLength:
-        raise ValueError('Start and end coordinates are out of range')
+        raise InvalidUsage('Start or end coordinates are out of range', status_code=410)
     else:
         return chr, startbp, endbp
 
@@ -82,10 +82,26 @@ def parseRegionText(regiontext):
 # API Routes
 #####################################
 
-# @app.route("/")
-# def index():
-#     """Return the homepage."""
-#     return render_template("index.html")
+class InvalidUsage(Exception):
+    status_code = 400
+
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
+@app.errorhandler(InvalidUsage)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
 
 @app.route("/populations")
 def get1KGPopulations():
@@ -109,28 +125,47 @@ def upload_file():
             file.save(filepath)
 
             # Load
+            print('Loading file')
             gwas_data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
 
             snpcol = request.form['snp-col']
+            if snpcol=='': snpcol='SNP'
             pcol = request.form['pval-col']
+            if pcol=='': pcol='P'
             lead_snp = request.form['leadsnp']
+            if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
             regiontext = request.form['locus']
+            print('regiontext',regiontext)
+            if regiontext == "": raise InvalidUsage("Must enter coordinates", status_code=410)
+            print('Parsing region text')
             chr, startbp, endbp = parseRegionText(regiontext)
+            print(chr,startbp,endbp)
             pops = request.form.getlist('LD-populations')
+            if len(pops) == 0: pops = ['CEU','TSI','FIN','GBR','IBS']
+            print('Populations:', pops)
             gtex_tissues = request.form.getlist('GTEx-tissues')
+            print('GTEx tissues:',gtex_tissues)
+            if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue')
 
-            # Make a data dictionary:
-            data = {}
-            data['gwas_data'] = gwas_data[[snpcol, pcol]]
+            # Omit any rows with missing values:
+            gwas_data = gwas_data[[snpcol,pcol]]
+            gwas_data.dropna(inplace=True)
+
+            # Make a data dictionary to return as JSON for javascript plot:
+            data['snps'] = list(gwas_data[snpcol])
+            data['pvalues'] = list(gwas_data[pcol])
             data['lead_snp'] = lead_snp
             data['chr'] = chr
             data['startbp'] = startbp
             data['endbp'] = endbp
+            data['ld_populations'] = pops
+            data['gtex_tissues'] = gtex_tissues
 
             # indicate that the request was a success
-            success = True
+            data['success'] = True
+            print('Loading a success')
 
-        return jsonify(pops)
+        return jsonify(data)
 
     return render_template("index.html")
     

@@ -30,10 +30,19 @@ d3.json('/populations').then(response => {
         for(var i = 0; i < pops['Population Code'].length; i++) {
             var superpop = pops['Super Population Code'][i];
             var superpopSelect = d3.select("#" + superpop);
-            superpopSelect
-                .append("option")
-                .attr('value', pops['Population Code'][i])
-                .text("(" + pops['Population Code'][i] + ") " + pops['Population Description'][i]);
+            if(superpop === "EUR") {
+                superpopSelect
+                    .append("option")
+                    .attr('value', pops['Population Code'][i])
+                    .attr('selected','selected')
+                    .text("(" + pops['Population Code'][i] + ") " + pops['Population Description'][i]);                
+            }
+            else {
+                superpopSelect
+                    .append("option")
+                    .attr('value', pops['Population Code'][i])
+                    .text("(" + pops['Population Code'][i] + ") " + pops['Population Description'][i]);
+            }
         }
 
         // Build GTEx tissues multiselect dropdown
