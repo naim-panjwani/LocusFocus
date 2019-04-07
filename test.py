@@ -27,3 +27,16 @@ pcol='P'
 list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
 snp_list = list(gwas_data[snpcol])
 
+
+engine = sa.create_engine('mysql://root:root@localhost:3306/snp151')
+chunks = pd.read_csv('data/snp151.gz', compression='gzip', sep="\t", chunksize=10000)
+for chunk in chunks:
+    chunk = chunk.rename(columns={'#chrom':'chrom', 'chromEnd':'position'}).set_index(['name','chrom','position'])
+    chunk.head()
+    chunk.to_sql(name="snp151_hg19", if_exists='append', index=True, index_label=['name','chrom','position'], 
+                        con=engine, dtype={'name': String(50), 'chrom': String(100), 'position': Integer})
+    engine.execute("ALTER TABLE `snp151`.`snp151_hg19` add primary key(name(50));")
+
+
+
+

@@ -3,7 +3,7 @@ This app is to enable exploration of GWAS results and assessment of what gene an
 
 LD information is obtained from [LDlink's API](https://ldlink.nci.nih.gov/?tab=apiaccess) to enable viewing of LD given a lead SNP. The default lead SNP is the top SNP.
 
-eQTL association results are obtained from [GTEx's API](https://gtexportal.org/home/api-docs/). 
+eQTL association results are obtained from [GTEx's API](https://gtexportal.org/home/api-docs/) http://www.ensembl.info/2016/08/15/gtex-eqtl-data-now-in-ensembl/. 
 
 You may upload your GWAS results to the app, and specify the region of interest (up to 2MB). You may also provide a custom region to apply the Simple Sum calculation to (default is 100kb from the lead SNP).
 

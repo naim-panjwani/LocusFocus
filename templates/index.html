@@ -40,6 +40,14 @@
             </p>
             <div class="row">
               <div class="col-md-3">
+                <label for="chrom" id="chrom">Chromosome Column Name:</label>
+                <input class="form-control" id="chrom-col" name="chrom-col" type="text" placeholder="#CHROM">
+              </div>
+              <div class="col-md-3">
+                <label for="position" id="position">Position Column Name:</label>
+                <input class="form-control" id="pos-col" name="pos-col" type="text" placeholder="BP">
+              </div>
+              <div class="col-md-3">
                 <label for="rsName" id="rsid">Marker Column Name:</label>
                 <input class="form-control" id="snp-col" name="snp-col" type="text" placeholder="SNP">
               </div>
@@ -47,6 +55,8 @@
                 <label for="p-value" id="p_value">P-value Column Name:</label>
                 <input class="form-control" id="pval-col" name="pval-col" type="text" placeholder="P">
               </div>
+            </div>
+            <div class="row">
               <div class="col-md-3">
                 <label for="region" id="locusText">HG19 Coordinates</label>
                 <input class="form-control" id="locus" name="locus" type="text" placeholder="1:205500000-206000000">
@@ -68,7 +78,7 @@
               <optgroup id="EUR" value="EUR" label="(EUR) European"></optgroup>
               <optgroup id="SAS" value="SAS" label="(SAS) South Asian"></optgroup>
             </select>
-            <select id="ld-type">
+            <select id="ld-type" name="ld-type">
               <option id="r2" value="r2">r<sup>2</sup></option>
               <option id="D-prime" value="d">D'</option>
             </select>
@@ -77,7 +87,13 @@
         <div class="row">
           <div class="col-md-12 borderit">
             <h5>Select GTEx Tissues to Render</h5>
-            <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple"></select>
+            <div class="col-md-6">
+              <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple"></select>
+            </div>
+            <div class="col-md-6">
+                <label for="gencodeId" id="gencode-id">Enter Gene's Gencode ID:</label>
+                <input class="form-control" id="gencodeID" name="gencodeID" type="text" placeholder="ENSG00000174502">
+            </div>
           </div>
         </div> <!-- row closing div -->
         <div class="row">

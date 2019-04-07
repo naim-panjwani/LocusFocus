@@ -7,6 +7,7 @@ var errorDiv = d3.select("#error-messages");
 var theTable = d3.select("#variants-table");
 var gtex_version = "v7" // default
 gtexurl = `https://gtexportal.org/rest/v1/dataset/tissueSummary?datasetId=gtex_${gtex_version}&format=json`
+// alternatively, use Ensembl: http://rest.ensembl.org/eqtl/tissue/homo_sapiens?content-type=application/json
 
 var locText = d3.select("#locusText").text();
 d3.select("#locusText").text(`${locText} (max: ${genomicWindowLimit/1e6} Mbp):`);

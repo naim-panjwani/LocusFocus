@@ -102,5 +102,8 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# My file/directory exclusions:
 tokens.py
 .vscode/
+data/snp151.gz
