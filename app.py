@@ -8,6 +8,7 @@ import string
 from tqdm import tqdm
 import uuid
 import tokens
+from pprint import pprint
 
 import sqlalchemy as sa
 from sqlalchemy.ext.automap import automap_base
@@ -71,13 +72,14 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
         
         # Remove or solve problematic SNP names:
         allowed_chars = 'rs' + string.digits
+        checked_snp_list = []
         for i in np.arange(len(curr_snp_list)):
             snp = curr_snp_list[i]
             querysnp = snp.split(';')[0]
-            curr_snp_list[i] = querysnp
-            if any([char not in allowed_chars for char in querysnp]):
-                curr_snp_list.pop(i)
-        
+            if all([char in allowed_chars for char in querysnp]):
+                checked_snp_list.append(querysnp)
+        curr_snp_list = checked_snp_list
+
         # Check if any SNPs are still left:
         if len(curr_snp_list) == 0:
             raise InvalidUsage('The provided file does not have any valid SNP names', status_code=410)
@@ -100,7 +102,7 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
         token_query = '&token=' + tokens.token
         url = base_url + snp_query + population_query + ld_query + token_query
         response = requests.get(url)
-        if(response):
+        if response:
             data = response.text.strip().split('\n')[1:]
             tempSNPs = response.text.strip().split('\n')[0].split('\t')[1:]
             if lead_snp in tempSNPs:
@@ -271,7 +273,7 @@ def upload_file():
             if gene=='': raise InvalidUsage('Please enter a gene of interest (eg. ENSG00000174502)')
 
             # Omit any rows with missing values:
-            gwas_data = gwas_data[[snpcol,pcol]]
+            gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
             gwas_data.dropna(inplace=True)
 
             # Get LD via API queries to LDlink:
@@ -280,14 +282,17 @@ def upload_file():
             ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
 
             # Get SNP positions via queries to UCSC Genome's MySQL snp151 table:
-            print('Gathering HG19 positions from UCSC dbSNP151 database')
-            positions = getSNPPositions(snp_list)
+            #print('Gathering HG19 positions from UCSC dbSNP151 database')
+            #positions = getSNPPositions(snp_list)
+
+            positions = list(gwas_data[poscol])
 
             # Make a data dictionary to return as JSON for javascript plot:
+            data = {}
             data['snps'] = snp_list
             data['pvalues'] = list(gwas_data[pcol])
             data['lead_snp'] = lead_snp
-            data['ld_values'] = ld_df['ld']
+            data['ld_values'] = list(ld_df['ld'])
             data['positions'] = positions
             data['chr'] = chr
             data['startbp'] = startbp
@@ -296,10 +301,12 @@ def upload_file():
             data['gtex_tissues'] = gtex_tissues
 
             # Get GTEx data for the tissues and SNPs selected:
+            print('Gathering GTEx data')
             ensembl_eqtl_base_url = 'http://rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
             gene_query = f'stable_id={gene};'
             query_suffix = 'content-type=application/json'
             for tissue in tqdm(gtex_tissues):
+                print(f'Gathering eQTL data for {tissue}')
                 tissue_query = f'tissue={tissue};'
                 data[tissue] = []
                 for snp in tqdm(snp_list):
@@ -321,10 +328,10 @@ def upload_file():
             print('Loading a success')
 
             # Save data in JSON format for plotting
-            my_id = uuid.uuid1()
-            json.dump(data, open(f'session_data/form_data{my_id}.json', 'w'))
+            my_session_id = uuid.uuid1()
+            json.dump(data, open(f'session_data/form_data-{my_session_id}.json', 'w'))
 
-        return redirect("/", code=302)
+        return redirect(f"/{my_session_id}", code=302)
 
     return render_template("index.html")
     
