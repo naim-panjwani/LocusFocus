@@ -254,7 +254,7 @@ def upload_file():
             if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
             regiontext = request.form['locus']
             print('regiontext',regiontext)
-            if regiontext == "": raise InvalidUsage("Must enter coordinates", status_code=410)
+            if regiontext == "": regiontext = "1:205500000-206000000"
             print('Parsing region text')
             chr, startbp, endbp = parseRegionText(regiontext)
             print(chr,startbp,endbp)
@@ -270,16 +270,16 @@ def upload_file():
             print('GTEx tissues:',gtex_tissues)
             if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)
             gene = request.form['gencodeID']
-            if gene=='': raise InvalidUsage('Please enter a gene of interest (eg. ENSG00000174502)')
+            if gene=='': gene='ENSG00000174502'
 
             # Omit any rows with missing values:
             gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
             gwas_data.dropna(inplace=True)
 
-            # Get LD via API queries to LDlink:
-            print('Gathering LD information from LDlink')
-            snp_list = list(gwas_data[snpcol])
-            ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
+            # # Get LD via API queries to LDlink:
+            # print('Gathering LD information from LDlink')
+            # snp_list = list(gwas_data[snpcol])
+            # ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
 
             # Get SNP positions via queries to UCSC Genome's MySQL snp151 table:
             #print('Gathering HG19 positions from UCSC dbSNP151 database')
@@ -292,7 +292,7 @@ def upload_file():
             data['snps'] = snp_list
             data['pvalues'] = list(gwas_data[pcol])
             data['lead_snp'] = lead_snp
-            data['ld_values'] = list(ld_df['ld'])
+            # data['ld_values'] = list(ld_df['ld'])
             data['positions'] = positions
             data['chr'] = chr
             data['startbp'] = startbp
@@ -300,38 +300,39 @@ def upload_file():
             data['ld_populations'] = pops
             data['gtex_tissues'] = gtex_tissues
 
-            # Get GTEx data for the tissues and SNPs selected:
-            print('Gathering GTEx data')
-            ensembl_eqtl_base_url = 'http://rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
-            gene_query = f'stable_id={gene};'
-            query_suffix = 'content-type=application/json'
-            for tissue in tqdm(gtex_tissues):
-                print(f'Gathering eQTL data for {tissue}')
-                tissue_query = f'tissue={tissue};'
-                data[tissue] = []
-                for snp in tqdm(snp_list):
-                    querysnp = snp.split(';')[0]
-                    snp_query = f'{querysnp}?statistic=p-value;'
-                    url = ensembl_eqtl_base_url + snp_query + gene_query + tissue_query + query_suffix
-                    response = requests.get(url, headers={ "Content-Type" : "application/json"})
-                    if response:
-                        eqtl = response.json()
-                        try:
-                            data[tissue].append(eqtl[0]['minus_log10_p_value'])
-                        except:
-                            data[tissue].append(np.nan)
-                    else:
-                        data[tissue].append(np.nan)
+            # # Get GTEx data for the tissues and SNPs selected:
+            # print('Gathering GTEx data')
+            # ensembl_eqtl_base_url = 'http://rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
+            # gene_query = f'stable_id={gene};'
+            # query_suffix = 'content-type=application/json'
+            # for tissue in tqdm(gtex_tissues):
+            #     print(f'Gathering eQTL data for {tissue}')
+            #     tissue_query = f'tissue={tissue};'
+            #     data[tissue] = []
+            #     for snp in tqdm(snp_list):
+            #         querysnp = snp.split(';')[0]
+            #         snp_query = f'{querysnp}?statistic=p-value;'
+            #         url = ensembl_eqtl_base_url + snp_query + gene_query + tissue_query + query_suffix
+            #         response = requests.get(url, headers={ "Content-Type" : "application/json"})
+            #         if response:
+            #             eqtl = response.json()
+            #             try:
+            #                 data[tissue].append(eqtl[0]['minus_log10_p_value'])
+            #             except:
+            #                 data[tissue].append(np.nan)
+            #         else:
+            #             data[tissue].append(np.nan)
 
             # indicate that the request was a success
             data['success'] = True
             print('Loading a success')
 
             # Save data in JSON format for plotting
-            my_session_id = uuid.uuid1()
-            json.dump(data, open(f'session_data/form_data-{my_session_id}.json', 'w'))
-
-        return redirect(f"/{my_session_id}", code=302)
+            my_session_id = uuid.uuid4()
+            fileout = f'static/session_data/form_data-{my_session_id}.json'
+            json.dump(data, open(fileout, 'w'))
+            
+        return render_template("plot.html", sessionfile = f'session_data/form_data-{my_session_id}.json')
 
     return render_template("index.html")
     

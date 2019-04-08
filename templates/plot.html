@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>GWAS eQTL Exploration App</title>
+  <link rel="shortcut icon" href="#" />
+   <!-- Font Awesome -->
+   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
+   <!-- Bootstrap core CSS -->
+   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+   <!-- Material Design Bootstrap -->
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
+   <!-- DataTables -->
+   <link rel="stylesheet" href="http://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
+   <link rel="stylesheet" type="text/css" href="../static/css/style.css">
+   <link rel="stylesheet" type="text/css" href="../static/css/d3Style.css">
+</head>
+
+<body>
+    <div class="row">
+        <div class="col-md-6"><div id="plot"></div></div>
+        <div class="col-md-6"><div id="heatmap"></div></div>
+    </div> <!-- row closing div -->
+    <div class="row">
+        <div class="col-md-12">
+            <div id="table-area">
+                <table id="variants-table" class="table table-striped table-bordered table-sm sortable" cellspacing="0" width="100%">
+                    <thead>
+                    <!--
+                    <tr>
+                        <th class="th-sm">Chromosome</th>
+                        <th class="th-sm">Position</th>
+                        <th class="th-sm">rs ID</th>
+                        <th class="th-sm">MAF</th>
+                        <th class="th-sm">Consequence</th>
+                        <th class="th-sm">Consequence category</th>
+                        <th class="th-sm">Beta</th>
+                        <th class="th-sm">P-value</th>
+                    </tr>
+                    -->
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div> <!-- table-area closing div -->
+        </div> <!-- col-md-12 closing div -->
+    </div> <!-- row closing div -->
+
+    <!-- JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/plot.js') }}"></script>
+  <script type="text/javascript">
+    var thefile="{{ sessionfile }}";
+    // console.log(thedata);
+    console.log(thefile);
+    d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
+        var data = response;
+        // console.log(data);
+        plot_gwas(data.positions, data.pvalues, data.chr, data.startbp, data.endbp, data.snps)
+    });
+
+  </script>
+
+  <!-- JQuery -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <!-- Bootstrap tooltips -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
+  <!-- Bootstrap core JavaScript -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  <!-- MDB core JavaScript -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"></script>
+  <!-- DataTables -->
+  <script type="text/javascript" src="http://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+
+</body>
+
+
+</html>
