@@ -1,6 +1,4 @@
-function plot_gwas(positions, pvalues, chr, startbp, endbp, snps) {
-    
-}
+plotanchor = d3.select("#plot");
 
 
 
@@ -398,3 +396,8 @@ d3.csv("assets/data/data.csv").then(function(bureauData) {
       }
     });
 });
+
+
+function plot_gwas(positions, pvalues, chr, startbp, endbp, snps) {
+    
+}
