@@ -69,7 +69,6 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
         curr_snp_list = snp_list[start:end]
         if lead_snp not in curr_snp_list:
             curr_snp_list.append(lead_snp)
-        
         # Remove or solve problematic SNP names:
         allowed_chars = 'rs' + string.digits
         checked_snp_list = []
@@ -198,14 +197,12 @@ def parseRegionText(regiontext):
 #####################################
 class InvalidUsage(Exception):
     status_code = 400
-
     def __init__(self, message, status_code=None, payload=None):
         Exception.__init__(self)
         self.message = message
         if status_code is not None:
             self.status_code = status_code
         self.payload = payload
-
     def to_dict(self):
         rv = dict(self.payload or ())
         rv['message'] = self.message
@@ -229,19 +226,14 @@ def upload_file():
         if request.files.get('file'):
             # read the file
             file = request.files['file']
-
             # read the filename
             filename = file.filename
-
             # create a path to the uploads folder
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
             file.save(filepath)
-
             # Load
             print('Loading file')
             gwas_data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
-
             chromcol = request.form['chrom-col']
             if chromcol=='': chromcol='#CHROM'
             poscol = request.form['pos-col']
@@ -271,22 +263,17 @@ def upload_file():
             if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)
             gene = request.form['gencodeID']
             if gene=='': gene='ENSG00000174502'
-
             # Omit any rows with missing values:
             gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
             gwas_data.dropna(inplace=True)
-
-            # # Get LD via API queries to LDlink:
-            # print('Gathering LD information from LDlink')
-            # snp_list = list(gwas_data[snpcol])
-            # ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
-
+            # Get LD via API queries to LDlink:
+            print('Gathering LD information from LDlink')
+            snp_list = list(gwas_data[snpcol])
+            ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
             # Get SNP positions via queries to UCSC Genome's MySQL snp151 table:
-            #print('Gathering HG19 positions from UCSC dbSNP151 database')
-            #positions = getSNPPositions(snp_list)
-
+            print('Gathering HG19 positions from UCSC dbSNP151 database')
+            positions = getSNPPositions(snp_list)
             positions = list(gwas_data[poscol])
-
             # Make a data dictionary to return as JSON for javascript plot:
             data = {}
             data['snps'] = snp_list
@@ -299,43 +286,37 @@ def upload_file():
             data['endbp'] = endbp
             data['ld_populations'] = pops
             data['gtex_tissues'] = gtex_tissues
-
-            # # Get GTEx data for the tissues and SNPs selected:
-            # print('Gathering GTEx data')
-            # ensembl_eqtl_base_url = 'http://rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
-            # gene_query = f'stable_id={gene};'
-            # query_suffix = 'content-type=application/json'
-            # for tissue in tqdm(gtex_tissues):
-            #     print(f'Gathering eQTL data for {tissue}')
-            #     tissue_query = f'tissue={tissue};'
-            #     data[tissue] = []
-            #     for snp in tqdm(snp_list):
-            #         querysnp = snp.split(';')[0]
-            #         snp_query = f'{querysnp}?statistic=p-value;'
-            #         url = ensembl_eqtl_base_url + snp_query + gene_query + tissue_query + query_suffix
-            #         response = requests.get(url, headers={ "Content-Type" : "application/json"})
-            #         if response:
-            #             eqtl = response.json()
-            #             try:
-            #                 data[tissue].append(eqtl[0]['minus_log10_p_value'])
-            #             except:
-            #                 data[tissue].append(-1)
-            #         else:
-            #             data[tissue].append(-1)
-
+            # Get GTEx data for the tissues and SNPs selected:
+            print('Gathering GTEx data')
+            ensembl_eqtl_base_url = 'http://rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
+            gene_query = f'stable_id={gene};'
+            query_suffix = 'content-type=application/json'
+            for tissue in tqdm(gtex_tissues):
+                print(f'Gathering eQTL data for {tissue}')
+                tissue_query = f'tissue={tissue};'
+                data[tissue] = []
+                for snp in tqdm(snp_list):
+                    querysnp = snp.split(';')[0]
+                    snp_query = f'{querysnp}?statistic=p-value;'
+                    url = ensembl_eqtl_base_url + snp_query + gene_query + tissue_query + query_suffix
+                    response = requests.get(url, headers={ "Content-Type" : "application/json"})
+                    if response:
+                        eqtl = response.json()
+                        try:
+                            data[tissue].append(eqtl[0]['minus_log10_p_value'])
+                        except:
+                            data[tissue].append(-1)
+                    else:
+                        data[tissue].append(-1)
             # indicate that the request was a success
             data['success'] = True
             print('Loading a success')
-
             # Save data in JSON format for plotting
             my_session_id = uuid.uuid4()
             fileout = f'static/session_data/form_data-{my_session_id}.json'
             json.dump(data, open(fileout, 'w'))
-            
         return render_template("plot.html", sessionfile = f'session_data/form_data-{my_session_id}.json')
-
     return render_template("index.html")
-    
 
 if __name__ == "__main__":
     app.run()
