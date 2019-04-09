@@ -39,9 +39,9 @@ def parseR2(responseText):
             try:
                 result = float(catchR2)
             except:
-                result = np.nan
+                result = -1
             return result
-    return np.nan
+    return -1
 
 def parsePosition(responseText, snpname):
     temp = responseText.strip().split('\n')
@@ -51,9 +51,9 @@ def parsePosition(responseText, snpname):
             try:
                 result = int(catchPOS)
             except:
-                result = np.nan
+                result = -1
             return result
-    return np.nan
+    return -1
 
 def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'], ld_type='r2'):
     base_url = 'https://ldlink.nci.nih.gov/LDlinkRest/ldmatrix?'
@@ -114,7 +114,7 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
                 try:
                     ld_values[i] = float(ld_values[i])
                 except:
-                    ld_values[i] = np.nan
+                    ld_values[i] = -1
             result_df = result_df.append(pd.DataFrame({'snp': snps, 'ld': ld_values}), ignore_index=True)
         snp_df = pd.DataFrame({'snp':snp_list})
         merged_df = snp_df.reset_index().merge(result_df, how='left', on='snp', sort=False).sort_values('index').drop(columns=['index']) # to preserve order of input snps
@@ -156,7 +156,7 @@ def getSNPPositions(snp_list):
     for snp in tqdm(snp_list):
         querysnp = snp.split(';')[0]
         if any([char not in allowed_chars for char in querysnp]):
-            pos.append(np.nan)
+            pos.append(-1)
         else:
             pos.append(engine.execute(f"select chromEnd from snp151 where name='{querysnp}'").fetchall()[0][0])
     return pos
@@ -319,9 +319,9 @@ def upload_file():
             #             try:
             #                 data[tissue].append(eqtl[0]['minus_log10_p_value'])
             #             except:
-            #                 data[tissue].append(np.nan)
+            #                 data[tissue].append(-1)
             #         else:
-            #             data[tissue].append(np.nan)
+            #             data[tissue].append(-1)
 
             # indicate that the request was a success
             data['success'] = True

@@ -1,400 +1,280 @@
-function plot_gwas(positions, pvalues, chr, startbp, endbp, snps) {
-    
-}
-
-
-
-var svgWidth = 960;
-var svgHeight = 500;
-
-var margin = {
-  top: 20,
-  right: 40,
-  bottom: 100,
-  left: 100
-};
-
-var width = svgWidth - margin.left - margin.right;
-var height = svgHeight - margin.top - margin.bottom;
-
-// Create an SVG wrapper, append an SVG group that will hold our chart,
-// and shift the latter by left and top margins.
-var svg = d3
-  .select("#scatter")
-  .append("svg")
-  .attr("width", svgWidth)
-  .attr("height", svgHeight);
-
-// Append an SVG group
-var chartGroup = svg.append("g")
-  .attr("transform", `translate(${margin.left}, ${margin.top})`);
-
-// Initial Params
-var chosenXAxis = "poverty";
-var chosenYAxis = "healthcare";
-
-// function used for updating x-scale var upon click on axis label
-function xScale(bureauData, chosenXAxis) {
-  // create scales
-  var xLinearScale = d3.scaleLinear()
-    .domain([d3.min(bureauData, d => d[chosenXAxis]) * 0.9,
-      d3.max(bureauData, d => d[chosenXAxis]) * 1.2
-    ])
-    .range([0, width]);
-
-  return xLinearScale;
-}
-// function used for updating y-scale var upon click on axis label
-function yScale(bureauData, chosenYAxis) {
-    // create scales
-    var yLinearScale = d3.scaleLinear()
-      .domain([d3.min(bureauData, d => d[chosenYAxis]) * 0.7,
-        d3.max(bureauData, d => d[chosenYAxis]) * 1.3
-      ])
-      .range([height, 0]);
+function plot_gwas(data) {
   
-    return yLinearScale;
-  }
+    var positions = data.positions;
+    var pvalues = data.pvalues;
+    var ld_values = data.ld_values;
+    var chr = data.chr;
+    if(chr === 23) chr = "X";
+    var snps = data.snps;
+    var lead_snp = data.lead_snp;
+    var gtex_tissues = data.gtex_tissues;
 
-// function used for updating xAxis var upon click on axis label
-function renderXAxes(newXScale, xAxis) {
-  var bottomAxis = d3.axisBottom(newXScale);
+    var log10pvalues = pvalues.map(p => -Math.log10(p))
+    var no_ld_info_snps = [], no_ld_info_snps_color = "#7f7f7f"; // grey
+    var ld_lt_20_group = [], ld_lt_20_group_color = "#1f77b4"; // very low ld points (dark blue)
+    var ld_20_group = [], ld_20_group_color = "#17becf"; // low ld points (light blue)
+    var ld_40_group = [], ld_40_group_color = "#bcbd22"; // green
+    var ld_60_group = [], ld_60_group_color = "#ff7f0e"; // orange
+    var ld_80_group = [], ld_80_group_color = "#d62728"; // red
+    var lead_snp_index = 0, lead_snp_color = "#9467bd"; // purple
+    var markersize = 10;
+    var lead_markersize = 10*1.5;
+    ld_colors = [];
+    var regionsize = d3.max(positions) - d3.min(positions);
+    var log10pvalue_range = d3.max(pvalues.map(p => -Math.log10(p))) - d3.min(pvalues.map(p => -Math.log10(p)));
+    var extra_x_range = 0.05 * regionsize;
+    var extra_y_range = 0.05 * log10pvalue_range;
+    var gene_area_height = 0.3 * log10pvalue_range;
+    var eqtl_smoothing_window_size = 25;
 
-  xAxis.transition()
-    .duration(1000)
-    .call(bottomAxis);
+    // Helper functions:
+    function smoothing(x,y,xrange,window_size) {
+      window_partition = window_size;
+      windowing = (xrange[1]-xrange[0])/window_partition;
+      curr = xrange[0];
+      smooth_curve_x = [];
+      smooth_curve_y = [];
+      indices = [];
+      x.map((v,i) => {
+        if(v>=curr && v<=(curr+windowing)) indices.push(i);
+      });
 
-  return xAxis;
-}
-
-// function used for updating yAxis var upon click on axis label
-function renderYAxes(newYScale, yAxis) {
-    var leftAxis = d3.axisLeft(newYScale);
-  
-    yAxis.transition()
-      .duration(1000)
-      .call(leftAxis);
-  
-    return yAxis;
-}
-  
-
-// function used for updating circles group with a transition to
-// new circles
-function renderCircles(circlesGroup, newXScale, chosenXAxis, newYScale, chosenYAxis) {
-
-  circlesGroup.transition()
-    .duration(1000)
-    .attr("cx", d => newXScale(d[chosenXAxis]))
-    .attr("cy", d => newYScale(d[chosenYAxis]));
-
-  return circlesGroup;
-}
-
-function renderCirclesTextGroup(circlesTextGroup, newXScale, chosenXAxis, newYScale, chosenYAxis) {
-    circlesTextGroup.transition()
-      .duration(1000)
-      .attr("x", d => newXScale(d[chosenXAxis]))
-      .attr("y", d => newYScale(d[chosenYAxis]))
-    
-    return circlesTextGroup;
-}
-
-// function used for updating circles group with new tooltip
-function updateToolTip(chosenXAxis, chosenYAxis, circlesGroup) {
-
-  if (chosenXAxis === "poverty") {
-    var xlabel_prefix = "";
-    var xlabel = "Poverty";
-    var xlabel_suffix = "%";
-  }
-  else if (chosenXAxis === "age") {
-    var xlabel_prefix = "";
-    var xlabel = "Median age";
-    var xlabel_suffix = "";
-  } 
-  else {
-    var xlabel_prefix = "$";
-    var xlabel = "Income";
-    var xlabel_suffix = "";
-  }
-
-  if (chosenYAxis === "healthcare") {
-    var ylabel = "Lacks healthcare";
-    var ylabel_suffix = "%";
-  }
-  else if (chosenYAxis === "smokes") {
-    var ylabel = "Smoking";
-    var ylabel_suffix = "%";
-  } 
-  else {
-    var ylabel = "Obesity";
-    var ylabel_suffix = "%";
-  }
-
-  var toolTip = d3.tip()
-    .attr("class", "d3-tip")
-    .offset([80, -60])
-    .html(function(d) {
-      return (`${d.state}<br>${xlabel}: ${xlabel_prefix}${d[chosenXAxis]}${xlabel_suffix}<br>${ylabel}: ${d[chosenYAxis]}${ylabel_suffix}`);
-    });
-
-  circlesGroup.call(toolTip);
-
-  circlesGroup
-    .on("mouseover", function(data) {
-      toolTip.show(data, this);
-    })
-    // onmouseout event
-    .on("mouseout", function(data) {
-      toolTip.hide(data);
-    });
-  return circlesGroup;
-}
-
-// Retrieve data from the CSV file and execute everything below
-d3.csv("assets/data/data.csv").then(function(bureauData) {
-  //if (err) throw err;
-
-  // parse data
-  bureauData.forEach(function(data) {
-    data.poverty = +data.poverty;
-    data.age = +data.age;
-    data.income = +data.income;
-    data.healthcare = +data.healthcare;
-    data.obesity = +data.obesity;
-    data.smokes = +data.smokes;
-  });
-  //console.log(bureauData);
-  //console.log(chosenXAxis);
-  //console.log(chosenYAxis);
-
-  // xLinearScale function above csv import
-  var xLinearScale = xScale(bureauData, chosenXAxis);
-
-  // Create y scale function
-  var yLinearScale = yScale(bureauData, chosenYAxis);
-
-  // Create initial axis functions
-  var bottomAxis = d3.axisBottom(xLinearScale);
-  var leftAxis = d3.axisLeft(yLinearScale);
-
-  // append x axis
-  var xAxis = chartGroup.append("g")
-    .attr("transform", `translate(0, ${height})`)
-    .call(bottomAxis);
-
-  // append y axis
-  var yAxis = chartGroup.append("g")
-    .call(leftAxis);
-
-  // append initial circles
-  var circlesGroup = chartGroup.selectAll("circle")
-    .data(bureauData)
-    .enter()
-    .append("circle")
-    .attr("cx", d => xLinearScale(d[chosenXAxis]))
-    .attr("cy", d => yLinearScale(d[chosenYAxis]))
-    .attr("r", "20")
-    .classed("stateCircle", true);
-
-  // updateToolTip function above csv import
-  var circlesGroup = updateToolTip(chosenXAxis, chosenYAxis, circlesGroup);
-
-  // adding state abbreviation labels
-  var circlesTextGroup = chartGroup.append("text").classed("stateText",true)
-    .selectAll("tspan")
-    .data(bureauData)
-    .enter()
-    .append("tspan")
-    .attr("x", d => xLinearScale(d[chosenXAxis]))
-    .attr("y", d => yLinearScale(d[chosenYAxis]))
-    .text(d => d.abbr);
-
-  // Create group for  3 x-axis labels, and 3 y-axis labels
-  var xLabelsGroup = chartGroup.append("g")
-    .attr("transform", `translate(${width / 2}, ${height + margin.top})`);
-  var yLabelsGroup = chartGroup.append("g")
-    .attr("transform", `translate(0, 0)`);
-
-
-  var povertyLabel = xLabelsGroup.append("text")
-    .attr("x", 0)
-    .attr("y", 20)
-    .attr("value", "poverty") // value to grab for event listener
-    .classed("aText", true)
-    .classed("active", true)
-    .text("In Poverty (%)");
-
-  var ageLabel = xLabelsGroup.append("text")
-    .attr("x", 0)
-    .attr("y", 40)
-    .attr("value", "age") // value to grab for event listener
-    .classed("aText", true)
-    .classed("inactive", true)
-    .text("Age (Median)");
-
-  var incomeLabel = xLabelsGroup.append("text")
-    .attr("x", 0)
-    .attr("y", 60)
-    .attr("value", "income") // value to grab for event listener
-    .classed("aText", true)
-    .classed("inactive", true)
-    .text("Household Income (Median)");
-
-  // append y axis
-  var healthLabel = yLabelsGroup.append("text")
-    .attr("transform", "rotate(-90)")
-    .attr("y", 0 - margin.left + 40)
-    .attr("x", 0 - (height / 2))
-    .attr("dy", "1em")
-    .attr("value", "healthcare")
-    .classed("aText", true)
-    .classed("active", true)
-    .text("Lacks Healthcare (%)");
-
-  var smokesLabel = yLabelsGroup.append("text")
-    .attr("transform", "rotate(-90)")
-    .attr("y", 0 - margin.left + 20)
-    .attr("x", 0 - (height / 2))
-    .attr("dy", "1em")
-    .attr("value", "smokes")
-    .classed("aText", true)
-    .classed("inactive", true)
-    .text("Smokes (%)");
-
-  var obesityLabel = yLabelsGroup.append("text")
-    .attr("transform", "rotate(-90)")
-    .attr("y", 0 - margin.left)
-    .attr("x", 0 - (height / 2))
-    .attr("dy", "1em")
-    .attr("value", "obesity")
-    .classed("aText", true)
-    .classed("inactive", true)
-    .text("Obese (%)");
-
-  // x axis labels event listener
-  xLabelsGroup.selectAll("text")
-    .on("click", function() {
-      // get value of selection
-      var value = d3.select(this).attr("value");
-      if (value !== chosenXAxis) {
-
-        // replaces chosenXaxis with value
-        chosenXAxis = value;
-
-        // console.log(chosenXAxis)
-
-        // functions here found above csv import
-        // updates x scale for new data
-        xLinearScale = xScale(bureauData, chosenXAxis);
-
-        // updates x axis with transition
-        xAxis = renderXAxes(xLinearScale, xAxis);
-
-        // updates circles with new x values
-        circlesGroup = renderCircles(circlesGroup, xLinearScale, chosenXAxis, yLinearScale, chosenYAxis);
-        circlesTextGroup = renderCirclesTextGroup(circlesTextGroup, xLinearScale, chosenXAxis, yLinearScale, chosenYAxis);
-
-        // updates tooltips with new info
-        circlesGroup = updateToolTip(chosenXAxis, chosenYAxis, circlesGroup);
-
-        // changes classes to change bold text
-        if (chosenXAxis === "poverty") {
-          povertyLabel
-            .classed("active", true)
-            .classed("inactive", false);
-          ageLabel
-            .classed("active", false)
-            .classed("inactive", true);
-          incomeLabel
-            .classed("active", false)
-            .classed("inactive", true);
-        }
-        else if (chosenXAxis === "age") {
-          povertyLabel
-            .classed("active", false)
-            .classed("inactive", true);
-          ageLabel
-            .classed("active", true)
-            .classed("inactive", false);
-          incomeLabel
-            .classed("active", false)
-            .classed("inactive", true);
-        }
-        else {
-          povertyLabel
-            .classed("active", false)
-            .classed("inactive", true);
-          ageLabel
-            .classed("active", false)
-            .classed("inactive", true);
-          incomeLabel
-            .classed("active", true)
-            .classed("inactive", false);
-        }
+      while(curr < d3.min([xrange[1],x[x.length-1]]) && indices.length>0) {
+        yAtIndices = indices.map(i => y[i]);
+        xAtIndices = indices.map(i => x[i]);
+        ymaxAtIndices = d3.max(yAtIndices);
+        if(ymaxAtIndices === -1) ymaxAtIndices=0;
+        desiredXindex = [];
+        indices.map(i => {
+          if(y[i] === ymaxAtIndices) desiredXindex.push(i);
+        });
+        smooth_curve_x.push(x[desiredXindex[0]]);
+        smooth_curve_y.push(ymaxAtIndices);
+        curr = curr + windowing + 1;
+        indices = [];
+        x.map((v,i) => {
+          if(v>=curr && v<=(curr+windowing)) indices.push(i);
+        });
       }
-    });
+      return [smooth_curve_x, smooth_curve_y];
+    }
 
-  yLabelsGroup.selectAll("text")
-    .on("click", function() {
-      // get value of selection
-      var value = d3.select(this).attr("value");
-      if (value !== chosenYAxis) {
-
-        // replaces chosenXaxis with value
-        chosenYAxis = value;
-
-        //console.log(chosenYAxis)
-
-        // functions here found above csv import
-        // updates y scale for new data
-        yLinearScale = yScale(bureauData, chosenYAxis);
-
-        // updates y axis with transition
-        yAxis = renderYAxes(yLinearScale, yAxis);
-
-        // updates circles with new x values
-        circlesGroup = renderCircles(circlesGroup, xLinearScale, chosenXAxis, yLinearScale, chosenYAxis);
-        circlesTextGroup = renderCirclesTextGroup(circlesTextGroup, xLinearScale, chosenXAxis, yLinearScale, chosenYAxis);
-
-        // updates tooltips with new info
-        circlesGroup = updateToolTip(chosenXAxis, chosenYAxis, circlesGroup);
-
-        // changes classes to change bold text
-        if (chosenYAxis === "healthcare") {
-          healthLabel
-            .classed("active", true)
-            .classed("inactive", false);
-          smokesLabel
-            .classed("active", false)
-            .classed("inactive", true);
-          obesityLabel
-            .classed("active", false)
-            .classed("inactive", true);
-        }
-        else if (chosenYAxis === "smokes") {
-          healthLabel
-            .classed("active", false)
-            .classed("inactive", true);
-          smokesLabel
-            .classed("active", true)
-            .classed("inactive", false);
-          obesityLabel
-            .classed("active", false)
-            .classed("inactive", true);
-        }
-        else {
-          healthLabel
-            .classed("active", false)
-            .classed("inactive", true);
-          smokesLabel
-            .classed("active", false)
-            .classed("inactive", true);
-          obesityLabel
-            .classed("active", true)
-            .classed("inactive", false);
-        }
+    function getYmax(gtex_traces) {
+      ymax = 1;
+      for(var i=0; i<gtex_tissues.length; i++) {
+        currymax = d3.max(gtex_traces[gtex_tissues[i]][1]);
+        if(currymax > ymax) ymax = currymax;
       }
-    });
-});
+      return ymax;
+    }
+
+
+    // Smooth out each GTEx tissue's association results for plotting as lines:
+    gtex_line_traces = {};
+    for(var i = 0; i < gtex_tissues.length; i++) {
+      eqtl_association = data[gtex_tissues[i]];
+      gtex_line_traces[gtex_tissues[i]] = smoothing(positions, data[gtex_tissues[i]], 
+          [d3.min(positions), d3.max(positions)], eqtl_smoothing_window_size)
+    }
+    
+
+    // Assign each SNP to an LD group:
+    for(i=0; i<ld_values.length; i++) {
+      if (snps[i] === lead_snp) {
+        lead_snp_index = i;
+        ld_colors[i] = lead_snp_color;
+      }
+      else if (ld_values[i] === -1) { 
+       no_ld_info_snps.push(i);
+       ld_colors[i] = no_ld_info_snps_color;
+      }
+      else if (Math.abs(ld_values[i]) < 0.2) {
+        ld_lt_20_group.push(i);
+        ld_colors[i] = ld_lt_20_group_color;
+      }
+      else if (Math.abs(ld_values[i]) >= 0.2 && Math.abs(ld_values[i]) < 0.4) {
+        ld_20_group.push(i);
+        ld_colors[i] = ld_20_group_color;
+      }
+      else if (Math.abs(ld_values[i]) >= 0.4 && Math.abs(ld_values[i]) < 0.6) {
+        ld_40_group.push(i);
+        ld_colors[i] = ld_40_group_color;
+      }
+      else if (Math.abs(ld_values[i]) >= 0.6 && Math.abs(ld_values[i]) < 0.8) {
+        ld_60_group.push(i);
+        ld_colors[i] = ld_60_group_color;
+      }
+      else if (Math.abs(ld_values[i]) >= 0.8) {
+        ld_80_group.push(i);
+        ld_colors[i] = ld_80_group_color;
+      }
+      else if (snps[i] == lead_snp) {
+        lead_snp_index = i;
+        ld_colors[i] = lead_snp_color;
+      }
+      else {
+        no_ld_info_snps.push(i);
+        ld_colors[i] = no_ld_info_snps_color;
+      }
+    }
+    
+    // plot the 7 LD groups
+    var no_ld_trace = {
+      x: no_ld_info_snps.map(i => positions[i]),
+      y: no_ld_info_snps.map(i => log10pvalues[i]),
+      name: 'No LD Info',
+      mode: 'markers',
+      type: 'scatter',
+      text: no_ld_info_snps.map(i => snps[i]),
+      marker: {
+        size: markersize,
+        color: no_ld_info_snps_color
+      }
+    };
+
+    var ld_lt_20_trace = {
+      x: ld_lt_20_group.map(i => positions[i]),
+      y: ld_lt_20_group.map(i => log10pvalues[i]),
+      name: '< 0.2',
+      mode: 'markers',
+      type: 'scatter',
+      text: ld_lt_20_group.map(i => snps[i]),
+      marker: {
+        size: markersize,
+        color: ld_lt_20_group_color
+      }
+    };
+
+    var ld_20_trace = {
+      x: ld_20_group.map(i => positions[i]),
+      y: ld_20_group.map(i => log10pvalues[i]),
+      name: '0.2',
+      mode: 'markers',
+      type: 'scatter',
+      text: ld_20_group.map(i => snps[i]),
+      marker: {
+        size: markersize,
+        color: ld_20_group_color
+      }
+    };
+  
+    var ld_40_trace = {
+      x: ld_40_group.map(i => positions[i]),
+      y: ld_40_group.map(i => log10pvalues[i]),
+      name: '0.4',
+      mode: 'markers',
+      type: 'scatter',
+      text: ld_40_group.map(i => snps[i]),
+      marker: {
+        size: markersize,
+        color: ld_40_group_color
+      }
+    };
+
+    var ld_60_trace = {
+      x: ld_60_group.map(i => positions[i]),
+      y: ld_60_group.map(i => log10pvalues[i]),
+      name: '0.6',
+      mode: 'markers',
+      type: 'scatter',
+      text: ld_60_group.map(i => snps[i]),
+      marker: {
+        size: markersize,
+        color: ld_60_group_color
+      }
+    };
+
+    var ld_80_trace = {
+      x: ld_80_group.map(i => positions[i]),
+      y: ld_80_group.map(i => log10pvalues[i]),
+      name: '0.8',
+      mode: 'markers',
+      type: 'scatter',
+      text: ld_80_group.map(i => snps[i]),
+      marker: {
+        size: markersize,
+        color: ld_80_group_color
+      }
+    };
+
+    var lead_snp_trace = {
+      x: [positions[lead_snp_index]],
+      y: [log10pvalues[lead_snp_index]],
+      name: 'Lead SNP',
+      mode: 'markers',
+      type: 'scatter',
+      text: lead_snp,
+      marker: {
+        size: lead_markersize,
+        color: lead_snp_color
+      },
+      yaxis: 'y1'
+    };
+
+    all_traces = [ no_ld_trace, ld_lt_20_trace, ld_20_trace, ld_40_trace, ld_60_trace, ld_80_trace, lead_snp_trace ];
+
+
+    // Plot the GTEx lines (gtex_line_traces):
+    for(var i=0; i < gtex_tissues.length; i++) {
+      var gtex_tissue_trace = {
+        x: gtex_line_traces[gtex_tissues[i]][0],
+        y: gtex_line_traces[gtex_tissues[i]][1],
+        name: gtex_tissues[i],
+        mode: 'lines',
+        xaxis: 'x1',
+        yaxis: 'y2'
+      };
+      all_traces.push(gtex_tissue_trace);
+    }
+
+    for(var i=0; i < gtex_tissues.length; i++) {
+      var gtex_tissue_trace = {
+        x: positions,
+        y: data[gtex_tissues[i]],
+        name: gtex_tissues[i],
+        mode: 'markers',
+        type: 'scatter',
+        text: snps,
+        marker: {
+          size: markersize,
+          color: 'gray',
+          opacity: 0.3
+        },
+        xaxis: 'x1',
+        yaxis: 'y2',
+        visible: 'legendonly'
+      };
+      all_traces.push(gtex_tissue_trace);
+    }
+
+    var gwas_ymax = d3.max(log10pvalues);
+    var gtex_ymax = getYmax(gtex_line_traces);
+
+    var layout = {
+      xaxis: {
+        range: [d3.min(positions) - extra_x_range, d3.max(positions) + extra_x_range],
+        zeroline: false,
+        title: { text: `Chromosome ${chr} (hg19)` }
+      },
+      yaxis: {
+        range: [0 - gene_area_height, gwas_ymax + extra_y_range],
+        title: { text: `GWAS -log10(p-value)` }
+      },
+      yaxis2: {
+        range: [0 - gene_area_height * (gtex_ymax/gwas_ymax), gtex_ymax + extra_y_range * (gtex_ymax/gwas_ymax)],
+        overlaying: 'y',
+        anchor: 'x',
+        side: 'right',
+        showgrid: false,
+        title: 'GTEx eQTL p-value'
+      },
+      height: 700,
+      width: 960,
+      showlegend: true,
+      zeroline: true,
+      hovermode: "closest"
+    };
+
+  Plotly.newPlot('plot', all_traces, layout);
+}
+
