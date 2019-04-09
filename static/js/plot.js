@@ -1,84 +1,4 @@
-<<<<<<< HEAD
 function plot_gwas(data) {
-=======
-plotanchor = d3.select("#plot");
-
-
-
-var svgWidth = 960;
-var svgHeight = 500;
-
-var margin = {
-  top: 20,
-  right: 40,
-  bottom: 100,
-  left: 100
-};
-
-var width = svgWidth - margin.left - margin.right;
-var height = svgHeight - margin.top - margin.bottom;
-
-// Create an SVG wrapper, append an SVG group that will hold our chart,
-// and shift the latter by left and top margins.
-var svg = d3
-  .select("#scatter")
-  .append("svg")
-  .attr("width", svgWidth)
-  .attr("height", svgHeight);
-
-// Append an SVG group
-var chartGroup = svg.append("g")
-  .attr("transform", `translate(${margin.left}, ${margin.top})`);
-
-// Initial Params
-var chosenXAxis = "poverty";
-var chosenYAxis = "healthcare";
-
-// function used for updating x-scale var upon click on axis label
-function xScale(bureauData, chosenXAxis) {
-  // create scales
-  var xLinearScale = d3.scaleLinear()
-    .domain([d3.min(bureauData, d => d[chosenXAxis]) * 0.9,
-      d3.max(bureauData, d => d[chosenXAxis]) * 1.2
-    ])
-    .range([0, width]);
-
-  return xLinearScale;
-}
-// function used for updating y-scale var upon click on axis label
-function yScale(bureauData, chosenYAxis) {
-    // create scales
-    var yLinearScale = d3.scaleLinear()
-      .domain([d3.min(bureauData, d => d[chosenYAxis]) * 0.7,
-        d3.max(bureauData, d => d[chosenYAxis]) * 1.3
-      ])
-      .range([height, 0]);
-  
-    return yLinearScale;
-  }
-
-// function used for updating xAxis var upon click on axis label
-function renderXAxes(newXScale, xAxis) {
-  var bottomAxis = d3.axisBottom(newXScale);
-
-  xAxis.transition()
-    .duration(1000)
-    .call(bottomAxis);
-
-  return xAxis;
-}
-
-// function used for updating yAxis var upon click on axis label
-function renderYAxes(newYScale, yAxis) {
-    var leftAxis = d3.axisLeft(newYScale);
-  
-    yAxis.transition()
-      .duration(1000)
-      .call(leftAxis);
-  
-    return yAxis;
-}
->>>>>>> 0e966ab015e3707cac874b5eb92bf6a21d3b44e0
   
     var positions = data.positions;
     var pvalues = data.pvalues;
@@ -196,7 +116,6 @@ function renderYAxes(newYScale, yAxis) {
         no_ld_info_snps.push(i);
         ld_colors[i] = no_ld_info_snps_color;
       }
-<<<<<<< HEAD
     }
     
     // plot the 7 LD groups
@@ -359,12 +278,3 @@ function renderYAxes(newYScale, yAxis) {
   Plotly.newPlot('plot', all_traces, layout);
 }
 
-=======
-    });
-});
-
-
-function plot_gwas(positions, pvalues, chr, startbp, endbp, snps) {
-    
-}
->>>>>>> 0e966ab015e3707cac874b5eb92bf6a21d3b44e0
