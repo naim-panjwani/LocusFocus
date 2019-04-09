@@ -146,7 +146,7 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
 
 
 ####################################
-# HG19 positions' querying to UCSC's snp151 table
+# HG19 positions' querying from UCSC's snp151 table
 ####################################
 def getSNPPositions(snp_list):
     pos = []
@@ -159,6 +159,21 @@ def getSNPPositions(snp_list):
         else:
             pos.append(engine.execute(f"select chromEnd from snp151 where name='{querysnp}'").fetchall()[0][0])
     return pos
+
+
+####################################
+# Querying gene names and coordinates for specified region
+####################################
+def getGenes(chr, startbp, endbp):
+    result = []
+    engine = sa.create_engine('mysql://genome@genome-mysql.cse.ucsc.edu:3306/hg19')
+    chr = "chr"+str(chr).replace('chr','')
+    query = f"select exonStarts, exonEnds, exonCount name2 from ncbiRefSeq "
+    query += f"where chrom = {chr} and (txStart >= {startbp} and txStart <= {endbp}) "
+    query += f"or (txEnd >= {startbp} and txEnd <= {endbp}) or ({startbp} >= txStart and {startbp} <= txEnd) "
+    query += f"or ({endbp} >= txStart and {endbp} <= txEnd);"
+    results = engine.execute(query)
+
 
 
 ####################################
