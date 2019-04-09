@@ -117,6 +117,7 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
             result_df = result_df.append(pd.DataFrame({'snp': snps, 'ld': ld_values}), ignore_index=True)
         snp_df = pd.DataFrame({'snp':snp_list})
         merged_df = snp_df.reset_index().merge(result_df, how='left', on='snp', sort=False).sort_values('index').drop(columns=['index']) # to preserve order of input snps
+        merged_df.fillna(-1, inplace=True)
     return merged_df
 
 # Very slow queryLD:
@@ -285,16 +286,16 @@ def upload_file():
             print('Gathering LD information from LDlink')
             snp_list = list(gwas_data[snpcol])
             ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
-            # Get SNP positions via queries to UCSC Genome's MySQL snp151 table:
-            print('Gathering HG19 positions from UCSC dbSNP151 database')
-            positions = getSNPPositions(snp_list)
-            positions = list(gwas_data[poscol])
+            # # Get SNP positions via queries to UCSC Genome's MySQL snp151 table:
+            # print('Gathering HG19 positions from UCSC dbSNP151 database')
+            # positions = getSNPPositions(snp_list)
+            positions = list(gwas_data[poscol]) # basepair positions are required input from the user as querying this is slow
             # Make a data dictionary to return as JSON for javascript plot:
             data = {}
             data['snps'] = snp_list
             data['pvalues'] = list(gwas_data[pcol])
             data['lead_snp'] = lead_snp
-            # data['ld_values'] = list(ld_df['ld'])
+            data['ld_values'] = list(ld_df['ld'])
             data['positions'] = positions
             data['chr'] = chr
             data['startbp'] = startbp
@@ -303,26 +304,20 @@ def upload_file():
             data['gtex_tissues'] = gtex_tissues
             # Get GTEx data for the tissues and SNPs selected:
             print('Gathering GTEx data')
-            ensembl_eqtl_base_url = 'http://rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
-            gene_query = f'stable_id={gene};'
-            query_suffix = 'content-type=application/json'
+            # ensembl_eqtl_base_url = 'http://grch37.rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
+            ensembl_eqtl_base_url = 'https://grch37.rest.ensembl.org/eqtl/id/homo_sapiens/'
+            gene_query = f'{gene}?'
+            query_suffix = 'statistic=p-value;content-type=application/json'
             for tissue in tqdm(gtex_tissues):
                 print(f'Gathering eQTL data for {tissue}')
                 tissue_query = f'tissue={tissue};'
-                data[tissue] = []
-                for snp in tqdm(snp_list):
-                    querysnp = snp.split(';')[0]
-                    snp_query = f'{querysnp}?statistic=p-value;'
-                    url = ensembl_eqtl_base_url + snp_query + gene_query + tissue_query + query_suffix
-                    response = requests.get(url, headers={ "Content-Type" : "application/json"})
-                    if response:
-                        eqtl = response.json()
-                        try:
-                            data[tissue].append(eqtl[0]['minus_log10_p_value'])
-                        except:
-                            data[tissue].append(-1)
-                    else:
-                        data[tissue].append(-1)
+                url = ensembl_eqtl_base_url + gene_query + tissue_query + query_suffix
+                response = requests.get(url, headers={ "Content-Type" : "application/json"})
+                if response:
+                    eqtl = response.json()
+                    data[tissue] = eqtl
+                else:
+                    raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene)
             # indicate that the request was a success
             data['success'] = True
             print('Loading a success')

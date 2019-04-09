@@ -5,6 +5,8 @@ function plot_gwas(data) {
     var ld_values = data.ld_values;
     var chr = data.chr;
     if(chr === 23) chr = "X";
+    var startbp = data.startbp;
+    var endbp = data.endbp;
     var snps = data.snps;
     var lead_snp = data.lead_snp;
     var gtex_tissues = data.gtex_tissues;
@@ -20,12 +22,12 @@ function plot_gwas(data) {
     var markersize = 10;
     var lead_markersize = 10*1.5;
     ld_colors = [];
-    var regionsize = d3.max(positions) - d3.min(positions);
+    var regionsize = endbp - startbp;
     var log10pvalue_range = d3.max(pvalues.map(p => -Math.log10(p))) - d3.min(pvalues.map(p => -Math.log10(p)));
     var extra_x_range = 0.05 * regionsize;
     var extra_y_range = 0.05 * log10pvalue_range;
     var gene_area_height = 0.3 * log10pvalue_range;
-    var eqtl_smoothing_window_size = 25;
+    var eqtl_smoothing_window_size = (regionsize/100000) * 15;
 
     // Helper functions:
     function smoothing(x,y,xrange,window_size) {
@@ -43,7 +45,7 @@ function plot_gwas(data) {
         yAtIndices = indices.map(i => y[i]);
         xAtIndices = indices.map(i => x[i]);
         ymaxAtIndices = d3.max(yAtIndices);
-        if(ymaxAtIndices === -1) ymaxAtIndices=0;
+        if(ymaxAtIndices === -1 || ymaxAtIndices < 0) ymaxAtIndices=0;
         desiredXindex = [];
         indices.map(i => {
           if(y[i] === ymaxAtIndices) desiredXindex.push(i);
@@ -71,10 +73,29 @@ function plot_gwas(data) {
 
     // Smooth out each GTEx tissue's association results for plotting as lines:
     gtex_line_traces = {};
+    gtex_positions = {};
+    gtex_log10_pvalues = {};
+    gtex_snps = {};
     for(var i = 0; i < gtex_tissues.length; i++) {
-      eqtl_association = data[gtex_tissues[i]];
-      gtex_line_traces[gtex_tissues[i]] = smoothing(positions, data[gtex_tissues[i]], 
-          [d3.min(positions), d3.max(positions)], eqtl_smoothing_window_size)
+      gtex_positions[gtex_tissues[i]] = [];
+      gtex_log10_pvalues[gtex_tissues[i]] = [];
+      gtex_snps[gtex_tissues[i]] = [];
+      data[gtex_tissues[i]].forEach(eqtl => {
+        Object.keys(eqtl).forEach(k => {
+          if(k === 'seq_region_start')  {
+            gtex_positions[gtex_tissues[i]].push(+eqtl[k]);
+          }
+          else if (k === 'minus_log10_p_value') {
+            gtex_log10_pvalues[gtex_tissues[i]].push(+eqtl[k]);
+          }
+          else if (k === 'snp') {
+            gtex_snps[gtex_tissues[i]].push(eqtl[k]);
+          }
+        });
+      });
+      gtex_line_traces[gtex_tissues[i]] = smoothing(gtex_positions[gtex_tissues[i]], gtex_log10_pvalues[gtex_tissues[i]], 
+          [startbp, endbp], eqtl_smoothing_window_size);
+      console.log(gtex_line_traces[gtex_tissues[i]]);
     }
     
 
@@ -84,7 +105,7 @@ function plot_gwas(data) {
         lead_snp_index = i;
         ld_colors[i] = lead_snp_color;
       }
-      else if (ld_values[i] === -1) { 
+      else if (ld_values[i] === -1 || ld_values[i] < 0) { 
        no_ld_info_snps.push(i);
        ld_colors[i] = no_ld_info_snps_color;
       }
@@ -229,15 +250,14 @@ function plot_gwas(data) {
 
     for(var i=0; i < gtex_tissues.length; i++) {
       var gtex_tissue_trace = {
-        x: positions,
-        y: data[gtex_tissues[i]],
+        x: gtex_positions[gtex_tissues[i]],
+        y: gtex_log10_pvalues[gtex_tissues[i]],
         name: gtex_tissues[i],
         mode: 'markers',
         type: 'scatter',
-        text: snps,
+        text: gtex_snps[gtex_tissues[i]],
         marker: {
           size: markersize,
-          color: 'gray',
           opacity: 0.3
         },
         xaxis: 'x1',
@@ -252,7 +272,7 @@ function plot_gwas(data) {
 
     var layout = {
       xaxis: {
-        range: [d3.min(positions) - extra_x_range, d3.max(positions) + extra_x_range],
+        range: [startbp - extra_x_range, endbp + extra_x_range],
         zeroline: false,
         title: { text: `Chromosome ${chr} (hg19)` }
       },

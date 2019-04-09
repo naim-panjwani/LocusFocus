@@ -6,8 +6,8 @@ var submitButton = d3.select("#submit-btn");
 var errorDiv = d3.select("#error-messages");
 var theTable = d3.select("#variants-table");
 var gtex_version = "v7" // default
-gtexurl = `https://gtexportal.org/rest/v1/dataset/tissueSummary?datasetId=gtex_${gtex_version}&format=json`
-// alternatively, use Ensembl: http://rest.ensembl.org/eqtl/tissue/homo_sapiens?content-type=application/json
+// gtexurl = `https://gtexportal.org/rest/v1/dataset/tissueSummary?datasetId=gtex_${gtex_version}&format=json`
+gtexurl = "http://grch37.rest.ensembl.org/eqtl/tissue/homo_sapiens?content-type=application/json"
 
 var locText = d3.select("#locusText").text();
 d3.select("#locusText").text(`${locText} (max: ${genomicWindowLimit/1e6} Mbp):`);
@@ -24,8 +24,9 @@ d3.json('/populations').then(response => {
     var pops = response;
     // console.log(pops);
     d3.json(gtexurl).then(response => {
-        var gtex_tissues = response.tissueSummary;
-        // console.log(gtex_tissues);
+        // var gtex_tissues = response.tissueSummary; // this code specific to gtexportal.org
+        var gtex_tissues = [];
+        Object.keys(response).forEach(k => gtex_tissues.push(k));
 
         // Build populations multiselect dropdown
         for(var i = 0; i < pops['Population Code'].length; i++) {
@@ -51,8 +52,10 @@ d3.json('/populations').then(response => {
         for(var i = 0; i < gtex_tissues.length; i++) {
             gtexdiv
                 .append("option")
-                .attr('value', gtex_tissues[i].tissueSiteDetailId)
-                .text(gtex_tissues[i].tissueSiteDetailId.replaceAll("_"," "));
+                // .attr('value', gtex_tissues[i].tissueSiteDetailId) // this code specific to gtexportal.org
+                // .text(gtex_tissues[i].tissueSiteDetailId.replaceAll("_"," ")); // this code specific to gtexportal.org
+                .attr('value', gtex_tissues[i])
+                .text(gtex_tissues[i].replaceAll("_"," "));
         }
 
         // Multi-Select Initialization
