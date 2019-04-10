@@ -37,6 +37,9 @@ for chunk in chunks:
                         con=engine, dtype={'name': String(50), 'chrom': String(100), 'position': Integer})
     engine.execute("ALTER TABLE `snp151`.`snp151_hg19` add primary key(name(50));")
 
-
-
-
+############### Testing overlaps of genes #################
+refseq = pd.read_csv('data/refseq_hg19.gz', compression='gzip', sep="\t")
+chrom=1
+startbp=205500000
+endbp=206000000
+refseq.loc[refseq['#chrom'] == ('chr'+str(chrom))].head()

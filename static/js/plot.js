@@ -95,7 +95,6 @@ function plot_gwas(data) {
       });
       gtex_line_traces[gtex_tissues[i]] = smoothing(gtex_positions[gtex_tissues[i]], gtex_log10_pvalues[gtex_tissues[i]], 
           [startbp, endbp], eqtl_smoothing_window_size);
-      console.log(gtex_line_traces[gtex_tissues[i]]);
     }
     
 

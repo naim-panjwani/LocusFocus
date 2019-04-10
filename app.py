@@ -165,12 +165,12 @@ def getSNPPositions(snp_list):
 ####################################
 # Querying gene names and coordinates for specified region
 ####################################
-def getGenes(chr, startbp, endbp):
+def getGenes(chrom, startbp, endbp):
     result = []
     engine = sa.create_engine('mysql://genome@genome-mysql.cse.ucsc.edu:3306/hg19')
-    chr = "chr"+str(chr).replace('chr','')
+    chrom = "chr"+str(chrom).replace('chr','')
     query = f"select exonStarts, exonEnds, exonCount name2 from ncbiRefSeq "
-    query += f"where chrom = {chr} and (txStart >= {startbp} and txStart <= {endbp}) "
+    query += f"where chrom = {chrom} and (txStart >= {startbp} and txStart <= {endbp}) "
     query += f"or (txEnd >= {startbp} and txEnd <= {endbp}) or ({startbp} >= txStart and {startbp} <= txEnd) "
     query += f"or ({endbp} >= txStart and {endbp} <= txEnd);"
     results = engine.execute(query)
@@ -181,31 +181,31 @@ def getGenes(chr, startbp, endbp):
 # Helper functions
 ####################################
 def parseRegionText(regiontext):
-    chr = regiontext.split(':')[0].replace('chr','')
+    chrom = regiontext.split(':')[0].replace('chr','')
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0]
     endbp = pos.split('-')[1]
     chromLengths = pd.read_csv('data/hg19_chrom_lengths.txt', sep="\t", encoding='utf-8')
     chromLengths.set_index('sequence',inplace=True)
-    if chr == 'X':
-        chr = 23
+    if chrom == 'X':
+        chrom = 23
         maxChromLength = chromLengths.loc['chrX', 'length']
     else:
         try:
-            chr = int(chr)
-            maxChromLength = chromLengths.loc['chr'+str(chr), 'length']
+            chrom = int(chrom)
+            maxChromLength = chromLengths.loc['chr'+str(chrom), 'length']
             startbp = int(startbp)
             endbp = int(endbp)
         except:
             raise InvalidUsage("Invalid coordinates input", status_code=410)
-    if chr < 1 or chr > 23:
+    if chrom < 1 or chrom > 23:
         raise InvalidUsage('Chromosome input must be between 1 and 23', status_code=410)
     elif startbp > endbp:
         raise InvalidUsage('Starting chromosome basepair position is greater than ending basepair position', status_code=410)
     elif startbp > maxChromLength or endbp > maxChromLength:
         raise InvalidUsage('Start or end coordinates are out of range', status_code=410)
     else:
-        return chr, startbp, endbp
+        return chrom, startbp, endbp
 
 
 #####################################
@@ -264,10 +264,10 @@ def upload_file():
             print('regiontext',regiontext)
             if regiontext == "": regiontext = "1:205500000-206000000"
             print('Parsing region text')
-            chr, startbp, endbp = parseRegionText(regiontext)
-            print(chr,startbp,endbp)
+            chrom, startbp, endbp = parseRegionText(regiontext)
+            print(chrom,startbp,endbp)
             print('Subsetting GWAS data to entered region')
-            gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chr) & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
+            gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
             if gwas_data.shape[0] == 0: InvalidUsage('No data found for entered region', status_code=410)
             pops = request.form.getlist('LD-populations')
             if len(pops) == 0: pops = ['CEU','TSI','FIN','GBR','IBS']
@@ -297,7 +297,7 @@ def upload_file():
             data['lead_snp'] = lead_snp
             data['ld_values'] = list(ld_df['ld'])
             data['positions'] = positions
-            data['chr'] = chr
+            data['chrom'] = chrom
             data['startbp'] = startbp
             data['endbp'] = endbp
             data['ld_populations'] = pops
@@ -317,8 +317,12 @@ def upload_file():
                     eqtl = response.json()
                     data[tissue] = eqtl
                 else:
-                    raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene)
-            # indicate that the request was a success
+                    try:
+                        error_message = response.json()['error']
+                        raise InvalidUsage(error_message)
+                    except:
+                        raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene)
+            # Indicate that the request was a success
             data['success'] = True
             print('Loading a success')
             # Save data in JSON format for plotting
