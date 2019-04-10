@@ -26,6 +26,7 @@ snpcol='SNP'
 pcol='P'
 list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
 snp_list = list(gwas_data[snpcol])
+positions = list(gwas_data['BP'])
 
 
 engine = sa.create_engine('mysql://root:root@localhost:3306/snp151')

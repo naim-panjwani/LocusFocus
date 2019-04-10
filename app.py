@@ -285,6 +285,7 @@ def upload_file():
             # Get LD via API queries to LDlink:
             print('Gathering LD information from LDlink')
             snp_list = list(gwas_data[snpcol])
+            snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
             ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
             # # Get SNP positions via queries to UCSC Genome's MySQL snp151 table:
             # print('Gathering HG19 positions from UCSC dbSNP151 database')
@@ -315,16 +316,30 @@ def upload_file():
                 response = requests.get(url, headers={ "Content-Type" : "application/json"})
                 if response:
                     eqtl = response.json()
-                    data[tissue] = eqtl
+                    # Resolving a problem introduced by Ensembl in that
+                    # the genomic coordinates returned are GRCh37 coordinates that
+                    # have been lifted over to GRCh38. 
+                    # Resolving this by merging with the GWAS dataset 
+                    # (which is in GRCh37 coordinates) by SNP name
+                    data[tissue] = []
+                    if len(eqtl) > 0:
+                        for obj in eqtl:
+                            for k,v in obj.items():
+                                if(k == 'snp' and v in snp_list):
+                                    obj['seq_region_start'] = positions[snp_list.index(v)]
+                                    obj['seq_region_end'] = positions[snp_list.index(v)]
+                                    data[tissue].append(obj)
                 else:
                     try:
                         error_message = response.json()['error']
                         raise InvalidUsage(error_message)
                     except:
                         raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene)
+            
             # Indicate that the request was a success
             data['success'] = True
             print('Loading a success')
+
             # Save data in JSON format for plotting
             my_session_id = uuid.uuid4()
             fileout = f'static/session_data/form_data-{my_session_id}.json'

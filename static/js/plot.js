@@ -3,8 +3,8 @@ function plot_gwas(data) {
     var positions = data.positions;
     var pvalues = data.pvalues;
     var ld_values = data.ld_values;
-    var chr = data.chr;
-    if(chr === 23) chr = "X";
+    var chrom = data.chrom;
+    if(chrom === 23) chrom = "X";
     var startbp = data.startbp;
     var endbp = data.endbp;
     var snps = data.snps;
@@ -95,8 +95,7 @@ function plot_gwas(data) {
       });
       gtex_line_traces[gtex_tissues[i]] = smoothing(gtex_positions[gtex_tissues[i]], gtex_log10_pvalues[gtex_tissues[i]], 
           [startbp, endbp], eqtl_smoothing_window_size);
-    }
-    
+    }    
 
     // Assign each SNP to an LD group:
     for(i=0; i<ld_values.length; i++) {
@@ -273,7 +272,7 @@ function plot_gwas(data) {
       xaxis: {
         range: [startbp - extra_x_range, endbp + extra_x_range],
         zeroline: false,
-        title: { text: `Chromosome ${chr} (hg19)` }
+        title: { text: `Chromosome ${chrom} (hg19)` }
       },
       yaxis: {
         range: [0 - gene_area_height, gwas_ymax + extra_y_range],
@@ -285,7 +284,7 @@ function plot_gwas(data) {
         anchor: 'x',
         side: 'right',
         showgrid: false,
-        title: 'GTEx eQTL p-value'
+        title: 'GTEx eQTL -log10(p-value)'
       },
       height: 700,
       width: 960,

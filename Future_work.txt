@@ -1,6 +1,13 @@
+- Test d-prime
 - Add file size limit checks
+- Ensure coordinate range entered is within reasonable limits
 - Inform why not all tissues selected appear in the end
 - Draw the genes
 - Store json session data into Mongo Atlas instead for better security
 - Add a button for user to be able to delete their session data
 - Add a cron job to delete sessions at regular intervals
+- Allow user to set the window sizes for line drawing
+- Allow downloading a json file
+- Allow loading a session (json) file instead of tsv to get the interactive plot instantly
+- Make a table of GWAS and eQTL merged results
+- Allow assessment of beta correlations
