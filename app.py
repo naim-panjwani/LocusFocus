@@ -83,16 +83,16 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
         if len(curr_snp_list) == 0:
             raise InvalidUsage('The provided file does not have any valid SNP names', status_code=410)
         
-        ## POST requests (can do up to 1000 SNP batch requests) currently not working:
+        # # POST requests (can do up to 1000 SNP batch requests) currently not working:
         # headers = {
         # 'Content-Type': 'application/json',
         # }
         # params = (
         #     ('token', tokens.token),
         # )
-        # snpstring = "\\n".join(curr_snp_list)
-        # data = f'{{"snps": {snpstring}, "pop": "CEU","r2_d": "d"}}'
-        # response = requests.post('https://ldlink.nci.nih.gov/LDlinkRest/ldmatrix', headers=headers, params=params, data=data, verify=False)
+        # snpstring = "\n".join(curr_snp_list)
+        # data = f'{{"snps": {snpstring}, "pop": "CEU","r2_d": "r2"}}'
+        # response = requests.post(base_url.replace("?",""), headers=headers, params=params, data=data, verify=False)
 
         # Do GET requests instead (max of 300 queries)
         snp_query = 'snps=' + '%0A'.join(curr_snp_list)

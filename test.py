@@ -44,3 +44,20 @@ chrom=1
 startbp=205500000
 endbp=206000000
 refseq.loc[refseq['#chrom'] == ('chr'+str(chrom))].head()
+
+
+
+
+import requests
+
+headers = {
+    'Content-Type': 'application/json',
+}
+
+params = (
+    ('token', '6e3b9da087ac'),
+)
+
+data = '{"snps": "rs3\nrs4", "pop":"CEU","r2_d": "d"}'
+
+requests.post('https://ldlink.nci.nih.gov/LDlinkRest/ldmatrix', headers=headers, params=params, data=json.dumps(data))
