@@ -293,6 +293,9 @@ function plot_gwas(data) {
       hovermode: "closest"
     };
 
+    // Plot the genes
+    
+
   Plotly.newPlot('plot', all_traces, layout);
 }
 

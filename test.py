@@ -44,6 +44,8 @@ chrom=1
 startbp=205500000
 endbp=206000000
 refseq.loc[refseq['#chrom'] == ('chr'+str(chrom))].head()
+# chr_groups = refseq.groupby('#chrom',sort=False, group_keys=False)
+# sorted_grouped_refseq = refseq.apply(lambda x: x.sort_values(['#chrom' 'txStart','name2'])).groupby('name2')
 
 
 
