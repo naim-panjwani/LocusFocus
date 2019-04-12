@@ -15,17 +15,20 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, inspect, String, Integer
 
-from flask import Flask, request, redirect, url_for, jsonify, render_template
+from flask import Flask, request, redirect, url_for, jsonify, render_template, flash
+from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 import pymysql
 pymysql.install_as_MySQLdb()
 #thepwd = open('pwd.txt').readline().replace('\n', '')
 
 genomicWindowLimit = 2000000
-fileSizeLimit = 200e6
+fileSizeLimit = 200 # in KB
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'upload'
+app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit * 1024
+ALLOWED_EXTENSIONS = set(['txt', 'tsv'])
 
 ####################################
 # LD Querying from ldlink.nci.nih.gov
@@ -120,34 +123,11 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
         merged_df.fillna(-1, inplace=True)
     return merged_df
 
-# Very slow queryLD:
-# def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'], ld_type='r2'):
-#     base_url = 'https://ldlink.nci.nih.gov/LDlinkRest/ldpair?'
-#     ld_values = []
-#     positions = []
-#     for snp in tqdm(snp_list):
-#         snp_query = 'var1=' + lead_snp + '&var2=' + snp
-#         population_query = '&pop=' + "%2B".join(populations) 
-#         ld_query = '&r2_d=' + ld_type
-#         token_query = '&token=' + tokens.token
-#         url = base_url + snp_query + population_query + ld_query + token_query
-#         response = requests.get(url).text
-#         r2 = parseR2(response)
-#         pos = parsePosition(response, snp)
-#         ld_values.append(r2)
-#         positions.append(pos)
-#     return ld_values, positions
-
-
-# from timeit import default_timer as timer
-# start = timer()
-# ld = queryLD(lead_snp, snp_list)
-# end = timer()
-# print(end - start)
-
 
 ####################################
-# HG19 positions' querying from UCSC's snp151 table
+# HG19 positions' querying from UCSC's snp151 table 
+# Currently not in use (very slow as positions in UCSC are not indexed) 
+# Require basepair positions from user
 ####################################
 def getSNPPositions(snp_list):
     pos = []
@@ -160,21 +140,6 @@ def getSNPPositions(snp_list):
         else:
             pos.append(engine.execute(f"select chromEnd from snp151 where name='{querysnp}'").fetchall()[0][0])
     return pos
-
-
-####################################
-# Querying gene names and coordinates for specified region
-####################################
-def getGenes(chrom, startbp, endbp):
-    result = []
-    engine = sa.create_engine('mysql://genome@genome-mysql.cse.ucsc.edu:3306/hg19')
-    chrom = "chr"+str(chrom).replace('chr','')
-    query = f"select exonStarts, exonEnds, exonCount name2 from ncbiRefSeq "
-    query += f"where chrom = {chrom} and (txStart >= {startbp} and txStart <= {endbp}) "
-    query += f"or (txEnd >= {startbp} and txEnd <= {endbp}) or ({startbp} >= txStart and {startbp} <= txEnd) "
-    query += f"or ({endbp} >= txStart and {endbp} <= txEnd);"
-    results = engine.execute(query)
-
 
 
 ####################################
@@ -207,6 +172,8 @@ def parseRegionText(regiontext):
     else:
         return chrom, startbp, endbp
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 #####################################
 # API Routes
@@ -243,10 +210,13 @@ def upload_file():
             # read the file
             file = request.files['file']
             # read the filename
-            filename = file.filename
-            # create a path to the uploads folder
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename) # more secure
+                # create a path to the uploads folder
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+            else:
+                raise InvalidUsage('File type not allowed', status_code=410)
             # Load
             print('Loading file')
             gwas_data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
@@ -277,8 +247,15 @@ def upload_file():
             gtex_tissues = request.form.getlist('GTEx-tissues')
             print('GTEx tissues:',gtex_tissues)
             if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)
+            collapsed_genes_df = pd.read_csv('data/collapsed_gencode_v19_hg19.gz', compression='gzip', sep='\t', encoding='utf-8')
             gene = request.form['gencodeID']
-            if gene=='': gene='ENSG00000174502'
+            if gene=='': 
+                gene='ENSG00000174502'
+            elif not (str(gene).upper().startswith('ENSG')):
+                try:
+                    gene = str(list(collapsed_genes_df.loc[ collapsed_genes_df['name'] == str(gene).upper() ]['ENSG_name'])[0])
+                except:
+                    raise InvalidUsage('Gene name not recognized', status_code=410)
             # Omit any rows with missing values:
             gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
             gwas_data.dropna(inplace=True)
@@ -336,6 +313,11 @@ def upload_file():
                     except:
                         raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene)
             
+            # Obtain any genes to be plotted in the region:
+            genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
+                                                    ( ((collapsed_genes_df['txStart'] >= startbp) & (collapsed_genes_df['txStart'] <= endbp)) | 
+                                                      ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) ) ]
+            
             # Indicate that the request was a success
             data['success'] = True
             print('Loading a success')
@@ -344,7 +326,8 @@ def upload_file():
             my_session_id = uuid.uuid4()
             fileout = f'static/session_data/form_data-{my_session_id}.json'
             json.dump(data, open(fileout, 'w'))
-        return render_template("plot.html", sessionfile = f'session_data/form_data-{my_session_id}.json')
+            return render_template("plot.html", sessionfile = f'session_data/form_data-{my_session_id}.json')        
+        return render_template("invalid_input.html")
     return render_template("index.html")
 
 if __name__ == "__main__":

@@ -19,12 +19,12 @@ chroms[0] = [chr.strip() for chr in chroms[0]]
 chroms.to_csv('data/hg19_chrom_lengths.txt', index=False, encoding='utf-8', sep="\t")
 
 gwas_data = pd.read_csv('data/MI_GWAS_2019_1_205500-206000kbp.tsv', sep="\t")
-gwas_data = gwas_data[['SNP','P']]
+#gwas_data = gwas_data[['SNP','P']]
 gwas_data.dropna(inplace=True)
 gwas_data.head()
 snpcol='SNP'
 pcol='P'
-list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
+lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
 snp_list = list(gwas_data[snpcol])
 positions = list(gwas_data['BP'])
 
