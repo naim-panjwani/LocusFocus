@@ -1,10 +1,13 @@
+# Ideas for this program obtained from:
+# https://github.com/broadinstitute/gtex-pipeline/blob/master/gene_model/collapse_annotation.py
+
 import pandas as pd
 import numpy as np
 import os
 from tqdm import tqdm
 
 if not os.path.isfile('data/GencodeGenes_v19_hg19.gz'):
-    genes = pd.read_csv('data/gencode_v19_hg19.gz', compression='gzip', sep="\t")
+    genes = pd.read_csv('data/gencode_v19_hg19.gz', compression='gzip', sep="\t") # Extracted from UCSC Genome Tables
     transcript_mapping_file = pd.read_csv('data/ENST_ENSG_mapping_file.txt', sep='\t')
     transcript_names = [gene.split('.')[0] for gene in genes['#name']]
     rowIndices = [ list(transcript_mapping_file['Transcript stable ID']).index(transcript_name) for transcript_name in tqdm(transcript_names) ]
@@ -131,6 +134,7 @@ def collapse(gene):
         gene.transcripts = [createTranscript(bins)]
         return gene
 
+# Main:
 gene_groups = genes.groupby('name3')
 all_genes_collapsed = []
 for gene in tqdm(gene_groups): # for each gene
