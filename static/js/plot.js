@@ -1,4 +1,4 @@
-function plot_gwas(data) {
+function plot_gwas(data, genesdata) {
   
     var positions = data.positions;
     var pvalues = data.pvalues;

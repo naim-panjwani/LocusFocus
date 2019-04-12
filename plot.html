@@ -53,16 +53,14 @@
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <script type="text/javascript" src="static/js/plot.js"></script>
   <script type="text/javascript">
-    // var thefile="{{ sessionfile }}";
-    // console.log(thedata);
-    //console.log(thefile);
-    //d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
     d3.json("static/session_data/form_data-53ebec40-c5e0-41f3-bc24-82d58d8c7305.json").then(response => {
-        var data = response;
-        // console.log(data);
-        plot_gwas(data)
+        d3.json("static/session_data/genes_data-53ebec40-c5e0-41f3-bc24-82d58d8c7305.json").then(genesResponse => {
+            var data = response;
+            var genesdata = genesResponse;
+            // console.log(data);
+            plot_gwas(data, genesdata)
+        });
     });
-
   </script>
 
   <!-- JQuery -->

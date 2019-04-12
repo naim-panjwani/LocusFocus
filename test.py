@@ -27,6 +27,11 @@ pcol='P'
 lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
 snp_list = list(gwas_data[snpcol])
 positions = list(gwas_data['BP'])
+collapsed_genes_df = pd.read_csv('data/collapsed_gencode_v19_hg19.gz', compression='gzip', sep='\t', encoding='utf-8')
+gene='ENSG00000174502'
+chrom=1
+startbp=205500000
+endbp=206000000
 
 
 engine = sa.create_engine('mysql://root:root@localhost:3306/snp151')

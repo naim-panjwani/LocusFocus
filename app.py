@@ -317,7 +317,16 @@ def upload_file():
             genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
                                                     ( ((collapsed_genes_df['txStart'] >= startbp) & (collapsed_genes_df['txStart'] <= endbp)) | 
                                                       ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) ) ]
-            
+            genes_data = []
+            for i in np.arange(genes_to_draw.shape[0]):
+                genes_data.append({
+                    'name': list(genes_to_draw['name'])[i]
+                    ,'txStart': list(genes_to_draw['txStart'])[i]
+                    ,'txEnd': list(genes_to_draw['txEnd'])[i]
+                    ,'exonStarts': [int(bp) for bp in list(genes_to_draw['exonStarts'])[i].split(',')]
+                    ,'exonEnds': [int(bp) for bp in list(genes_to_draw['exonEnds'])[i].split(',')]
+                })
+
             # Indicate that the request was a success
             data['success'] = True
             print('Loading a success')
@@ -326,7 +335,9 @@ def upload_file():
             my_session_id = uuid.uuid4()
             fileout = f'static/session_data/form_data-{my_session_id}.json'
             json.dump(data, open(fileout, 'w'))
-            return render_template("plot.html", sessionfile = f'session_data/form_data-{my_session_id}.json')        
+            genes_fileout = f'static/session_data/genes_data-{my_session_id}.json'
+            json.dump(genes_data, open(genes_fileout, 'w'))
+            return render_template("plot.html", sessionfile = f'session_data/form_data-{my_session_id}.json', genesfile = f'session_data/genes_data-{my_session_id}.json')
         return render_template("invalid_input.html")
     return render_template("index.html")
 

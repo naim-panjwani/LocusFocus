@@ -53,13 +53,17 @@
   <script type="text/javascript" src="{{ url_for('static', filename='js/plot.js') }}"></script>
   <script type="text/javascript">
     var thefile="{{ sessionfile }}";
+    var genesfile="{{ genesfile }}";
     // console.log(thefile);
+    console.log(genesfile);
     d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
-        var data = response;
-        // console.log(data);
-        plot_gwas(data)
+        d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
+            var data = response;
+            var genesdata = genesResponse;
+            // console.log(data);
+            plot_gwas(data, genesdata)
+        });
     });
-
   </script>
   <!-- JQuery -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>

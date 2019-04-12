@@ -1,5 +1,4 @@
 - Test d-prime
-- Add file size limit checks
 - Ensure coordinate range entered is within reasonable limits
 - Inform why not all tissues selected appear in the end
 - Draw the genes
