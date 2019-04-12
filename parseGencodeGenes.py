@@ -160,3 +160,38 @@ for gene in tqdm(gene_groups): # for each gene
     currGene = Gene(ensg_name, gene_name, chrom, strand, minStart, maxEnd, transcripts)
     all_genes_collapsed.append(collapse(currGene))
 
+ensg_name = []
+gene_name = []
+chrom = []
+strand = []
+starts = []
+ends = []
+exonStarts = []
+exonEnds = []
+for gene in all_genes_collapsed:
+    ensg_name.append(gene.ensg_name)
+    gene_name.append(gene.name)
+    chrom.append(gene.chrom)
+    strand.append(gene.strand)
+    starts.append(gene.start_pos)
+    ends.append(gene.end_pos)
+    exStarts = []
+    exEnds = []
+    for exon in gene.transcripts[0].exons:
+        exStarts.append(str(exon.start_pos))
+        exEnds.append(str(exon.end_pos))
+    exonStarts.append(','.join(exStarts))
+    exonEnds.append(','.join(exEnds))
+
+collapsed_genes_df = pd.DataFrame({
+    'ENSG_name': ensg_name
+    ,'name': gene_name
+    ,'chrom': chrom
+    ,'strand':strand
+    ,'txStart':starts
+    ,'txEnd':ends
+    ,'exonStarts':exonStarts
+    ,'exonEnds': exonEnds
+    })
+
+collapsed_genes_df.to_csv('data/collapsed_gencode_v19_hg19.gz', compression='gzip', sep='\t', index=False, encoding='utf-8')
