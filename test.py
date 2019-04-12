@@ -39,14 +39,19 @@ for chunk in chunks:
     engine.execute("ALTER TABLE `snp151`.`snp151_hg19` add primary key(name(50));")
 
 ############### Testing overlaps of genes #################
-refseq = pd.read_csv('data/refseq_hg19.gz', compression='gzip', sep="\t")
+genes = pd.read_csv('data/gencode_v19_hg19.gz', compression='gzip', sep="\t")
+transcript_mapping_file = pd.read_csv('data/ENST_ENSG_mapping_file.txt', sep='\t')
 chrom=1
 startbp=205500000
 endbp=206000000
-refseq.loc[refseq['#chrom'] == ('chr'+str(chrom))].head()
+genes.loc[refseq['#chrom'] == ('chr'+str(chrom))].head()
 # chr_groups = refseq.groupby('#chrom',sort=False, group_keys=False)
 # sorted_grouped_refseq = refseq.apply(lambda x: x.sort_values(['#chrom' 'txStart','name2'])).groupby('name2')
-
+transcripts = [gene.split('.')[0] for gene in genes['#name']]
+rowIndices = [ list(transcript_mapping_file['Transcript stable ID']).index(transcript) for transcript in tqdm(transcripts) ]
+ENSG_list = list(transcript_mapping_file.iloc[ rowIndices,: ]['Gene stable ID'])
+genes['name3'] = ENSG_list
+genes.to_csv('data/GencodeGenes_v19_hg19.gz', compression='gzip', sep="\t", encoding='utf-8', index=False)
 
 
 
