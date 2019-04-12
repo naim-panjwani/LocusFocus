@@ -69,6 +69,10 @@ def cleanup(bins):
         i += 1
     if i != sorted_bins.shape[0]:
         i += 1
+        try:
+            nextBin = list(sorted_bins.iloc[i,:])
+        except:
+            nextBin = list(sorted_bins.iloc[i-1,:])
         cleanedBins = cleanedBins.append(pd.DataFrame({'starts':[nextBin[0]], 'ends':[nextBin[1]]}), ignore_index=True)
     return cleanedBins
 
