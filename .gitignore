@@ -105,5 +105,8 @@ venv.bak/
 
 # My file/directory exclusions:
 tokens.py
+tokens.txt
+pass.txt
 .vscode/
 data/snp151.gz
+GWAS-QTL-app/

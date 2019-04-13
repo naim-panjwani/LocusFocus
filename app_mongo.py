@@ -8,6 +8,7 @@ import string
 from tqdm import tqdm
 import uuid
 from pprint import pprint
+from pymongo import MongoClient
 
 import sqlalchemy as sa
 from sqlalchemy.ext.automap import automap_base
@@ -19,7 +20,6 @@ from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 import pymysql
 pymysql.install_as_MySQLdb()
-#thepwd = open('pwd.txt').readline().replace('\n', '')
 
 genomicWindowLimit = 2000000
 fileSizeLimit = 200 # in KB
@@ -32,9 +32,15 @@ app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit * 1024
 ALLOWED_EXTENSIONS = set(['txt', 'tsv'])
 
 token = ""
-with open('tokens.txt') as f:
+with open(os.path.join(MYDIR,'tokens.txt')) as f:
     token = f.read().replace('\n','')
+passw = ""
+with open(os.path.join(MYDIR,'pass.txt')) as f:
+    passw = f.read().replace('\n','')
 
+conn = f"mongodb+srv://naimesca:{passw}@cluster0-p1stg.mongodb.net/test?retryWrites=true"
+client = MongoClient(conn)
+db = client.GWAS_QTL_app_db
 
 ####################################
 # LD Querying from ldlink.nci.nih.gov
@@ -156,7 +162,9 @@ def parseRegionText(regiontext):
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0]
     endbp = pos.split('-')[1]
-    chromLengths = pd.read_csv(os.path.join(MYDIR, 'data/hg19_chrom_lengths.txt'), sep="\t", encoding='utf-8')
+    #chromLengths = pd.read_csv(os.path.join('static', 'data','hg19_chrom_lengths.txt'), sep="\t", encoding='utf-8')
+    chromLengths_collection = db.hg19_chromLengths.find()
+    chromLengths = pd.DataFrame(list(chromLengths_collection)).drop(["_id"], axis=1)
     chromLengths.set_index('sequence',inplace=True)
     if chrom == 'X':
         chrom = 23
@@ -205,7 +213,9 @@ def handle_invalid_usage(error):
 
 @app.route("/populations")
 def get1KGPopulations():
-    populations = pd.read_csv(os.path.join(MYDIR, 'data/populations.tsv'), sep='\t')
+    #populations = pd.read_csv(os.path.join('static', 'data','populations.tsv'), sep='\t')
+    populations_collection = db.populations.find()
+    populations = pd.DataFrame(list(populations_collection)).drop(["_id"], axis=1)
     return jsonify(populations.to_dict(orient='list'))
 
 @app.route('/', methods=['GET', 'POST'])
@@ -253,7 +263,9 @@ def upload_file():
             gtex_tissues = request.form.getlist('GTEx-tissues')
             print('GTEx tissues:',gtex_tissues)
             if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)
-            collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
+            #collapsed_genes_df = pd.read_csv(os.path.join('static', 'data','collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
+            genes_collection = db.collapsed_gencode_genes_hg19.find()
+            collapsed_genes_df = pd.DataFrame(list(genes_collection)).drop(["_id"], axis=1)
             gene = request.form['gencodeID']
             if gene=='': 
                 gene='ENSG00000174502'
