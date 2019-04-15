@@ -95,6 +95,7 @@ function plot_gwas(data, genesdata) {
     var firstBin = [genesdata[0].txStart, genesdata[0].txEnd];
     var geneRows = [];
     geneRows[0] = [firstBin];
+    genesdata[0]['geneRow'] = 1;
 
     for(var i = 1; i < genesdata.length; i++) {
       currRow = 0;
@@ -314,6 +315,8 @@ function plot_gwas(data, genesdata) {
     var gwas_ymax = d3.max(log10pvalues);
     var gtex_ymax = getYmax(gtex_line_traces);
 
+
+
     var layout = {
       xaxis: {
         range: [startbp - extra_x_range, endbp + extra_x_range],
@@ -336,7 +339,11 @@ function plot_gwas(data, genesdata) {
       width: 960,
       showlegend: true,
       zeroline: true,
-      hovermode: "closest"
+      hovermode: "closest",
+      shapes: [
+        // draw
+        type:
+      ]
     };
 
     // Plot the genes
