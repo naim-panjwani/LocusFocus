@@ -11,6 +11,8 @@ function plot_gwas(data, genesdata) {
     var lead_snp = data.lead_snp;
     var gtex_tissues = data.gtex_tissues;
 
+    // console.log(genesdata);
+
     var log10pvalues = pvalues.map(p => -Math.log10(p))
     var no_ld_info_snps = [], no_ld_info_snps_color = "#7f7f7f"; // grey
     var ld_lt_20_group = [], ld_lt_20_group_color = "#1f77b4"; // very low ld points (dark blue)
@@ -69,6 +71,49 @@ function plot_gwas(data, genesdata) {
       }
       return ymax;
     }
+    
+
+    // Add the row number each gene will be plotted into:
+    genesdata.sort(function (a, b) {
+      return a.txStart - b.txStart;
+    });
+
+    function overlap(bin1, bin2) {
+      return (bin2[0]>=bin1[0] && bin2[0]<=bin1[1]) || (bin2[1]>=bin1[0] && bin2[1]<=bin1[1]);
+    }
+
+    function checkSpace(geneRows, rowNum, bin) {
+      occupied = false;
+      for(var i=0; i<geneRows[rowNum].length; i++) {
+        if(overlap(geneRows[rowNum][i], bin)) {
+          occupied = true;
+          return occupied;
+        }
+      }
+      return occupied;
+    }
+
+    var firstBin = [genesdata[0].txStart, genesdata[0].txEnd];
+    var geneRows = [];
+    geneRows[0] = [firstBin];
+
+    for(var i = 1; i < genesdata.length; i++) {
+      currRow = 0;
+      geneBin = [genesdata[i].txStart, genesdata[i].txEnd];
+      occupied = checkSpace(geneRows, currRow, geneBin);
+      while(occupied && currRow < geneRows.length) {
+        currRow++;
+        if(currRow < geneRows.length) occupied = checkSpace(geneRows, currRow, geneBin);
+      }
+      if(currRow === geneRows.length) {
+        geneRows[currRow] = [geneBin];
+      }
+      else {
+        geneRows[currRow].push(geneBin);
+      }
+    }
+    console.log(genesdata);
+    console.log(geneRows);
 
 
     // Smooth out each GTEx tissue's association results for plotting as lines:
