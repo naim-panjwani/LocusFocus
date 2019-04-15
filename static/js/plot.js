@@ -28,7 +28,6 @@ function plot_gwas(data, genesdata) {
     var log10pvalue_range = d3.max(pvalues.map(p => -Math.log10(p))) - d3.min(pvalues.map(p => -Math.log10(p)));
     var extra_x_range = 0.05 * regionsize;
     var extra_y_range = 0.05 * log10pvalue_range;
-    var gene_area_height = 0.3 * log10pvalue_range;
     var eqtl_smoothing_window_size = (regionsize/100000) * 15;
 
     // Helper functions:
@@ -114,7 +113,9 @@ function plot_gwas(data, genesdata) {
     }
     console.log(genesdata);
     console.log(geneRows);
-
+    var gene_area_height = d3.min([0.1 * log10pvalue_range * geneRows.length, 0.5 * log10pvalue_range]);
+    var gene_margin = (gene_area_height / geneRows.length) * 0.05;
+    var gene_height = (gene_area_height / geneRows.length) - gene_margin;
 
     // Smooth out each GTEx tissue's association results for plotting as lines:
     gtex_line_traces = {};
