@@ -378,7 +378,8 @@ function plot_gwas(data, genesdata) {
         opacity: 0
       },
       yaxis: 'y1',
-      showlegend: false
+      showlegend: false,
+      name: 'Gene name'
     }
     all_traces.push(genenames_trace);
 
