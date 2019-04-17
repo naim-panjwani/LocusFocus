@@ -22,7 +22,7 @@ pymysql.install_as_MySQLdb()
 #thepwd = open('pwd.txt').readline().replace('\n', '')
 
 genomicWindowLimit = 2000000
-fileSizeLimit = 200 # in KB
+fileSizeLimit = 500 # in KB
 
 MYDIR = os.path.dirname(__file__)
 
@@ -235,7 +235,7 @@ def upload_file():
             pcol = request.form['pval-col']
             if pcol=='': pcol='P'
             lead_snp = request.form['leadsnp']
-            if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
+            if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][snpcol])[0]
             regiontext = request.form['locus']
             print('regiontext',regiontext)
             if regiontext == "": regiontext = "1:205500000-206000000"
