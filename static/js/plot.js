@@ -81,7 +81,7 @@ function plot_gwas(data, genesdata) {
       return (bin2[0]>=bin1[0] && bin2[0]<=bin1[1]) || (bin2[1]>=bin1[0] && bin2[1]<=bin1[1]);
     }
 
-    function checkSpace(geneRows, rowNum, bin, genename) {
+    function checkSpace(geneRows, rowNum, bin) {
       occupied = false;
       for(var i=0; i<geneRows[rowNum].length; i++) {
         if(overlap(geneRows[rowNum][i], bin)) {
@@ -100,10 +100,10 @@ function plot_gwas(data, genesdata) {
     for(var i = 1; i < genesdata.length; i++) {
       currRow = 0;
       geneBin = [genesdata[i].txStart, genesdata[i].txEnd];
-      occupied = checkSpace(geneRows, currRow, geneBin, genesdata[i].name);
+      occupied = checkSpace(geneRows, currRow, geneBin);
       while(occupied && currRow < geneRows.length) {
         currRow++;
-        if(currRow < geneRows.length) occupied = checkSpace(geneRows, currRow, geneBin, genesdata[i].name);
+        if(currRow < geneRows.length) occupied = checkSpace(geneRows, currRow, geneBin);
       }
       if(currRow === geneRows.length) {
         geneRows[currRow] = [geneBin];
@@ -124,7 +124,9 @@ function plot_gwas(data, genesdata) {
     var intron_height = exon_height * 0.4;
 
     var rectangle_shapes = [];
-    var annotations = [];
+    var annotations_x = [];
+    var annotations_y = [];
+    var annotations_text = [];
     for(var i=0; i < genesdata.length; i++) {
       // build intron rectangle shapes for each gene:
       var rectangle_shape = {
@@ -142,7 +144,16 @@ function plot_gwas(data, genesdata) {
         fillcolor: 'rgba(55, 128, 191, 1)'
       }
       rectangle_shapes.push(rectangle_shape);
-      annotations.push(genesdata[i]['name']);
+      annotations_x.push(genesdata[i]['txStart']);
+      annotations_x.push((genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2);
+      annotations_x.push(genesdata[i]['txEnd']);
+      var y = -(genesdata[i]['geneRow'] * row_height) + gene_margin + ((exon_height - intron_height)/2) + intron_height/2;
+      annotations_y.push(y);
+      annotations_y.push(y);
+      annotations_y.push(y);
+      annotations_text.push(genesdata[i]['name']);
+      annotations_text.push(genesdata[i]['name']);
+      annotations_text.push(genesdata[i]['name']);
       for(var j=0; j < genesdata[i]['exonStarts'].length; j++) {
         // build exon rectangle shapes for current gene
         var rectangle_shape = {
@@ -160,7 +171,6 @@ function plot_gwas(data, genesdata) {
           fillcolor: 'rgba(55, 128, 191, 1)'
         }
         rectangle_shapes.push(rectangle_shape);
-        annotations.push(`Exon ${j}`);
       }
     }
 
@@ -358,6 +368,19 @@ function plot_gwas(data, genesdata) {
       all_traces.push(gtex_tissue_trace);
     }
 
+    var genenames_trace = {
+      x: annotations_x,
+      y: annotations_y,
+      text: annotations_text,
+      type: 'scatter',
+      mode: 'markers',
+      marker: {
+        opacity: 0
+      },
+      yaxis: 'y1'
+    }
+    all_traces.push(genenames_trace);
+
     var gwas_ymax = d3.max(log10pvalues);
     var gtex_ymax = getYmax(gtex_line_traces);
 
@@ -384,8 +407,7 @@ function plot_gwas(data, genesdata) {
       showlegend: true,
       zeroline: true,
       hovermode: "closest",
-      shapes: rectangle_shapes,
-      text: annotations
+      shapes: rectangle_shapes
     };
 
     // Plot the genes
