@@ -23,7 +23,7 @@ function plot_gwas(data, genesdata) {
     var lead_snp_index = 0, lead_snp_color = "#9467bd"; // purple
     var markersize = 10;
     var lead_markersize = 10*1.5;
-    ld_colors = [];
+    var ld_colors = [];
     var regionsize = endbp - startbp;
     var log10pvalue_range = d3.max(pvalues.map(p => -Math.log10(p))) - d3.min(pvalues.map(p => -Math.log10(p)));
     var extra_x_range = 0.05 * regionsize;
@@ -81,7 +81,7 @@ function plot_gwas(data, genesdata) {
       return (bin2[0]>=bin1[0] && bin2[0]<=bin1[1]) || (bin2[1]>=bin1[0] && bin2[1]<=bin1[1]);
     }
 
-    function checkSpace(geneRows, rowNum, bin) {
+    function checkSpace(geneRows, rowNum, bin, genename) {
       occupied = false;
       for(var i=0; i<geneRows[rowNum].length; i++) {
         if(overlap(geneRows[rowNum][i], bin)) {
@@ -100,23 +100,69 @@ function plot_gwas(data, genesdata) {
     for(var i = 1; i < genesdata.length; i++) {
       currRow = 0;
       geneBin = [genesdata[i].txStart, genesdata[i].txEnd];
-      occupied = checkSpace(geneRows, currRow, geneBin);
+      occupied = checkSpace(geneRows, currRow, geneBin, genesdata[i].name);
       while(occupied && currRow < geneRows.length) {
         currRow++;
-        if(currRow < geneRows.length) occupied = checkSpace(geneRows, currRow, geneBin);
+        if(currRow < geneRows.length) occupied = checkSpace(geneRows, currRow, geneBin, genesdata[i].name);
       }
       if(currRow === geneRows.length) {
         geneRows[currRow] = [geneBin];
+        genesdata[i]['geneRow'] = currRow+1;
       }
       else {
         geneRows[currRow].push(geneBin);
+        genesdata[i]['geneRow'] = currRow+1;
       }
     }
-    console.log(genesdata);
-    console.log(geneRows);
-    var gene_area_height = d3.min([0.1 * log10pvalue_range * geneRows.length, 0.5 * log10pvalue_range]);
-    var gene_margin = (gene_area_height / geneRows.length) * 0.05;
-    var gene_height = (gene_area_height / geneRows.length) - gene_margin;
+
+    // console.log(genesdata);
+    // console.log(geneRows);
+    var gene_area_height = d3.min([0.1 * log10pvalue_range * geneRows.length, 0.7 * log10pvalue_range]);
+    var row_height = gene_area_height / geneRows.length;
+    var gene_margin = row_height * 0.15;
+    var exon_height = row_height - (2 * gene_margin);
+    var intron_height = exon_height * 0.4;
+
+    var rectangle_shapes = [];
+    var annotations = [];
+    for(var i=0; i < genesdata.length; i++) {
+      // build intron rectangle shapes for each gene:
+      var rectangle_shape = {
+        type: 'rect',
+        xref: 'x',
+        yref: 'y',
+        x0: genesdata[i]['txStart'],
+        y0: -(genesdata[i]['geneRow'] * row_height) + gene_margin + ((exon_height - intron_height)/2),
+        x1: genesdata[i]['txEnd'],
+        y1: -(genesdata[i]['geneRow'] * row_height) + gene_margin + ((exon_height - intron_height)/2) + intron_height,
+        line: {
+          color: 'rgb(55, 128, 191)',
+          width: 1
+        },
+        fillcolor: 'rgba(55, 128, 191, 1)'
+      }
+      rectangle_shapes.push(rectangle_shape);
+      annotations.push(genesdata[i]['name']);
+      for(var j=0; j < genesdata[i]['exonStarts'].length; j++) {
+        // build exon rectangle shapes for current gene
+        var rectangle_shape = {
+          type: 'rect',
+          xref: 'x',
+          yref: 'y',
+          x0: genesdata[i]['exonStarts'][j],
+          y0: -(genesdata[i]['geneRow'] * row_height) + gene_margin,
+          x1: genesdata[i]['exonEnds'][j],
+          y1: -(genesdata[i]['geneRow'] * row_height) + gene_margin + exon_height,
+          line: {
+            color: 'rgb(55, 128, 191)',
+            width: 1
+          },
+          fillcolor: 'rgba(55, 128, 191, 1)'
+        }
+        rectangle_shapes.push(rectangle_shape);
+        annotations.push(`Exon ${j}`);
+      }
+    }
 
     // Smooth out each GTEx tissue's association results for plotting as lines:
     gtex_line_traces = {};
@@ -315,8 +361,6 @@ function plot_gwas(data, genesdata) {
     var gwas_ymax = d3.max(log10pvalues);
     var gtex_ymax = getYmax(gtex_line_traces);
 
-
-
     var layout = {
       xaxis: {
         range: [startbp - extra_x_range, endbp + extra_x_range],
@@ -339,7 +383,9 @@ function plot_gwas(data, genesdata) {
       width: 960,
       showlegend: true,
       zeroline: true,
-      hovermode: "closest"
+      hovermode: "closest",
+      shapes: rectangle_shapes,
+      text: annotations
     };
 
     // Plot the genes
