@@ -73,3 +73,16 @@ params = (
 data = '{"snps": "rs3\nrs4", "pop":"CEU","r2_d": "d"}'
 
 requests.post('https://ldlink.nci.nih.gov/LDlinkRest/ldmatrix', headers=headers, params=params, data=json.dumps(data))
+
+
+
+from pymongo import MongoClient
+import pandas as pd
+conn = "mongodb+srv://naimesca:YF2izjv!@cluster0-p1stg.mongodb.net/test?retryWrites=true"
+client = MongoClient(conn)
+db = client.GWAS_QTL_app_db
+chromLengths_collection = db.hg19_chromLengths.find()
+chromLengths = pd.DataFrame(list(chromLengths_collection)).drop(["_id"], axis=1)
+chromLengths.set_index('sequence',inplace=True)
+print(chromLengths)
+
