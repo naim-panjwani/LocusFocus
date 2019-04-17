@@ -339,11 +339,13 @@ def upload_file():
 
             # Save data in JSON format for plotting
             my_session_id = uuid.uuid4()
-            fileout = f'static/session_data/form_data-{my_session_id}.json'
-            json.dump(data, open(fileout, 'w'))
-            genes_fileout = f'static/session_data/genes_data-{my_session_id}.json'
-            json.dump(genes_data, open(genes_fileout, 'w'))
-            return render_template("plot.html", sessionfile = f'session_data/form_data-{my_session_id}.json', genesfile = f'session_data/genes_data-{my_session_id}.json')
+            sessionfile = f'session_data/form_data-{my_session_id}.json'
+            sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
+            json.dump(data, open(sessionfilepath, 'w'))
+            genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
+            genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile) 
+            json.dump(genes_data, open(genes_sessionfilepath, 'w'))
+            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile)
         return render_template("invalid_input.html")
     return render_template("index.html")
 

@@ -339,11 +339,7 @@ function plot_gwas(data, genesdata) {
       width: 960,
       showlegend: true,
       zeroline: true,
-      hovermode: "closest",
-      shapes: [
-        // draw
-        type:
-      ]
+      hovermode: "closest"
     };
 
     // Plot the genes
