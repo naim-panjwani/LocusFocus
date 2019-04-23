@@ -104,6 +104,7 @@ venv.bak/
 .mypy_cache/
 
 # My file/directory exclusions:
+.DS_Store
 tokens.py
 tokens.txt
 pass.txt
