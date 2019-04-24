@@ -1,3 +1,6 @@
+library('CompQuadForm')
+library('clusterGeneration')
+library('psych')
 
 get_eqtl_evid<-function(P,cut,m){
   if (cut==0){
@@ -71,11 +74,11 @@ get_simplesumP<-function(Z,P,ld.mat,cut,m){
   pv<-get_p(m,eig_values,SS_stats)
   return(pv)
 }
+
+
 set.seed(1)
 m=100
 #generate LD matrix 
-library('clusterGeneration')
-library('psych')
 covariance=genPositiveDefMat("eigen",dim=m)$Sigma
 var=diag(covariance);var
 Sigma=solve(sqrt(diag(var)))%*%covariance%*%solve(sqrt(diag(var)))
