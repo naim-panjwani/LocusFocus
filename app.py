@@ -113,9 +113,10 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
         if response:
             data = response.text.strip().split('\n')[1:]
             tempSNPs = response.text.strip().split('\n')[0].split('\t')[1:]
-            if lead_snp in tempSNPs:
-                lead_snp_col = tempSNPs.index(lead_snp)
-                data.pop(lead_snp_col)
+            if lead_snp not in tempSNPs:
+                raise InvalidUsage('lead_snp was not found', response)
+            lead_snp_col = tempSNPs.index(lead_snp)
+            data.pop(lead_snp_col)
             snps = [datum.strip().split('\t')[0] for datum in data if datum != '']
             ld_values = [datum.split('\t')[lead_snp_col+1] for datum in data if datum != '']
             for i in np.arange(len(ld_values)):
