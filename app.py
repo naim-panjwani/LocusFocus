@@ -35,6 +35,7 @@ token = ""
 with open('tokens.txt') as f:
     token = f.read().replace('\n','')
 
+collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
 
 ####################################
 # LD Querying from ldlink.nci.nih.gov
@@ -209,6 +210,10 @@ def get1KGPopulations():
     populations = pd.read_csv(os.path.join(MYDIR, 'data/populations.tsv'), sep='\t')
     return jsonify(populations.to_dict(orient='list'))
 
+@app.route("/genenames")
+def getGeneNames():
+    return jsonify(list(collapsed_genes_df['name']))
+
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     data = {"success": False}
@@ -253,8 +258,7 @@ def upload_file():
             print(ld_type)
             gtex_tissues = request.form.getlist('GTEx-tissues')
             print('GTEx tissues:',gtex_tissues)
-            if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)
-            collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
+            if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)            
             gene = request.form['gencodeID']
             if gene=='': 
                 gene='ENSG00000174502'
@@ -289,6 +293,7 @@ def upload_file():
             data['gtex_tissues'] = gtex_tissues
             # Get GTEx data for the tissues and SNPs selected:
             print('Gathering GTEx data')
+            gtex_data = get_gtex_data(gtex_tissues, gene)
             # ensembl_eqtl_base_url = 'http://grch37.rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
             ensembl_eqtl_base_url = 'https://grch37.rest.ensembl.org/eqtl/id/homo_sapiens/'
             gene_query = f'{gene}?'

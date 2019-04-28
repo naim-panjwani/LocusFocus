@@ -20,6 +20,15 @@ String.prototype.replaceAll = function(search, replacement) {
 };
 
 
+// Auto-complete for genes field:
+d3.json('/genenames').then(response => {
+    $( "#gencodeID" ).autocomplete({
+        source: response
+    });
+});
+  
+
+
 d3.json('/populations').then(response => {
     var pops = response;
     // console.log(pops);
