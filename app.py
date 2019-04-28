@@ -132,6 +132,40 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
     return merged_df
 
 
+def get_gtex_data(gtex_tissues, gene, snp_list, positions):
+    gtex_data = {}
+    # ensembl_eqtl_base_url = 'http://grch37.rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
+    ensembl_eqtl_base_url = 'https://grch37.rest.ensembl.org/eqtl/id/homo_sapiens/'
+    gene_query = f'{gene}?'
+    query_suffix = 'statistic=p-value;content-type=application/json'
+    for tissue in tqdm(gtex_tissues):
+        print(f'Gathering eQTL data for {tissue}')
+        tissue_query = f'tissue={tissue};'
+        url = ensembl_eqtl_base_url + gene_query + tissue_query + query_suffix
+        response = requests.get(url, headers={ "Content-Type" : "application/json"})
+        if response:
+            eqtl = response.json()
+            # Resolving a problem introduced by Ensembl in that
+            # the genomic coordinates returned are GRCh37 coordinates that
+            # have been lifted over to GRCh38. 
+            # Resolving this by merging with the GWAS dataset 
+            # (which is in GRCh37 coordinates) by SNP name
+            gtex_data[tissue] = []
+            if len(eqtl) > 0:
+                for obj in eqtl:
+                    for k,v in obj.items():
+                        if(k == 'snp' and v in snp_list):
+                            obj['seq_region_start'] = positions[snp_list.index(v)]
+                            obj['seq_region_end'] = positions[snp_list.index(v)]
+                            gtex_data[tissue].append(obj)
+        else:
+            try:
+                error_message = response.json()['error']
+                raise InvalidUsage(error_message)
+            except:
+                raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene)
+    return gtex_data
+
 ####################################
 # HG19 positions' querying from UCSC's snp151 table 
 # Currently not in use (very slow as positions in UCSC are not indexed) 
@@ -293,42 +327,12 @@ def upload_file():
             data['gtex_tissues'] = gtex_tissues
             # Get GTEx data for the tissues and SNPs selected:
             print('Gathering GTEx data')
-            gtex_data = get_gtex_data(gtex_tissues, gene)
-            # ensembl_eqtl_base_url = 'http://grch37.rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
-            ensembl_eqtl_base_url = 'https://grch37.rest.ensembl.org/eqtl/id/homo_sapiens/'
-            gene_query = f'{gene}?'
-            query_suffix = 'statistic=p-value;content-type=application/json'
-            for tissue in tqdm(gtex_tissues):
-                print(f'Gathering eQTL data for {tissue}')
-                tissue_query = f'tissue={tissue};'
-                url = ensembl_eqtl_base_url + gene_query + tissue_query + query_suffix
-                response = requests.get(url, headers={ "Content-Type" : "application/json"})
-                if response:
-                    eqtl = response.json()
-                    # Resolving a problem introduced by Ensembl in that
-                    # the genomic coordinates returned are GRCh37 coordinates that
-                    # have been lifted over to GRCh38. 
-                    # Resolving this by merging with the GWAS dataset 
-                    # (which is in GRCh37 coordinates) by SNP name
-                    data[tissue] = []
-                    if len(eqtl) > 0:
-                        for obj in eqtl:
-                            for k,v in obj.items():
-                                if(k == 'snp' and v in snp_list):
-                                    obj['seq_region_start'] = positions[snp_list.index(v)]
-                                    obj['seq_region_end'] = positions[snp_list.index(v)]
-                                    data[tissue].append(obj)
-                else:
-                    try:
-                        error_message = response.json()['error']
-                        raise InvalidUsage(error_message)
-                    except:
-                        raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene)
-            
+            gtex_data = get_gtex_data(gtex_tissues, gene, snp_list, positions)
+            data.update(gtex_data)
             # Obtain any genes to be plotted in the region:
             genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
                                                     ( ((collapsed_genes_df['txStart'] >= startbp) & (collapsed_genes_df['txStart'] <= endbp)) | 
-                                                      ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) ) ]
+                                                        ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) ) ]
             genes_data = []
             for i in np.arange(genes_to_draw.shape[0]):
                 genes_data.append({
