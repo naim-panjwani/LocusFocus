@@ -51,17 +51,23 @@
   <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/plot.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/plot_heatmap.js') }}"></script>
   <script type="text/javascript">
     var thefile="{{ sessionfile }}";
     var genesfile="{{ genesfile }}";
+    var pvaluesfile="{{ pvaluesfile }}"
     // console.log(thefile);
-    console.log(genesfile);
+    // console.log(genesfile);
     d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
         d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
-            var data = response;
-            var genesdata = genesResponse;
-            // console.log(data);
-            plot_gwas(data, genesdata)
+            d3.json("{{ url_for('static', filename=pvaluesfile) }}").then(pvaluesResponse => {
+                var data = response;
+                var genesdata = genesResponse;
+                var pvaluedata = pvaluesResponse;
+                // console.log(data);
+                plot_gwas(data, genesdata)
+                plot_heatmap(data, genesdata, pvaluedata)
+            });
         });
     });
   </script>

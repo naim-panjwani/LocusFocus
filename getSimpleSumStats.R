@@ -1,8 +1,28 @@
-# Author: Fan Wang
+# Adapted from Fan Wang
+# Script to obtain the simple sum P-values for a given set of GWAS p-values, and eQTL p-values for each tissue/gene pair
+# Inputs: P_values_filename (GWAS p-values - for a set of SNPs - tab-separated, and all in one line)
+#         ld_matrix_filename (the LD matrix filename for the set of SNPs input; the values per row must be tab-separated)
+# Ouput: Returns the simple sum P-value
+# Example: getSimpleSumStat.R P_values_filename ld_matrix_filename
 
-library('CompQuadForm')
-library('clusterGeneration')
-library('psych')
+library(argparser, quietly=TRUE)
+library(CompQuadForm, quietly=TRUE)
+library(clusterGeneration, quietly=TRUE)
+library(psych, quietly=TRUE)
+library(data.table, quietly=TRUE)
+
+p <- arg_parser("Calculate Simple Sum Statistic")
+p <- add_argument(p, "P_values_filename", help = paste0("Filename with GWAS and eQTL p-values - for a set of SNPs, each value tab-separated'\n'"
+                                                        ,"with 1st line being the GWAS p-values'\n'"
+                                                        ,"and each subsequent line is for eQTL p-values for each tissue/gene combination"))
+p <- add_argument(p, "ld_matrix_filename", help = paste0("the LD matrix filename for the set of SNPs input;'\n'"
+                                                         ,"the values per row must be tab-separated; no header"))
+argv <- parse_args(p)
+
+P_gwas <- fread(argv$P_gwas_filename, header=F, stringsAsFactors=F)
+P_gwas <- as.numeric(argv$P_gwas)
+P_eqtl <- as.numeric(arg$P_eqtl)
+
 
 get_eqtl_evid<-function(P,cut,m){
   if (cut==0){
@@ -78,8 +98,6 @@ get_simplesumP<-function(P_gwas,P_eqtl,ld.mat,cut,m){
   return(pv)
 }
 
-
-
 # 
 # set.seed(1)
 # m=100
@@ -105,3 +123,12 @@ get_simplesumP<-function(P_gwas,P_eqtl,ld.mat,cut,m){
 # P_gwas = 2*pnorm(-abs(Z_resp))
 # get_simplesumP(P_gwas,P,Sigma,0,m) # input P_gwas instead of Z_resp
 # 
+
+
+############
+# MAIN
+############
+
+stopifnot(length(P_gwas) == length(P_eqtl))
+m <- length(P_gwas)
+

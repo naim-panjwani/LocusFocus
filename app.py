@@ -8,6 +8,7 @@ import string
 from tqdm import tqdm
 import uuid
 from pprint import pprint
+import subprocess
 
 import sqlalchemy as sa
 from sqlalchemy.ext.automap import automap_base
@@ -132,39 +133,54 @@ def queryLD(lead_snp, snp_list, populations=['CEU', 'TSI', 'FIN', 'GBR', 'IBS'],
     return merged_df
 
 
-def get_gtex_data(gtex_tissues, gene, snp_list, positions):
-    gtex_data = {}
+def get_gtex_data(tissue, gene, snp_list, positions, raiseErrors = False):
+    gtex_data = []
     # ensembl_eqtl_base_url = 'http://grch37.rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
     ensembl_eqtl_base_url = 'https://grch37.rest.ensembl.org/eqtl/id/homo_sapiens/'
-    gene_query = f'{gene}?'
+    ensg_gene = gene
+    if gene in list(collapsed_genes_df['name']):
+        ensg_gene = collapsed_genes_df['ENSG_name'][list(collapsed_genes_df['name']).index(gene)]
+    gene_query = f'{ensg_gene}?'
     query_suffix = 'statistic=p-value;content-type=application/json'
-    for tissue in tqdm(gtex_tissues):
-        print(f'Gathering eQTL data for {tissue}')
-        tissue_query = f'tissue={tissue};'
-        url = ensembl_eqtl_base_url + gene_query + tissue_query + query_suffix
-        response = requests.get(url, headers={ "Content-Type" : "application/json"})
-        if response:
-            eqtl = response.json()
-            # Resolving a problem introduced by Ensembl in that
-            # the genomic coordinates returned are GRCh37 coordinates that
-            # have been lifted over to GRCh38. 
-            # Resolving this by merging with the GWAS dataset 
-            # (which is in GRCh37 coordinates) by SNP name
-            gtex_data[tissue] = []
-            if len(eqtl) > 0:
-                for obj in eqtl:
-                    for k,v in obj.items():
-                        if(k == 'snp' and v in snp_list):
-                            obj['seq_region_start'] = positions[snp_list.index(v)]
-                            obj['seq_region_end'] = positions[snp_list.index(v)]
-                            gtex_data[tissue].append(obj)
-        else:
-            try:
-                error_message = response.json()['error']
+    #for tissue in tqdm(gtex_tissues):
+    print(f'Gathering eQTL data for {gene} in {tissue}')
+    tissue_query = f'tissue={tissue};'
+    url = ensembl_eqtl_base_url + gene_query + tissue_query + query_suffix
+    response = requests.get(url, headers={ "Content-Type" : "application/json"})
+    if response:
+        eqtl = response.json()
+        # Resolving a problem introduced by Ensembl in that
+        # the genomic coordinates returned are GRCh37 coordinates that
+        # have been lifted over to GRCh38. 
+        # Resolving this by merging with the GWAS dataset 
+        # (which is in GRCh37 coordinates) by SNP name
+        if len(eqtl) > 0:
+            for obj in eqtl:
+                for k,v in obj.items():
+                    if(k == 'snp' and v in snp_list):
+                        obj['seq_region_start'] = positions[snp_list.index(v)]
+                        obj['seq_region_end'] = positions[snp_list.index(v)]
+                        gtex_data.append(obj)
+    else:
+        try:
+            error_message = response.json()['error']
+            if raiseErrors:
                 raise InvalidUsage(error_message)
-            except:
+        except:
+            if raiseErrors:
                 raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene)
     return gtex_data
+
+
+def get_gtex_data_pvalues(eqtl_data, snp_list):
+    pvalues = np.repeat(np.nan, len(snp_list))
+    if len(eqtl_data) > 0:
+        for obj in eqtl_data:
+            for k,v in obj.items():
+                if(k == 'snp' and v in snp_list):
+                    pvalues[snp_list.index(v)] = 10**(-obj['minus_log10_p_value'])
+    return list(pvalues)
+
 
 ####################################
 # HG19 positions' querying from UCSC's snp151 table 
@@ -216,6 +232,19 @@ def parseRegionText(regiontext):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def writeList(alist, filename):
+    with open(filename, 'w') as f:
+        for item in alist:
+            f.write("%s\t" % item)
+
+def writeMat(aMat, filename):
+    aMat = np.matrix(aMat)
+    with open(filename, 'w') as f:
+        for row in np.arange(aMat.shape[0]):
+            for col in np.arange(aMat.shape[1] - 1):
+                f.write("%s\t" % str(aMat[row,col]))
+            f.write(str(aMat[row,-1]))
 
 #####################################
 # API Routes
@@ -327,9 +356,12 @@ def upload_file():
             data['gtex_tissues'] = gtex_tissues
             # Get GTEx data for the tissues and SNPs selected:
             print('Gathering GTEx data')
-            gtex_data = get_gtex_data(gtex_tissues, gene, snp_list, positions)
+            gtex_data = {}
+            for tissue in tqdm(gtex_tissues):
+                gtex_data[tissue] = get_gtex_data(tissue, gene, snp_list, positions, raiseErrors=True)
             data.update(gtex_data)
             # Obtain any genes to be plotted in the region:
+            print('Summarizing genes to be plotted in this region')
             genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
                                                     ( ((collapsed_genes_df['txStart'] >= startbp) & (collapsed_genes_df['txStart'] <= endbp)) | 
                                                         ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) ) ]
@@ -355,7 +387,40 @@ def upload_file():
             genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
             genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile) 
             json.dump(genes_data, open(genes_sessionfilepath, 'w'))
-            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile)
+
+            # Getting Simple Sum P-values
+            # 1. Determine the region to calculate the SS:
+            one_sided_window_size = 100000 # (100 kb on either side of the lead SNP)
+            SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_window_size
+            SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_window_size
+            # 2. Subset the region:
+            SS_gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
+            if SS_gwas_data.shape[0] == 0: InvalidUsage('No data found for entered Simple Sum region', status_code=410)
+            PvaluesMat = [list(SS_gwas_data[pcol])]
+            SS_snp_list = list(SS_gwas_data[snpcol])
+            SS_snp_list = [asnp.split(';')[0] for asnp in SS_snp_list] # cleaning up the SNP names a bit
+            SS_positions = list(SS_gwas_data[poscol])
+            # 3. Determine the genes to query
+            query_genes = list(genes_to_draw['name'])
+            # 4. Query all tissues x genes to GTEx (via Ensembl API) and get the eQTL p-values
+            for tissue in gtex_tissues:
+                for gene in query_genes:
+                    PvaluesMat.append(get_gtex_data_pvalues(get_gtex_data(tissue, gene, SS_snp_list, SS_positions), SS_snp_list))
+            # 5. Given the desired LD population, make "keep" file for PLINK
+            # 6. Get the LD matrix via PLINK subprocess call:
+            plink_filename = f'session_data/ld-{my_session_id}'
+            plink_filepath = os.path.join(MYDIR, 'static', plink_filename)            
+
+            # 7. Read in resulting bim file and further shrink the SS p-values to include only the SNPs available in the LD matrix:
+
+            # 8. Write the p-values into session_data
+            Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
+            Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
+            writeMat(PvaluesMat, Pvalues_filepath)
+            Rscript_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
+            SSPvalues = subprocess.call()
+
+            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, pvaluesfile = SSPvalues_file)
         return render_template("invalid_input.html")
     return render_template("index.html")
 
