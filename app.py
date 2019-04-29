@@ -412,6 +412,7 @@ def upload_file():
             plink_filepath = os.path.join(MYDIR, 'static', plink_filename)            
 
             # 7. Read in resulting bim file and further shrink the SS p-values to include only the SNPs available in the LD matrix:
+            # plink --bfile chr1 --chr 1 --from-bp {SS_start} --to-bp {SS_end} --r2 square --make-bed --out ld_mat-{my_session_id}
 
             # 8. Write the p-values into session_data
             Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'

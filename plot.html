@@ -55,10 +55,12 @@
   <script type="text/javascript">
     d3.json("static/session_data/form_data-02c1b102-6043-4e9b-94bc-49c0c8fa8a95.json").then(response => {
         d3.json("static/session_data/genes_data-02c1b102-6043-4e9b-94bc-49c0c8fa8a95.json").then(genesResponse => {
-            var data = response;
-            var genesdata = genesResponse;
-            // console.log(data);
-            plot_gwas(data, genesdata)
+            d3.json("static/session_data/pvaluesfile").then(pvaluesResponse => {
+                var data = response;
+                var genesdata = genesResponse;
+                // console.log(data);
+                plot_gwas(data, genesdata)
+            });
         });
     });
   </script>
