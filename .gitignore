@@ -112,3 +112,4 @@ initdb.py
 .vscode/
 data/snp151.gz
 GWAS-QTL-app/
+*bed
