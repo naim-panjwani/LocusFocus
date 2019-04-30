@@ -63,10 +63,10 @@
             // d3.json("{{ url_for('static', filename=SSPvalues) }}").then(pvaluesResponse => {
                 var data = response;
                 var genesdata = genesResponse;
-                var pvaluedata = SSPvalues;
+                // var pvaluedata = SSPvalues;
                 // console.log(data);
                 plot_gwas(data, genesdata)
-                plot_heatmap(data, genesdata, pvaluedata)
+                // plot_heatmap(data, genesdata, pvaluedata)
             // });
         });
     });

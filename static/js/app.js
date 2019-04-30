@@ -78,6 +78,12 @@ d3.json('/genenames').then(response => {
         //         }
         //     });
             
+            $('#LD-populations').multiselect({
+                buttonWidth: '200px',
+                checkboxName: function(option) {
+                    return 'multiselect[]';
+                }
+            });
             $('#GTEx-tissues').multiselect({
                 enableFiltering: true,
                 includeSelectAllOption: true,

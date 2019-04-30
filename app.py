@@ -377,15 +377,18 @@ def upload_file():
                 file.save(filepath)
             else:
                 raise InvalidUsage('GWAS summary statistics file type not allowed', status_code=410)
-            ldmat_file = request.files['ldmat']
-            # read the filename
-            if ldmat_file and allowed_file(ldmat_file.filename):
-                ldmat_filename = secure_filename(ldmat_file.filename) # more secure
-                # create a path to the uploads folder
-                ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], ldmat_filename)
-                file.save(ldmat_filepath)
-            else:
-                raise InvalidUsage('LD matrix file type not allowed', status_code=410)
+            try:
+                ldmat_file = request.files['ldmat']
+                # read the filename
+                if ldmat_file and allowed_file(ldmat_file.filename):
+                    ldmat_filename = secure_filename(ldmat_file.filename) # more secure
+                    # create a path to the uploads folder
+                    ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], ldmat_filename)
+                    file.save(ldmat_filepath)
+                else:
+                    raise InvalidUsage('LD matrix file type not allowed', status_code=410)
+            except:
+                pass
             # Load
             my_session_id = uuid.uuid4()
             print('Loading file')
