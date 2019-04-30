@@ -15,13 +15,20 @@ p <- arg_parser("Calculate Simple Sum Statistic")
 p <- add_argument(p, "P_values_filename", help = paste0("Filename with GWAS and eQTL p-values - for a set of SNPs, each value tab-separated'\n'"
                                                         ,"with 1st line being the GWAS p-values'\n'"
                                                         ,"and each subsequent line is for eQTL p-values for each tissue/gene combination"))
-p <- add_argument(p, "ld_matrix_filename", help = paste0("the LD matrix filename for the set of SNPs input;'\n'"
+p <- add_argument(p, "ld_matrix_filename", help = paste0("The LD matrix filename for the set of SNPs input;'\n'"
                                                          ,"the values per row must be tab-separated; no header"))
 argv <- parse_args(p)
 
-P_gwas <- fread(argv$P_gwas_filename, header=F, stringsAsFactors=F)
-P_gwas <- as.numeric(argv$P_gwas)
-P_eqtl <- as.numeric(arg$P_eqtl)
+Pmat <- fread(argv$P_values_filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
+ldmat <- fread(argv$ld_matrix_filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
+#filename = "C:\\Users\\Naim\\Desktop\\SCS_Data_Analytics\\homework\\24-Final_project\\GWAS-QTL-Explore\\static/session_data/Pvalues-10bfbeb9-24b7-45e9-8766-4169954d4071.txt"
+#Pmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
+#filename = "C:\\Users\\Naim\\Desktop\\SCS_Data_Analytics\\homework\\24-Final_project\\GWAS-QTL-Explore\\static/session_data/ldmat-10bfbeb9-24b7-45e9-8766-4169954d4071.txt"
+#ldmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
+Pmat <- as.matrix(Pmat)
+P_gwas <- Pmat[1,]
+P_eqtl <- Pmat[2:nrow(Pmat),]
+ldmat <- as.matrix(ldmat)
 
 
 get_eqtl_evid<-function(P,cut,m){
@@ -129,6 +136,14 @@ get_simplesumP<-function(P_gwas,P_eqtl,ld.mat,cut,m){
 # MAIN
 ############
 
-stopifnot(length(P_gwas) == length(P_eqtl))
-m <- length(P_gwas)
+Pss <- NULL
+for(i in 1:nrow(P_eqtl)) {
+  tempmat <- cbind(P_gwas, P_eqtl[i,])
+  NArows = which(is.na(tempmat[,1]) | is.na(tempmat[,2]))
+  tempmat = tempmat[-NArows,]
+  m <- nrow(tempmat)
+  P = get_simplesumP(P_gwas=as.numeric(tempmat[,1]), P_eqtl=as.numeric(tempmat[,2]), ldmat[-NArows, -NArows], 0, m)
+  Pss = c(Pss, P)
+}
 
+write(Pss, stdout())

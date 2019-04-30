@@ -29,32 +29,32 @@ d3.json('/genenames').then(response => {
   
 
 
-d3.json('/populations').then(response => {
-    var pops = response;
-    // console.log(pops);
+// d3.json('/populations').then(response => {
+//     var pops = response;
+//     // console.log(pops);
     d3.json(gtexurl).then(response => {
         // var gtex_tissues = response.tissueSummary; // this code specific to gtexportal.org
         var gtex_tissues = [];
         Object.keys(response).forEach(k => gtex_tissues.push(k));
 
-        // Build populations multiselect dropdown
-        for(var i = 0; i < pops['Population Code'].length; i++) {
-            var superpop = pops['Super Population Code'][i];
-            var superpopSelect = d3.select("#" + superpop);
-            if(superpop === "EUR") {
-                superpopSelect
-                    .append("option")
-                    .attr('value', pops['Population Code'][i])
-                    .attr('selected','selected')
-                    .text("(" + pops['Population Code'][i] + ") " + pops['Population Description'][i]);                
-            }
-            else {
-                superpopSelect
-                    .append("option")
-                    .attr('value', pops['Population Code'][i])
-                    .text("(" + pops['Population Code'][i] + ") " + pops['Population Description'][i]);
-            }
-        }
+        // // Build populations multiselect dropdown
+        // for(var i = 0; i < pops['Population Code'].length; i++) {
+        //     var superpop = pops['Super Population Code'][i];
+        //     var superpopSelect = d3.select("#" + superpop);
+        //     if(superpop === "EUR") {
+        //         superpopSelect
+        //             .append("option")
+        //             .attr('value', pops['Population Code'][i])
+        //             .attr('selected','selected')
+        //             .text("(" + pops['Population Code'][i] + ") " + pops['Population Description'][i]);                
+        //     }
+        //     else {
+        //         superpopSelect
+        //             .append("option")
+        //             .attr('value', pops['Population Code'][i])
+        //             .text("(" + pops['Population Code'][i] + ") " + pops['Population Description'][i]);
+        //     }
+        // }
 
         // Build GTEx tissues multiselect dropdown
         var gtexdiv = d3.select("#GTEx-tissues");
@@ -69,14 +69,14 @@ d3.json('/populations').then(response => {
 
         // Multi-Select Initialization
         $(document).ready(function() {
-            $('#LD-populations').multiselect({
-                enableClickableOptGroups: true,
-                maxHeight: 400,
-                buttonWidth: '400px',
-                checkboxName: function(option) {
-                    return 'multiselect[]';
-                }
-            });
+        //     $('#LD-populations').multiselect({
+        //         enableClickableOptGroups: true,
+        //         maxHeight: 400,
+        //         buttonWidth: '400px',
+        //         checkboxName: function(option) {
+        //             return 'multiselect[]';
+        //         }
+        //     });
             
             $('#GTEx-tissues').multiselect({
                 enableFiltering: true,
@@ -96,4 +96,4 @@ d3.json('/populations').then(response => {
             });
         });
     });
-});
+// });

@@ -60,14 +60,14 @@
     // console.log(genesfile);
     d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
         d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
-            d3.json("{{ url_for('static', filename=pvaluesfile) }}").then(pvaluesResponse => {
+            // d3.json("{{ url_for('static', filename=SSPvalues) }}").then(pvaluesResponse => {
                 var data = response;
                 var genesdata = genesResponse;
-                var pvaluedata = pvaluesResponse;
+                var pvaluedata = SSPvalues;
                 // console.log(data);
                 plot_gwas(data, genesdata)
                 plot_heatmap(data, genesdata, pvaluedata)
-            });
+            // });
         });
     });
   </script>

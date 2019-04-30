@@ -84,17 +84,19 @@
         <div class="row">
           <div class="col-md-12 borderit">
             <h5>Select Populations for LD:</h5>
-            <select id="LD-populations" name="LD-populations" multiple="multiple">
-              <optgroup id="AFR" value="AFR" label="(AFR) African"></optgroup>
-              <optgroup id="AMR" value="AMR" label="(AMR) Ad Mixed American"></optgroup>
-              <optgroup id="EAS" value="EAS" label="(EAS) East Asian"></optgroup>
-              <optgroup id="EUR" value="EUR" label="(EUR) European"></optgroup>
-              <optgroup id="SAS" value="SAS" label="(SAS) South Asian"></optgroup>
+            <select id="LD-populations" name="LD-populations">
+              <option id="AFR" value="AFR" label="(AFR) African"></option>
+              <option id="AMR" value="AMR" label="(AMR) Ad Mixed American"></option>
+              <option id="EAS" value="EAS" label="(EAS) East Asian"></option>
+              <option id="EUR" value="EUR" label="(EUR) European" selected="selected"></option>
+              <option id="SAS" value="SAS" label="(SAS) South Asian"></option>
             </select>
+            <!--
             <select id="ld-type" name="ld-type">
               <option id="r2" value="r2">r<sup>2</sup></option>
               <option id="D-prime" value="d">D'</option>
             </select>
+            -->
           </div>
         </div> <!-- row closing div -->
         <div class="row">
