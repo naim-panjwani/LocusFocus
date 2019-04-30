@@ -3,7 +3,7 @@ This app is to enable exploration of GWAS results and assessment of what gene an
 
 LD information is calculated using PLINK on the 1000 Genomes Project to enable viewing of LD given a lead SNP. The default lead SNP is the top SNP.
 
-eQTL association results are obtained from [GTEx's API](https://gtexportal.org/home/api-docs/; http://www.ensembl.info/2016/08/15/gtex-eqtl-data-now-in-ensembl/). 
+eQTL association results are obtained from [GTEx's API](http://www.ensembl.info/2016/08/15/gtex-eqtl-data-now-in-ensembl/). 
 
 You may upload your GWAS results (file size limit of 500 KB) to the app, and specify the region of interest (up to 2MB). You may also provide a custom region to apply the Simple Sum calculation to (default is 100kb from the lead SNP).
 
