@@ -37,7 +37,7 @@ with open('tokens.txt') as f:
     token = f.read().replace('\n','')
 
 collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
-
+ld_mat_diag_constant = 1e-6
 
 ####################################
 # Helper functions
@@ -491,43 +491,47 @@ def upload_file():
 
             # # Getting Simple Sum P-values
             # # 1. Determine the region to calculate the SS:
-            # one_sided_window_size = 100000 # (100 kb on either side of the lead SNP)
-            # SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_window_size
-            # SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_window_size
-            # # 2. Subset the region:
-            # SS_gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
-            # if SS_gwas_data.shape[0] == 0: InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
-            # PvaluesMat = [list(SS_gwas_data[pcol])]
-            # SS_snp_list = list(SS_gwas_data[snpcol])
-            # SS_snp_list = [asnp.split(';')[0] for asnp in SS_snp_list] # cleaning up the SNP names a bit
-            # SS_positions = list(SS_gwas_data[poscol])
-            # # 3. Determine the genes to query
-            # query_genes = list(genes_to_draw['name'])
-            # # 4. Query and extract the eQTL p-values for all tissues x genes from GTEx (via Ensembl API)
-            # for tissue in gtex_tissues:
-            #     for gene in query_genes:
-            #         PvaluesMat.append(get_gtex_data_pvalues(get_gtex_data(tissue, gene, SS_snp_list, SS_positions), SS_snp_list))
-            # # 5. Get the LD matrix via PLINK subprocess call:
-            # plink_outfilename = f'session_data/ld-{my_session_id}'
-            # plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
-            # ld_mat_snps, ld_mat = plink_ldmat(pops, chrom, SS_positions, plink_outfilepath)
-            # ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
-            # # 6. Shrink the SS p-values to include only the SNPs available in the LD matrix:
-            # PvaluesMat = np.matrix(PvaluesMat)
-            # Pmat_indices = [i for i, e in enumerate(SS_positions) if e in ld_mat_positions]
-            # PvaluesMat = PvaluesMat[:, Pmat_indices]
-            # # 7. Write the p-values and LD matrix into session_data
-            # Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
-            # ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
-            # Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
-            # ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
-            # writeMat(PvaluesMat, Pvalues_filepath)
-            # writeMat(ld_mat, ldmatrix_filepath)
-            # Rscript_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
-            # SSPvalues = subprocess.run(["Rscript", Rscript_path, Pvalues_filepath, ldmatrix_filepath])
-            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile
-            # , SSPvalues = SSPvalues
-            )
+            one_sided_window_size = 100000 # (100 kb on either side of the lead SNP)
+            SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_window_size
+            SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_window_size
+            # 2. Subset the region:
+            SS_gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
+            if SS_gwas_data.shape[0] == 0: InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
+            PvaluesMat = [list(SS_gwas_data[pcol])]
+            SS_snp_list = list(SS_gwas_data[snpcol])
+            SS_snp_list = [asnp.split(';')[0] for asnp in SS_snp_list] # cleaning up the SNP names a bit
+            SS_positions = list(SS_gwas_data[poscol])
+            # 3. Determine the genes to query
+            query_genes = list(genes_to_draw['name'])
+            # 4. Query and extract the eQTL p-values for all tissues x genes from GTEx (via Ensembl API)
+            for tissue in gtex_tissues:
+                for gene in query_genes:
+                    PvaluesMat.append(get_gtex_data_pvalues(get_gtex_data(tissue, gene, SS_snp_list, SS_positions), SS_snp_list))
+            # 5. Get the LD matrix via PLINK subprocess call:
+            plink_outfilename = f'session_data/ld-{my_session_id}'
+            plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
+            ld_mat_snps, ld_mat = plink_ldmat(pops, chrom, SS_positions, plink_outfilepath)
+            ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
+            np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
+            # 6. Shrink the SS p-values to include only the SNPs available in the LD matrix:
+            PvaluesMat = np.matrix(PvaluesMat)
+            Pmat_indices = [i for i, e in enumerate(SS_positions) if e in ld_mat_positions]
+            PvaluesMat = PvaluesMat[:, Pmat_indices]
+            # 7. Write the p-values and LD matrix into session_data
+            Pvalues_file = f'session_data/Pvalues-{my_session_id}.txt'
+            ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
+            Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
+            ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
+            writeMat(PvaluesMat, Pvalues_filepath)
+            writeMat(ld_mat, ldmatrix_filepath)            
+            Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
+            SSPvalues = subprocess.run(args=["Rscript", Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], shell=True, stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n',' ').split(' ')
+            SSPvalues = [SSP for SSP in SSPvalues if SSP!='']
+            SSPvalues_dict = {'SSPvalues': SSPvalues}
+            SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
+            SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
+            json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
+            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file)
         return render_template("invalid_input.html")
     return render_template("index.html")
 

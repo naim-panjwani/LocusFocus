@@ -22,19 +22,75 @@ chroms = pd.read_csv('data/hg19_chrom_lengths.txt', sep="\t", encoding='utf-8')
 # chroms.to_csv('data/hg19_chrom_lengths.txt', index=False, encoding='utf-8', sep="\t")
 
 gwas_data = pd.read_csv('data/MI_GWAS_2019_1_205500-206000kbp.tsv', sep="\t")
-#gwas_data = gwas_data[['SNP','P']]
-gwas_data.dropna(inplace=True)
-gwas_data.head()
+chromcol='#CHROM'
+poscol='BP'
 snpcol='SNP'
 pcol='P'
+regiontext = "1:205500000-206000000"
 lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
-snp_list = list(gwas_data[snpcol])
-positions = list(gwas_data['BP'])
 collapsed_genes_df = pd.read_csv('data/collapsed_gencode_v19_hg19.gz', compression='gzip', sep='\t', encoding='utf-8')
 gene='ENSG00000174502'
 chrom=1
 startbp=205500000
 endbp=206000000
+gtex_tissues = ['Pancreas']
+tissue = gtex_tissues[0]
+gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
+pops = 'EUR'
+gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
+gwas_data.dropna(inplace=True)
+snp_list = list(gwas_data[snpcol])
+snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+positions = list(gwas_data[poscol])
+
+ld_df = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
+data = {}
+data['snps'] = snp_list
+data['pvalues'] = list(gwas_data[pcol])
+data['lead_snp'] = lead_snp
+data['ld_values'] = list(ld_df['R2'])
+data['positions'] = positions
+data['chrom'] = chrom
+data['startbp'] = startbp
+data['endbp'] = endbp
+data['ld_populations'] = pops
+data['gtex_tissues'] = gtex_tissues
+# Get GTEx data for the tissues and SNPs selected:
+print('Gathering GTEx data')
+gtex_data = {}
+for tissue in tqdm(gtex_tissues):
+    gtex_data[tissue] = get_gtex_data(tissue, gene, snp_list, positions, raiseErrors=True)
+data.update(gtex_data)
+# Obtain any genes to be plotted in the region:
+print('Summarizing genes to be plotted in this region')
+genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
+                                        ( ((collapsed_genes_df['txStart'] >= startbp) & (collapsed_genes_df['txStart'] <= endbp)) | 
+                                            ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) ) ]
+genes_data = []
+for i in np.arange(genes_to_draw.shape[0]):
+    genes_data.append({
+        'name': list(genes_to_draw['name'])[i]
+        ,'txStart': list(genes_to_draw['txStart'])[i]
+        ,'txEnd': list(genes_to_draw['txEnd'])[i]
+        ,'exonStarts': [int(bp) for bp in list(genes_to_draw['exonStarts'])[i].split(',')]
+        ,'exonEnds': [int(bp) for bp in list(genes_to_draw['exonEnds'])[i].split(',')]
+    })
+
+# Indicate that the request was a success
+data['success'] = True
+print('Loading a success')
+
+# Save data in JSON format for plotting
+sessionfile = f'session_data/form_data-{my_session_id}.json'
+sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
+json.dump(data, open(sessionfilepath, 'w'))
+genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
+genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile) 
+json.dump(genes_data, open(genes_sessionfilepath, 'w'))
+
+
+
+
 
 
 engine = sa.create_engine('mysql://root:root@localhost:3306/snp151')

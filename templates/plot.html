@@ -55,19 +55,22 @@
   <script type="text/javascript">
     var thefile="{{ sessionfile }}";
     var genesfile="{{ genesfile }}";
-    var pvaluesfile="{{ pvaluesfile }}"
+    var SSPvalues_file="{{ SSPvalues_file }}";
     // console.log(thefile);
     // console.log(genesfile);
+    // console.log(SSPvalues_file);
     d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
         d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
-            // d3.json("{{ url_for('static', filename=SSPvalues) }}").then(pvaluesResponse => {
+            d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(pvaluesResponse => {
+                // console.log(pvaluesResponse);
                 var data = response;
                 var genesdata = genesResponse;
-                // var pvaluedata = SSPvalues;
+                var SSPvalues = pvaluesResponse.SSPvalues;
                 // console.log(data);
-                plot_gwas(data, genesdata)
-                // plot_heatmap(data, genesdata, pvaluedata)
-            // });
+                // console.log(SSPvalues);
+                plot_gwas(data, genesdata);
+                plot_heatmap(data, genesdata, SSPvalues);
+            });
         });
     });
   </script>
