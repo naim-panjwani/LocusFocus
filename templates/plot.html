@@ -61,15 +61,12 @@
     // console.log(SSPvalues_file);
     d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
         d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
-            d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(pvaluesResponse => {
+            d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(SSResponse => {
                 // console.log(pvaluesResponse);
                 var data = response;
                 var genesdata = genesResponse;
-                var SSPvalues = pvaluesResponse.SSPvalues;
-                // console.log(data);
-                // console.log(SSPvalues);
                 plot_gwas(data, genesdata);
-                plot_heatmap(data, genesdata, SSPvalues);
+                plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
             });
         });
     });

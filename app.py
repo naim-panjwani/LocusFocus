@@ -23,6 +23,7 @@ pymysql.install_as_MySQLdb()
 #thepwd = open('pwd.txt').readline().replace('\n', '')
 
 genomicWindowLimit = 2000000
+one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
 fileSizeLimit = 500 # in KB
 
 MYDIR = os.path.dirname(__file__)
@@ -86,7 +87,6 @@ def writeMat(aMat, filename):
             f.write("%s\n" % str(aMat[row,-1]))
 
 ####################################
-
 # LD Querying from ldlink.nci.nih.gov
 ####################################
 
@@ -365,6 +365,7 @@ def getGeneNames():
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     data = {"success": False}
+    ldmat_file_supplied = False
     if request.method == 'POST':
         if request.files.get('file'):
             # read the file
@@ -385,6 +386,7 @@ def upload_file():
                     # create a path to the uploads folder
                     ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], ldmat_filename)
                     file.save(ldmat_filepath)
+                    ldmat_file_supplied = True
                 else:
                     raise InvalidUsage('LD matrix file type not allowed', status_code=410)
             except:
@@ -395,20 +397,34 @@ def upload_file():
             gwas_data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
             chromcol = request.form['chrom-col']
             if chromcol=='': chromcol='#CHROM'
+            if chromcol not in gwas_data.columns:
+                raise InvalidUsage('Chromosome column not found')
             poscol = request.form['pos-col']
             if poscol=='': poscol='BP'
+            if poscol not in gwas_data.columns:
+                raise InvalidUsage('Basepair position column not found')
             snpcol = request.form['snp-col']
             if snpcol=='': snpcol='SNP'
+            if snpcol not in gwas_data.columns:
+                raise InvalidUsage('SNP column not found')
             pcol = request.form['pval-col']
             if pcol=='': pcol='P'
+            if poscol not in gwas_data.columns:
+                raise InvalidUsage('Basepair position column not found')
             lead_snp = request.form['leadsnp']
-            if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][snpcol])[0]
+            snp_list = list(gwas_data[snpcol])
+            snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+            if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][snpcol])[0].split(';')[0]
+            if lead_snp not in snp_list:
+                raise InvalidUsage('Lead SNP not found')
             lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0]
             regiontext = request.form['locus']
             print('regiontext',regiontext)
             if regiontext == "": regiontext = "1:205500000-206000000"
             print('Parsing region text')
             chrom, startbp, endbp = parseRegionText(regiontext)
+            if (endbp - startbp) > genomicWindowLimit:
+                raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit} bp')
             print(chrom,startbp,endbp)
             print('Subsetting GWAS data to entered region')
             gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
@@ -434,10 +450,10 @@ def upload_file():
             # Omit any rows with missing values:
             gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
             gwas_data.dropna(inplace=True)
-            # Get LD via API queries to LDlink:
-            print('Calculating pairwise LD using PLINK')
             snp_list = list(gwas_data[snpcol])
             snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+            # Get LD via API queries to LDlink:
+            print('Calculating pairwise LD using PLINK')
             positions = list(gwas_data[poscol])
             #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
             ld_df = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
@@ -491,9 +507,8 @@ def upload_file():
 
             # # Getting Simple Sum P-values
             # # 1. Determine the region to calculate the SS:
-            one_sided_window_size = 100000 # (100 kb on either side of the lead SNP)
-            SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_window_size
-            SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_window_size
+            SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
+            SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
             # 2. Subset the region:
             SS_gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
             if SS_gwas_data.shape[0] == 0: InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
@@ -510,10 +525,15 @@ def upload_file():
             # 5. Get the LD matrix via PLINK subprocess call:
             plink_outfilename = f'session_data/ld-{my_session_id}'
             plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
-            ld_mat_snps, ld_mat = plink_ldmat(pops, chrom, SS_positions, plink_outfilepath)
-            ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
+            if ldmat_file_supplied:
+                ld_mat_snps = [f'chr{chrom}:{SS_pos}' for SS_pos in SS_positions]
+                ld_mat = np.matrix(pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None))
+                ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
+            else:
+                ld_mat_snps, ld_mat = plink_ldmat(pops, chrom, SS_positions, plink_outfilepath)
+                ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
             np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
-            # 6. Shrink the SS p-values to include only the SNPs available in the LD matrix:
+            # 6. Shrink the P-values matrix to include only the SNPs available in the LD matrix:
             PvaluesMat = np.matrix(PvaluesMat)
             Pmat_indices = [i for i, e in enumerate(SS_positions) if e in ld_mat_positions]
             PvaluesMat = PvaluesMat[:, Pmat_indices]
@@ -526,8 +546,16 @@ def upload_file():
             writeMat(ld_mat, ldmatrix_filepath)            
             Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
             SSPvalues = subprocess.run(args=["Rscript", Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], shell=True, stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n',' ').split(' ')
-            SSPvalues = [SSP for SSP in SSPvalues if SSP!='']
-            SSPvalues_dict = {'SSPvalues': SSPvalues}
+            SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
+            for i in np.arange(len(SSPvalues)):
+                if SSPvalues[i] != -1:
+                    SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
+            SSPvaluesMat = np.array(SSPvalues).reshape(len(gtex_tissues), len(query_genes))
+            SSPvalues_dict = {
+                'Genes': query_genes
+                ,'Tissues': gtex_tissues
+                ,'SSPvalues': SSPvaluesMat.tolist()
+            }
             SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
             json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))

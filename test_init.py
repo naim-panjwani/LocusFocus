@@ -284,7 +284,7 @@ lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) 
 collapsed_genes_df = pd.read_csv('data/collapsed_gencode_v19_hg19.gz', compression='gzip', sep='\t', encoding='utf-8')
 gene='ENSG00000174502'
 chrom, startbp, endbp = parseRegionText(regiontext)
-gtex_tissues = ['Pancreas']
+gtex_tissues = ['Pancreas', 'Lung', 'Stomach']
 tissue = gtex_tissues[0]
 gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
 pops = 'EUR'
@@ -357,8 +357,12 @@ SS_positions = list(SS_gwas_data[poscol])
 # 3. Determine the genes to query
 query_genes = list(genes_to_draw['name'])
 # 4. Query and extract the eQTL p-values for all tissues x genes from GTEx (via Ensembl API)
+queried_tissues = []
+queried_genes = []
 for tissue in gtex_tissues:
+    queried_tissues.append(tissue)
     for gene in query_genes:
+        queried_genes.append(gene)
         PvaluesMat.append(get_gtex_data_pvalues(get_gtex_data(tissue, gene, SS_snp_list, SS_positions), SS_snp_list))
 # 5. Get the LD matrix via PLINK subprocess call:
 plink_outfilename = f'session_data/ld-{my_session_id}'
@@ -379,6 +383,17 @@ writeMat(PvaluesMat, Pvalues_filepath)
 writeMat(ld_mat, ldmatrix_filepath)            
 Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
 SSPvalues = subprocess.run(args=["Rscript", Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], shell=True, stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n',' ').split(' ')
-
-
+SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
+for i in np.arange(len(SSPvalues)):
+    if SSPvalues[i] != -1:
+        SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
+SSPvaluesMat = np.matrix(SSPvalues).reshape(len(gtex_tissues), len(query_genes))
+SSPvalues_dict = {
+    'Genes': query_genes
+    ,'Tissues': gtex_tissues
+    ,'SSPvalues': SSPvaluesMat.tolist()
+}
+SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
+SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
+json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
 
