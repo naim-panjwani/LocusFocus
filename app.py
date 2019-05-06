@@ -33,9 +33,9 @@ app.config['UPLOAD_FOLDER'] = 'static/upload'
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit * 1024
 ALLOWED_EXTENSIONS = set(['txt', 'tsv'])
 
-token = ""
-with open('tokens.txt') as f:
-    token = f.read().replace('\n','')
+# token = ""
+# with open('tokens.txt') as f:
+#     token = f.read().replace('\n','')
 
 collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
 ld_mat_diag_constant = 1e-6
