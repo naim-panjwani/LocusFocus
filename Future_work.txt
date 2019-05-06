@@ -1,4 +1,4 @@
-- Test d-prime
+- Generate updated 1KG Phase 3 binary PLINK files for LD calculations (currently only have chr1 2012 1KG file)
 - Ensure coordinate range entered is within reasonable limits
 - Inform why not all tissues selected appear in the end
 - Draw the genes
