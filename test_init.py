@@ -126,6 +126,7 @@ def plink_ldmat(pop, chrom, snp_positions, outfilename):
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
     return ld_snps, ldmat
 
+
 def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename):
     # positions must be in hg19 coordinates
     # returns NaN for SNPs not in 1KG LD file; preserves order of input snp_positions
@@ -144,30 +145,29 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     # make snps file to extract:
     snps = [f"chr{chrom}:{position}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
-    plinkrun = subprocess.run(args=[
-        'plink', '--bfile', plink_filepath
-        , "--chr", str(chrom)
-        , "--extract", outfilename + "_snps.txt"
-        , "--from-bp", str(min(snp_positions))
-        , "--to-bp", str(max(snp_positions))
-        , "--ld-snp", f"chr{chrom}:{lead_snp_position}"
-        , "--r2"
-        , "--ld-window-r2", "0"
-        , "--ld-window", "999999"
-        , "--ld-window-kb", "200000"
-        , "--make-bed"
-        , "--threads", "1"
-        , "--out", outfilename
-        ], stdout=subprocess.PIPE)
+    plinkrun = subprocess.run(args=['plink', '--bfile', plink_filepath,
+        "--chr", str(chrom),
+        "--extract", outfilename + "_snps.txt",
+        "--from-bp", str(min(snp_positions)),
+        "--to-bp", str(max(snp_positions)),
+        "--ld-snp", f"chr{chrom}:{lead_snp_position}",
+        "--r2",
+        "--ld-window-r2", "0",
+        "--ld-window", "999999",
+        "--ld-window-kb", "200000",
+        "--make-bed",
+        "--threads", "1",
+        "--out", outfilename],
+        stdout = subprocess.PIPE)
     if plinkrun.returncode != 0:
         raise RuntimeError(plinkrun.stdout.decode('utf-8'))
     ld_results = pd.read_csv(outfilename + ".ld", delim_whitespace=True)
-    available_r2_positions = ld_results[['BP_B', 'R2']]
-    pos_df = pd.DataFrame({'pos': snp_positions})
-    merged_df = pd.merge(pos_df, available_r2_positions, how='left', left_on="pos", right_on="BP_B", sort=False)[['pos', 'R2']]
+    available_r2_positions = ld_results[[ 'BP_B', 'R2' ]]
+    pos_df = pd.DataFrame({ 'pos' : snp_positions })
+    merged_df = pd.merge(pos_df, available_r2_positions, how='left', left_on="pos", right_on="BP_B", sort=False)
+    merged_df = merged_df[[ 'pos', 'R2' ]]
     merged_df.fillna(-1, inplace=True)
     return merged_df
-
 
 
 def get_gtex_data(tissue, gene, snp_list, positions, raiseErrors = False):
@@ -380,9 +380,9 @@ ldmatrix_file = f'session_data/ldmat-{my_session_id}.txt'
 Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
 ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
 writeMat(PvaluesMat, Pvalues_filepath)
-writeMat(ld_mat, ldmatrix_filepath)            
+writeMat(ld_mat, ldmatrix_filepath)
 Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
-SSPvalues = subprocess.run(args=["Rscript", Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], shell=True, stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n',' ').split(' ')
+SSPvalues = subprocess.run(args=["/usr/local/bin/Rscript", Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n',' ').split(' ')
 SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
 for i in np.arange(len(SSPvalues)):
     if SSPvalues[i] != -1:
