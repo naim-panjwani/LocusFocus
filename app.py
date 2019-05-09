@@ -46,8 +46,8 @@ ld_mat_diag_constant = 1e-6
 def parseRegionText(regiontext):
     chrom = regiontext.split(':')[0].replace('chr','')
     pos = regiontext.split(':')[1]
-    startbp = pos.split('-')[0]
-    endbp = pos.split('-')[1]
+    startbp = pos.split('-')[0].replace(',','')
+    endbp = pos.split('-')[1].replace(',','')
     chromLengths = pd.read_csv(os.path.join(MYDIR, 'data/hg19_chrom_lengths.txt'), sep="\t", encoding='utf-8')
     chromLengths.set_index('sequence',inplace=True)
     if chrom == 'X':
@@ -426,9 +426,10 @@ def upload_file():
             if (endbp - startbp) > genomicWindowLimit:
                 raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit} bp')
             print(chrom,startbp,endbp)
-            print('Subsetting GWAS data to entered region')
+            print('Subsetting GWAS data to entered region')            
             gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
-            if gwas_data.shape[0] == 0: InvalidUsage('No data found for entered region', status_code=410)
+            if gwas_data.shape[0] == 0: raise InvalidUsage('No data found for entered region', status_code=410)
+            gwas_data.sort_values(by=[ poscol ], inplace=True)
             #pops = request.form.getlist('LD-populations')
             #if len(pops) == 0: pops = ['CEU','TSI','FIN','GBR','IBS']
             pops = request.form['LD-populations']
@@ -482,7 +483,8 @@ def upload_file():
             print('Summarizing genes to be plotted in this region')
             genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
                                                     ( ((collapsed_genes_df['txStart'] >= startbp) & (collapsed_genes_df['txStart'] <= endbp)) | 
-                                                        ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) ) ]
+                                                      ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) | 
+                                                      ((collapsed_genes_df['txStart'] <= startbp) & (collapsed_genes_df['txEnd'] >= endbp  )) )]
             genes_data = []
             for i in np.arange(genes_to_draw.shape[0]):
                 genes_data.append({

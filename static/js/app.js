@@ -79,7 +79,7 @@ d3.json('/genenames').then(response => {
         //     });
             
             $('#LD-populations').multiselect({
-                buttonWidth: '200px',
+                buttonWidth: '400px',
                 checkboxName: function(option) {
                     return 'multiselect[]';
                 }

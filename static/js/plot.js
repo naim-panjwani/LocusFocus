@@ -29,6 +29,7 @@ function plot_gwas(data, genesdata) {
     var extra_x_range = 0.05 * regionsize;
     var extra_y_range = 0.05 * log10pvalue_range;
     var eqtl_smoothing_window_size = (regionsize/100000) * 15;
+    // console.log(eqtl_smoothing_window_size)
 
     // Helper functions:
     function smoothing(x,y,xrange,window_size) {
@@ -42,22 +43,31 @@ function plot_gwas(data, genesdata) {
         if(v>=curr && v<=(curr+windowing)) indices.push(i);
       });
 
-      while(curr < d3.min([xrange[1],x[x.length-1]]) && indices.length>0) {
-        yAtIndices = indices.map(i => y[i]);
-        xAtIndices = indices.map(i => x[i]);
-        ymaxAtIndices = d3.max(yAtIndices);
-        if(ymaxAtIndices === -1 || ymaxAtIndices < 0) ymaxAtIndices=0;
-        desiredXindex = [];
-        indices.map(i => {
-          if(y[i] === ymaxAtIndices) desiredXindex.push(i);
-        });
-        smooth_curve_x.push(x[desiredXindex[0]]);
-        smooth_curve_y.push(ymaxAtIndices);
-        curr = curr + windowing + 1;
-        indices = [];
-        x.map((v,i) => {
-          if(v>=curr && v<=(curr+windowing)) indices.push(i);
-        });
+      while(curr < d3.min([xrange[1],x[x.length-1]])) {
+        if(indices.length > 0) {
+          yAtIndices = indices.map(i => y[i]);
+          xAtIndices = indices.map(i => x[i]);
+          ymaxAtIndices = d3.max(yAtIndices);
+          if(ymaxAtIndices === -1 || ymaxAtIndices < 0) ymaxAtIndices=0;
+          desiredXindex = [];
+          indices.map(i => {
+            if(y[i] === ymaxAtIndices) desiredXindex.push(i);
+          });
+          smooth_curve_x.push(x[desiredXindex[0]]);
+          smooth_curve_y.push(ymaxAtIndices);
+          curr = curr + windowing + 1;
+          indices = [];
+          x.map((v,i) => {
+            if(v>=curr && v<=(curr+windowing)) indices.push(i);
+          });
+        }
+        else {
+          curr = curr + windowing + 1;
+          indices = [];
+          x.map((v,i) => {
+            if(v>=curr && v<=(curr+windowing)) indices.push(i);
+          });
+        }
       }
       return [smooth_curve_x, smooth_curve_y];
     }
@@ -198,6 +208,7 @@ function plot_gwas(data, genesdata) {
       });
       gtex_line_traces[gtex_tissues[i]] = smoothing(gtex_positions[gtex_tissues[i]], gtex_log10_pvalues[gtex_tissues[i]], 
           [startbp, endbp], eqtl_smoothing_window_size);
+      // console.log(gtex_line_traces);
     }    
 
     // Assign each SNP to an LD group:

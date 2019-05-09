@@ -113,4 +113,11 @@ initdb.py
 data/snp151.gz
 GWAS-QTL-app/
 *bed
+*bim
+*fam
+*ld
+*nosex
+*hh
 static/session_data/
+static/upload/
+data/test_chr3_foxp1_afglobal.TSV

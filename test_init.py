@@ -48,8 +48,8 @@ ld_mat_diag_constant = 1e-6
 def parseRegionText(regiontext):
     chrom = regiontext.split(':')[0].replace('chr','')
     pos = regiontext.split(':')[1]
-    startbp = pos.split('-')[0]
-    endbp = pos.split('-')[1]
+    startbp = pos.split('-')[0].replace(',','')
+    endbp = pos.split('-')[1].replace(',','')
     chromLengths = pd.read_csv(os.path.join(MYDIR, 'data/hg19_chrom_lengths.txt'), sep="\t", encoding='utf-8')
     chromLengths.set_index('sequence',inplace=True)
     if chrom == 'X':
@@ -73,6 +73,7 @@ def parseRegionText(regiontext):
         return chrom, startbp, endbp
 
 def allowed_file(filename):
+
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def writeList(alist, filename):
@@ -273,12 +274,12 @@ def getGeneNames():
 
 
 my_session_id = uuid.uuid4()
-gwas_data = pd.read_csv('data/MI_GWAS_2019_1_205500-206000kbp.tsv', sep="\t")
+gwas_data = pd.read_csv('data/test_chr3_foxp1_afglobal.tsv', sep="\t")
 chromcol='#CHROM'
 poscol='BP'
 snpcol='SNP'
 pcol='P'
-regiontext = "1:205500000-206000000"
+regiontext = "chr3:71,012,580-71,632,266"
 lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
 lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0]
 collapsed_genes_df = pd.read_csv('data/collapsed_gencode_v19_hg19.gz', compression='gzip', sep='\t', encoding='utf-8')
@@ -286,6 +287,7 @@ gene='ENSG00000174502'
 chrom, startbp, endbp = parseRegionText(regiontext)
 gtex_tissues = ['Pancreas', 'Lung', 'Stomach']
 tissue = gtex_tissues[0]
+gwas_data.sort_values(by=[ poscol ], inplace=True)
 gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
 pops = 'EUR'
 gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
