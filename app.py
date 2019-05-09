@@ -545,7 +545,8 @@ def upload_file():
             writeMat(PvaluesMat, Pvalues_filepath)
             writeMat(ld_mat, ldmatrix_filepath)            
             Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
-            SSPvalues = subprocess.run(args=["/usr/local/bin/Rscript", Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n',' ').split(' ')
+            Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+            SSPvalues = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n',' ').split(' ')
             SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] != -1:
