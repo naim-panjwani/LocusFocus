@@ -53,6 +53,11 @@ def parseRegionText(regiontext):
     if chrom == 'X':
         chrom = 23
         maxChromLength = chromLengths.loc['chrX', 'length']
+        try:
+            startbp = int(startbp)
+            endbp = int(endbp)
+        except:
+            raise InvalidUsage("Invalid coordinates input", status_code=410)
     else:
         try:
             chrom = int(chrom)
@@ -429,8 +434,12 @@ def upload_file():
                 raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit} bp')
             print(chrom,startbp,endbp)
             print('Subsetting GWAS data to entered region')            
-            gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
-            if gwas_data.shape[0] == 0: raise InvalidUsage('No data found for entered region', status_code=410)
+            if chrom == 23 and list(gwas_data[chromcol])[0] == "X":
+                gwas_data = gwas_data.loc[ (gwas_data[chromcol] == "X") & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
+            else:
+                gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
+            if gwas_data.shape[0] == 0:
+                raise InvalidUsage('No data found for entered region', status_code=410)
             gwas_data.sort_values(by=[ poscol ], inplace=True)
             #pops = request.form.getlist('LD-populations')
             #if len(pops) == 0: pops = ['CEU','TSI','FIN','GBR','IBS']
