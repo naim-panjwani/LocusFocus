@@ -23,9 +23,10 @@ argv <- parse_args(p)
 
 Pmat <- fread(argv$P_values_filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
 ldmat <- fread(argv$ld_matrix_filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
-#filename = 'C:\\Users\\Naim\\Desktop\\SCS_Data_Analytics\\homework\\24-Final_project\\GWAS-QTL-Explore\\static\\session_data/Pvalues-2ee9162a-aca8-4768-9b27-73a1fb0514bd.txt'
+#2ee9162a-aca8-4768-9b27-73a1fb0514bd
+#filename = '/Users/naim/Documents/BootCamp/homework/24-Final_project/GWAS-QTL-Explore/static/session_data/Pvalues-d6e89d1c-2e90-4138-913d-bb5827d95887.txt'
 #Pmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
-#filename = 'C:\\Users\\Naim\\Desktop\\SCS_Data_Analytics\\homework\\24-Final_project\\GWAS-QTL-Explore\\static\\session_data/ldmat-2ee9162a-aca8-4768-9b27-73a1fb0514bd.txt'
+#filename = '/Users/naim/Documents/BootCamp/homework/24-Final_project/GWAS-QTL-Explore/static/session_data/ldmat-d6e89d1c-2e90-4138-913d-bb5827d95887.txt'
 #ldmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
 Pmat <- as.matrix(Pmat)
 P_gwas <- Pmat[1,]
@@ -148,12 +149,22 @@ if (is.null(nrow(P_eqtl)) & length(P_eqtl)>0) {
   stop("No eQTL P-values provided")
 }
 for(i in 1:num_iterations) {
-  tempmat <- cbind(P_gwas, P_eqtl[i,])
+  if (is.null(nrow(P_eqtl)) & length(P_eqtl)>0) {
+    tempmat <- cbind(P_gwas, P_eqtl)
+  } else {
+    tempmat <- cbind(P_gwas, P_eqtl[i,])
+  }
   NArows = which(is.na(tempmat[,1]) | is.na(tempmat[,2]))
   tempmat = tempmat[-NArows,]
+  P = -1
   if(nrow(tempmat) != 0) {
     m <- nrow(tempmat)
-    P = get_simplesumP(P_gwas=as.numeric(tempmat[,1]), P_eqtl=as.numeric(tempmat[,2]), ld.mat=ldmat[-NArows, -NArows], cut=0, m=m)
+    tryCatch(
+    {
+      P = get_simplesumP(P_gwas=as.numeric(tempmat[,1]), P_eqtl=as.numeric(tempmat[,2]), ld.mat=ldmat[-NArows, -NArows], cut=0, m=m)
+    }
+    , error = function(e) {P = -1}
+    )
     Pss = c(Pss, P)
   } else {
     Pss = c(Pss, -1)

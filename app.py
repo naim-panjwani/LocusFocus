@@ -81,7 +81,7 @@ def allowed_file(filename):
 def writeList(alist, filename):
     with open(filename, 'w') as f:
         for item in alist:
-            f.write("%s\t" % item)
+            f.write("%s\n" % item)
 
 def writeMat(aMat, filename):
     aMat = np.matrix(aMat)
@@ -198,14 +198,14 @@ def plink_ldmat(pop, chrom, snp_positions, outfilename):
     except:
         raise "Invalid chromosome"
     if chrom not in np.arange(1,24):
-        raise ValueError("Invalid chromosome")
+        raise InvalidUsage("Invalid chromosome")
     plink_filepath = ""
     if chrom == 23:
         plink_filepath = os.path.join(MYDIR, "data", pop, "chrX")
     else:
         plink_filepath = os.path.join(MYDIR, "data", pop, f"chr{chrom}")
     # make snps file to extract:
-    snps = [f"chr{chrom}:{position}" for position in snp_positions]
+    snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
     plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
     plinkrun = subprocess.run(args=[
@@ -218,9 +218,9 @@ def plink_ldmat(pop, chrom, snp_positions, outfilename):
         , "--make-bed"
         , "--threads", "1"
         , "--out", outfilename
-        ], stdout=subprocess.PIPE)
+        ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if plinkrun.returncode != 0:
-        raise RuntimeError(plinkrun.stdout.decode('utf-8'))
+        raise InvalidUsage(plinkrun.stdout.decode('utf-8'))
     ld_snps = list(pd.read_csv(outfilename + ".bim", sep="\t", header=None).iloc[:,1])
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
     return ld_snps, ldmat
@@ -234,14 +234,14 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     except:
         raise "Invalid chromosome"
     if chrom not in np.arange(1,24):
-        raise ValueError("Invalid chromosome")
+        raise InvalidUsage("Invalid chromosome")
     plink_filepath = ""
     if chrom == 23:
         plink_filepath = os.path.join(MYDIR, "data", pop, "chrX")
     else:
         plink_filepath = os.path.join(MYDIR, "data", pop, f"chr{chrom}")
     # make snps file to extract:
-    snps = [f"chr{chrom}:{position}" for position in snp_positions]
+    snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
     plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
     plinkrun = subprocess.run(args=[
@@ -250,7 +250,7 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
         , "--extract", outfilename + "_snps.txt"
         , "--from-bp", str(min(snp_positions))
         , "--to-bp", str(max(snp_positions))
-        , "--ld-snp", f"chr{chrom}:{lead_snp_position}"
+        , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
         , "--r2"
         , "--ld-window-r2", "0"
         , "--ld-window", "999999"
@@ -258,9 +258,9 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
         , "--make-bed"
         , "--threads", "1"
         , "--out", outfilename
-        ], stdout=subprocess.PIPE)
+        ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if plinkrun.returncode != 0:
-        raise RuntimeError(plinkrun.stdout.decode('utf-8'))
+        raise InvalidUsage(plinkrun.stdout.decode('utf-8'))
     ld_results = pd.read_csv(outfilename + ".ld", delim_whitespace=True)
     available_r2_positions = ld_results[['BP_B', 'R2']]
     pos_df = pd.DataFrame({'pos': snp_positions})
@@ -307,7 +307,7 @@ def get_gtex_data(tissue, gene, snp_list, positions, raiseErrors = False):
                 raise InvalidUsage(error_message)
         except:
             if raiseErrors:
-                raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene)
+                raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene + " ( " + ensg_gene + " )")
     return gtex_data
 
 
@@ -400,6 +400,7 @@ def upload_file():
                 pass
             # Load
             my_session_id = uuid.uuid4()
+            print(f'Session ID: {my_session_id}')
             print('Loading file')
             gwas_data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
             chromcol = request.form['chrom-col']
@@ -559,7 +560,10 @@ def upload_file():
             writeMat(ld_mat, ldmatrix_filepath)            
             Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
             Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-            SSPvalues = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n',' ').split(' ')
+            RscriptRun = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+            if RscriptRun.returncode != 0:
+                raise InvalidUsage(RscriptRun.stdout)
+            SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
             SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] != -1:
