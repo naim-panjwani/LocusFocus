@@ -209,7 +209,7 @@ def plink_ldmat(pop, chrom, snp_positions, outfilename):
     writeList(snps, outfilename + "_snps.txt")
     plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
     plinkrun = subprocess.run(args=[
-        plink_path, '--bfile', plink_filepath
+        "./plink", '--bfile', plink_filepath
         , "--chr", str(chrom)
         , "--extract", outfilename + "_snps.txt"
         , "--from-bp", str(min(snp_positions))
@@ -245,7 +245,7 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     writeList(snps, outfilename + "_snps.txt")
     plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
     plinkrun = subprocess.run(args=[
-        plink_path, '--bfile', plink_filepath
+        "./plink", '--bfile', plink_filepath
         , "--chr", str(chrom)
         , "--extract", outfilename + "_snps.txt"
         , "--from-bp", str(min(snp_positions))
