@@ -54,9 +54,10 @@
   <script type="text/javascript" src="static/js/plot.js"></script>
   <script type="text/javascript" src="static/js/plot_heatmap.js"></script>
   <script type="text/javascript">
-    d3.json("static/session_data/form_data-4b2c354c-a704-4579-b4cf-82b7b04a91c9.json").then(response => {
-        d3.json("static/session_data/genes_data-4b2c354c-a704-4579-b4cf-82b7b04a91c9.json").then(genesResponse => {
-            d3.json("static/session_data/SSPvalues-4b2c354c-a704-4579-b4cf-82b7b04a91c9.json").then(SSResponse => {
+    var sessionid = 'cdb7e1ed-57ec-43cd-9c7d-ad3049e9f267'
+    d3.json(`static/session_data/form_data-${sessionid}.json`).then(response => {
+        d3.json(`static/session_data/genes_data-${sessionid}.json`).then(genesResponse => {
+            d3.json(`static/session_data/SSPvalues-${sessionid}.json`).then(SSResponse => {
                 var data = response;
                 var genesdata = genesResponse;
                 plot_gwas(data, genesdata);

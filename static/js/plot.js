@@ -10,7 +10,10 @@ function plot_gwas(data, genesdata) {
     var snps = data.snps;
     var lead_snp = data.lead_snp;
     var gtex_tissues = data.gtex_tissues;
+    var SS_start = +data.SS_region[0];
+    var SS_end = +data.SS_region[1];
 
+    // console.log(data);
     // console.log(genesdata);
 
     var log10pvalues = pvalues.map(p => -Math.log10(p))
@@ -397,6 +400,21 @@ function plot_gwas(data, genesdata) {
     var gwas_ymax = d3.max(log10pvalues);
     var gtex_ymax = getYmax(gtex_line_traces);
 
+    // Shade the Simple Sum Region
+    var SS_shade_shape = {
+      type: 'rect',
+      xref: 'x',
+      yref: 'y',
+      x0: SS_start,
+      y0: 0,
+      x1: SS_end,
+      y1: gwas_ymax,
+      fillcolor: "#d3d3d3",
+      opacity: 0.3,
+      line: { width: 0 }
+    }
+    rectangle_shapes.push(SS_shade_shape);
+
     var layout = {
       xaxis: {
         range: [startbp - extra_x_range, endbp + extra_x_range],
@@ -422,9 +440,6 @@ function plot_gwas(data, genesdata) {
       hovermode: "closest",
       shapes: rectangle_shapes
     };
-
-    // Plot the genes
-    
 
   Plotly.newPlot('plot', all_traces, layout);
 }

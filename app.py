@@ -465,7 +465,7 @@ def upload_file():
             gwas_data.dropna(inplace=True)
             snp_list = list(gwas_data[snpcol])
             snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
-            # Get LD via API queries to LDlink:
+            # Get LD:
             print('Calculating pairwise LD using PLINK')
             positions = list(gwas_data[poscol])
             #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
@@ -491,6 +491,12 @@ def upload_file():
             for tissue in tqdm(gtex_tissues):
                 gtex_data[tissue] = get_gtex_data(tissue, gene, snp_list, positions, raiseErrors=True)
             data.update(gtex_data)
+            
+            # Determine the region to calculate the Simple Sum (SS):
+            SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
+            SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
+            data['SS_region'] = [SS_start, SS_end]
+            
             # Obtain any genes to be plotted in the region:
             print('Summarizing genes to be plotted in this region')
             genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
@@ -520,10 +526,7 @@ def upload_file():
             json.dump(genes_data, open(genes_sessionfilepath, 'w'))
 
             # # Getting Simple Sum P-values
-            # # 1. Determine the region to calculate the SS:
-            SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
-            SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
-            # 2. Subset the region:
+            # 2. Subset the region (step 1 was determining the region to do the SS calculation on - see above SS_start and SS_end variables):
             SS_gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
             if SS_gwas_data.shape[0] == 0: InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
             PvaluesMat = [list(SS_gwas_data[pcol])]

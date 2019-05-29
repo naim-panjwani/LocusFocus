@@ -10,20 +10,20 @@
    <!-- Font Awesome -->
    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
    <!-- JQuery-UI -->
-   <link rel="stylesheet" href="../static/css/jquery-ui.css"/>
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}"/>
    <!-- JQuery -->
    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
    <!-- JQuery-UI -->
-   <script type="text/javascript" src="../static/js/jquery-ui.js"></script>
+   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
    <!-- Bootstrap core CSS -->
    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
    <!-- Material Design Bootstrap -->
    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
    <!-- DataTables -->
-   <link rel="stylesheet" href="http://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
-   <link rel="stylesheet" type="text/css" href="../static/css/bootstrap-multiselect.css"/>
-   <link rel="stylesheet" type="text/css" href="../static/css/style.css">
-   <link rel="stylesheet" type="text/css" href="../static/css/d3Style.css">
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}"/>
+   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}"/>
+   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/d3Style.css') }}">
 </head>
 
 <body> 
@@ -134,7 +134,7 @@
   <!-- MDB core JavaScript -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"></script>
   <!-- DataTables -->
-  <script type="text/javascript" src="http://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.dataTables.min.js') }}"></script>
   <!-- Multiselect -->
   <script src="{{ url_for('static', filename='js/bootstrap-multiselect.js') }}"></script>
 
