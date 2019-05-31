@@ -44,7 +44,8 @@ ld_mat_diag_constant = 1e-6
 # Helper functions
 ####################################
 def parseRegionText(regiontext):
-    chrom = regiontext.split(':')[0].replace('chr','')
+    regiontext = regiontext.strip().replace(' ','')
+    chrom = regiontext.split(':')[0].replace('chr','').replace('Chr','')
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
@@ -527,7 +528,10 @@ def upload_file():
 
             # # Getting Simple Sum P-values
             # 2. Subset the region (step 1 was determining the region to do the SS calculation on - see above SS_start and SS_end variables):
-            SS_gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
+            print('SS_start: ' + str(SS_start))
+            print('SS_end:' + str(SS_end))
+            chromList = [('chr' + str(chrom).replace('23','X')), str(chrom).replace('23','X')]
+            SS_gwas_data = gwas_data.loc[ (gwas_data[chromcol].isin(chromList)) & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
             if SS_gwas_data.shape[0] == 0: InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
             PvaluesMat = [list(SS_gwas_data[pcol])]
             SS_snp_list = list(SS_gwas_data[snpcol])
@@ -560,7 +564,11 @@ def upload_file():
             Pvalues_filepath = os.path.join(MYDIR, 'static', Pvalues_file)
             ldmatrix_filepath = os.path.join(MYDIR, 'static', ldmatrix_file)
             writeMat(PvaluesMat, Pvalues_filepath)
-            writeMat(ld_mat, ldmatrix_filepath)            
+            writeMat(ld_mat, ldmatrix_filepath)
+            #### Extra files written for LD matrix:
+            writeList(ld_mat_snps, os.path.join(MYDIR,'static', f'session_data/ldmat_snps-{my_session_id}.txt'))
+            writeList(ld_mat_positions, os.path.join(MYDIR,'static', f'session_data/ldmat_positions-{my_session_id}.txt'))
+            ####
             Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
             Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
             RscriptRun = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
