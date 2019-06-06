@@ -531,18 +531,38 @@ def upload_file():
             print('SS_start: ' + str(SS_start))
             print('SS_end:' + str(SS_end))
             chromList = [('chr' + str(chrom).replace('23','X')), str(chrom).replace('23','X')]
-            SS_gwas_data = gwas_data.loc[ (gwas_data[chromcol].isin(chromList)) & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
+            gwas_chrom_col = pd.Series([str(x) for x in list(gwas_data[chromcol])])
+            SS_chrom_bool = [x for x in gwas_chrom_col.isin(chromList) if x == True]
+            SS_gwas_data = gwas_data.loc[ SS_chrom_bool & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
+            #print(gwas_data.shape)
+            #print(SS_gwas_data.shape)
+            #print(SS_gwas_data)
             if SS_gwas_data.shape[0] == 0: InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
             PvaluesMat = [list(SS_gwas_data[pcol])]
             SS_snp_list = list(SS_gwas_data[snpcol])
             SS_snp_list = [asnp.split(';')[0] for asnp in SS_snp_list] # cleaning up the SNP names a bit
             SS_positions = list(SS_gwas_data[poscol])
+            # Extra file written:
+            gwas_df = pd.DataFrame({
+                'Position': SS_positions,
+                'SNP': SS_snp_list,
+                'P': list(SS_gwas_data[pcol])
+            })
+            gwas_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/gwas_df-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
             # 3. Determine the genes to query
             query_genes = list(genes_to_draw['name'])
             # 4. Query and extract the eQTL p-values for all tissues x genes from GTEx (via Ensembl API)
             for tissue in gtex_tissues:
                 for gene in query_genes:
-                    PvaluesMat.append(get_gtex_data_pvalues(get_gtex_data(tissue, gene, SS_snp_list, SS_positions), SS_snp_list))
+                    pvalues = get_gtex_data_pvalues(get_gtex_data(tissue, gene, SS_snp_list, SS_positions), SS_snp_list)
+                    PvaluesMat.append(pvalues)
+                    # Extra files written:
+                    eqtl_df = pd.DataFrame({
+                        'Position': SS_positions,
+                        'SNP': SS_snp_list,
+                        'P': pvalues
+                    })
+                    eqtl_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/eqtl_df-{tissue}-{gene}-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
             # 5. Get the LD matrix via PLINK subprocess call:
             plink_outfilename = f'session_data/ld-{my_session_id}'
             plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)

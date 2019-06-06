@@ -73,7 +73,6 @@ def parseRegionText(regiontext):
         return chrom, startbp, endbp
 
 def allowed_file(filename):
-
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def writeList(alist, filename):
@@ -274,12 +273,12 @@ def getGeneNames():
 
 
 my_session_id = uuid.uuid4()
-gwas_data = pd.read_csv('data/test_chr3_foxp1_afglobal.tsv', sep="\t")
+gwas_data = pd.read_csv('data/MI_GWAS_2019_1_205500-206000kbp.tsv', sep="\t")
 chromcol='#CHROM'
 poscol='BP'
 snpcol='SNP'
 pcol='P'
-regiontext = "chr3:71,012,580-71,632,266"
+regiontext = "chr1:205,500,000-206,000,000"
 lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ]['SNP'])[0]
 lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0]
 collapsed_genes_df = pd.read_csv('data/collapsed_gencode_v19_hg19.gz', compression='gzip', sep='\t', encoding='utf-8')
@@ -349,7 +348,11 @@ one_sided_window_size = 100000 # (100 kb on either side of the lead SNP)
 SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_window_size
 SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_window_size
 # 2. Subset the region:
-SS_gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
+#SS_gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
+chromList = [('chr' + str(chrom).replace('23','X')), str(chrom).replace('23','X')]
+gwas_chrom_col = pd.Series([str(x) for x in list(gwas_data[chromcol])])
+SS_chrom_bool = [x for x in gwas_chrom_col.isin(chromList) if x == True]
+SS_gwas_data = gwas_data.loc[ SS_chrom_bool & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
 if SS_gwas_data.shape[0] == 0:
     InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
 PvaluesMat = [list(SS_gwas_data[pcol])]
