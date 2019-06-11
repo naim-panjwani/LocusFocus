@@ -418,7 +418,7 @@ def upload_file():
                 raise InvalidUsage('SNP column not found')
             pcol = request.form['pval-col']
             if pcol=='': pcol='P'
-            if poscol not in gwas_data.columns:
+            if pcol not in gwas_data.columns:
                 raise InvalidUsage('Basepair position column not found')
             lead_snp = request.form['leadsnp']
             snp_list = list(gwas_data[snpcol])
