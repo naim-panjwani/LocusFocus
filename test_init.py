@@ -20,9 +20,11 @@ from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 import pymysql
 pymysql.install_as_MySQLdb()
+from pymongo import MongoClient
 #thepwd = open('pwd.txt').readline().replace('\n', '')
 
 genomicWindowLimit = 2000000
+one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
 fileSizeLimit = 500 # in KB
 
 MYDIR = os.getcwd()
@@ -32,21 +34,25 @@ app.config['UPLOAD_FOLDER'] = 'static/upload'
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit * 1024
 ALLOWED_EXTENSIONS = set(['txt', 'tsv'])
 
-token = ""
-with open('tokens.txt') as f:
-    token = f.read().replace('\n','')
+# token = ""
+# with open('tokens.txt') as f:
+#     token = f.read().replace('\n','')
 
 collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
+ensg_to_genename_map = pd.read_csv(os.path.join(MYDIR, 'data/gencode_ensg_to_name_map.txt'), sep='\t', encoding='utf-8', header=None)
+ensg_to_genename_map.columns = ['ENSG_name', 'name']
 ld_mat_diag_constant = 1e-6
-#Rscript_path = os.path.join("C:\\","Program Files", "R", "R-3.5.2", "bin", "Rscript.exe")
 
-
+conn = "mongodb://localhost:27017"
+client = MongoClient(conn)
+db = client.GTEx_V7
 
 ####################################
 # Helper functions
 ####################################
 def parseRegionText(regiontext):
-    chrom = regiontext.split(':')[0].replace('chr','')
+    regiontext = regiontext.strip().replace(' ','')
+    chrom = regiontext.split(':')[0].replace('chr','').replace('Chr','')
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
@@ -55,6 +61,11 @@ def parseRegionText(regiontext):
     if chrom == 'X':
         chrom = 23
         maxChromLength = chromLengths.loc['chrX', 'length']
+        try:
+            startbp = int(startbp)
+            endbp = int(endbp)
+        except:
+            raise InvalidUsage("Invalid coordinates input", status_code=410)
     else:
         try:
             chrom = int(chrom)
@@ -78,7 +89,7 @@ def allowed_file(filename):
 def writeList(alist, filename):
     with open(filename, 'w') as f:
         for item in alist:
-            f.write("%s\t" % item)
+            f.write("%s\n" % item)
 
 def writeMat(aMat, filename):
     aMat = np.matrix(aMat)
@@ -100,17 +111,18 @@ def plink_ldmat(pop, chrom, snp_positions, outfilename):
     except:
         raise "Invalid chromosome"
     if chrom not in np.arange(1,24):
-        raise ValueError("Invalid chromosome")
+        raise InvalidUsage("Invalid chromosome")
     plink_filepath = ""
     if chrom == 23:
         plink_filepath = os.path.join(MYDIR, "data", pop, "chrX")
     else:
         plink_filepath = os.path.join(MYDIR, "data", pop, f"chr{chrom}")
     # make snps file to extract:
-    snps = [f"chr{chrom}:{position}" for position in snp_positions]
+    snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
+    plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
     plinkrun = subprocess.run(args=[
-        'plink', '--bfile', plink_filepath
+        "./plink", '--bfile', plink_filepath
         , "--chr", str(chrom)
         , "--extract", outfilename + "_snps.txt"
         , "--from-bp", str(min(snp_positions))
@@ -119,13 +131,12 @@ def plink_ldmat(pop, chrom, snp_positions, outfilename):
         , "--make-bed"
         , "--threads", "1"
         , "--out", outfilename
-        ], stdout=subprocess.PIPE)
+        ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if plinkrun.returncode != 0:
-        raise RuntimeError(plinkrun.stdout.decode('utf-8'))
+        raise InvalidUsage(plinkrun.stdout.decode('utf-8'))
     ld_snps = list(pd.read_csv(outfilename + ".bim", sep="\t", header=None).iloc[:,1])
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
     return ld_snps, ldmat
-
 
 def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename):
     # positions must be in hg19 coordinates
@@ -136,44 +147,46 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     except:
         raise "Invalid chromosome"
     if chrom not in np.arange(1,24):
-        raise ValueError("Invalid chromosome")
+        raise InvalidUsage("Invalid chromosome")
     plink_filepath = ""
     if chrom == 23:
         plink_filepath = os.path.join(MYDIR, "data", pop, "chrX")
     else:
         plink_filepath = os.path.join(MYDIR, "data", pop, f"chr{chrom}")
     # make snps file to extract:
-    snps = [f"chr{chrom}:{position}" for position in snp_positions]
+    snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
-    plinkrun = subprocess.run(args=['plink', '--bfile', plink_filepath,
-        "--chr", str(chrom),
-        "--extract", outfilename + "_snps.txt",
-        "--from-bp", str(min(snp_positions)),
-        "--to-bp", str(max(snp_positions)),
-        "--ld-snp", f"chr{chrom}:{lead_snp_position}",
-        "--r2",
-        "--ld-window-r2", "0",
-        "--ld-window", "999999",
-        "--ld-window-kb", "200000",
-        "--make-bed",
-        "--threads", "1",
-        "--out", outfilename],
-        stdout = subprocess.PIPE)
+    plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    plinkrun = subprocess.run(args=[
+        "./plink", '--bfile', plink_filepath
+        , "--chr", str(chrom)
+        , "--extract", outfilename + "_snps.txt"
+        , "--from-bp", str(min(snp_positions))
+        , "--to-bp", str(max(snp_positions))
+        , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
+        , "--r2"
+        , "--ld-window-r2", "0"
+        , "--ld-window", "999999"
+        , "--ld-window-kb", "200000"
+        , "--make-bed"
+        , "--threads", "1"
+        , "--out", outfilename
+        ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if plinkrun.returncode != 0:
-        raise RuntimeError(plinkrun.stdout.decode('utf-8'))
+        raise InvalidUsage(plinkrun.stdout.decode('utf-8'))
     ld_results = pd.read_csv(outfilename + ".ld", delim_whitespace=True)
-    available_r2_positions = ld_results[[ 'BP_B', 'R2' ]]
-    pos_df = pd.DataFrame({ 'pos' : snp_positions })
-    merged_df = pd.merge(pos_df, available_r2_positions, how='left', left_on="pos", right_on="BP_B", sort=False)
-    merged_df = merged_df[[ 'pos', 'R2' ]]
+    available_r2_positions = ld_results[['BP_B', 'R2']]
+    pos_df = pd.DataFrame({'pos': snp_positions})
+    merged_df = pd.merge(pos_df, available_r2_positions, how='left', left_on="pos", right_on="BP_B", sort=False)[['pos', 'R2']]
     merged_df.fillna(-1, inplace=True)
     return merged_df
+
 
 
 def get_gtex_data(tissue, gene, snp_list, positions, raiseErrors = False):
     gtex_data = []
     # ensembl_eqtl_base_url = 'http://grch37.rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
-    ensembl_eqtl_base_url = 'https://grch37.rest.ensembl.org/eqtl/id/homo_sapiens/'
+    gtex_eqtl_base_url = 'https://grch37.rest.ensembl.org/eqtl/id/homo_sapiens/'
     ensg_gene = gene
     if gene in list(collapsed_genes_df['name']):
         ensg_gene = collapsed_genes_df['ENSG_name'][list(collapsed_genes_df['name']).index(gene)]
@@ -207,7 +220,7 @@ def get_gtex_data(tissue, gene, snp_list, positions, raiseErrors = False):
                 raise InvalidUsage(error_message)
         except:
             if raiseErrors:
-                raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene)
+                raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene + " ( " + ensg_gene + " )")
     return gtex_data
 
 
@@ -269,6 +282,24 @@ def get1KGPopulations():
 def getGeneNames():
     return jsonify(list(collapsed_genes_df['name']))
 
+@app.route("/gtex_v7/{tissue}/{gene_id}")
+def get_gtex_v7(tissue, gene_id):
+    if tissue not in db.list_collection_names():
+        raise InvalidUsage('Tissue not found', status_code=410)
+    collection = db[tissue]
+    if gene_id.startswith('ENSG'):
+        i = [x.split('.')[0] for x in list(ensg_to_genename_map['ENSG_name'])].index(gene_id)
+        genename = list(ensg_to_genename_map['name'])[i]
+        ensg_name = list(ensg_to_genename_map['ENSG_name'])[i]
+    elif gene_id in list(ensg_to_genename_map['name']):
+        i = list(ensg_to_genename_map['name']).index(gene_id)
+        ensg_name = list(ensg_to_genename_map['ENSG_name'])[i]
+    else:
+        raise InvalidUsage(f'Gene name {gene_id} not found', status_code=410)
+    results = list(collection.find({'gene_id': ensg_name}))
+    #results_df = pd.DataFrame(results[0]['eqtl_variants'])
+    #return jsonify(results_df.to_dict(orient='list'))
+    return results
 
 
 

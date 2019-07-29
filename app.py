@@ -20,6 +20,7 @@ from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 import pymysql
 pymysql.install_as_MySQLdb()
+from pymongo import MongoClient
 #thepwd = open('pwd.txt').readline().replace('\n', '')
 
 genomicWindowLimit = 2000000
@@ -38,7 +39,13 @@ ALLOWED_EXTENSIONS = set(['txt', 'tsv'])
 #     token = f.read().replace('\n','')
 
 collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
+ensg_to_genename_map = pd.read_csv(os.path.join(MYDIR, 'data/gencode_ensg_to_name_map.txt'), sep='\t', encoding='utf-8', header=None)
+ensg_to_genename_map.columns = ['ENSG_name', 'name']
 ld_mat_diag_constant = 1e-6
+
+conn = "mongodb://localhost:27017"
+client = MongoClient(conn)
+db = client.GTEx_V7
 
 ####################################
 # Helper functions
@@ -274,6 +281,34 @@ def get1KGPopulations():
 @app.route("/genenames")
 def getGeneNames():
     return jsonify(list(collapsed_genes_df['name']))
+
+
+@app.route("/gtex_v7/<tissue>/<gene_id>")
+def get_gtex_v7(tissue, gene_id):
+    tissue = tissue.title().replace(' ','_')
+    gene_id = gene_id.upper()
+    ensg_name = ""
+    if tissue not in db.list_collection_names():
+        raise InvalidUsage('Tissue not found', status_code=410)
+    collection = db[tissue]
+    if gene_id.startswith('ENSG'):
+        i = [x.split('.')[0] for x in list(ensg_to_genename_map['ENSG_name'])].index(gene_id.split('.')[0])
+        ensg_name = list(ensg_to_genename_map['ENSG_name'])[i]
+    elif gene_id in list(ensg_to_genename_map['name']):
+        i = list(ensg_to_genename_map['name']).index(gene_id)
+        ensg_name = list(ensg_to_genename_map['ENSG_name'])[i]
+    else:
+        raise InvalidUsage(f'Gene name {gene_id} not found', status_code=410)
+    results = list(collection.find({'gene_id': ensg_name}))
+    #results_df = pd.DataFrame(results[0]['eqtl_variants'])
+    #return jsonify(results_df.to_dict(orient='list'))
+    response = []
+    try:
+        response = results[0]['eqtl_variants']
+    except:
+        return jsonify({'Message': f'No eQTL data for {gene_id} in {tissue}'})
+    return jsonify(results[0]['eqtl_variants'])
+
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
