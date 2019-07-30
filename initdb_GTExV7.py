@@ -9,6 +9,7 @@ Created on Mon Jul 15 09:59:02 2019
 import pandas as pd
 import numpy as np
 from pymongo import MongoClient
+import pymongo
 from datetime import datetime
 import dask.dataframe as dd
 import subprocess
@@ -83,6 +84,19 @@ for file in files_list:
         subprocess.run(args=['rm', '-f', file.replace('.gz','')])
         print('Done with tissue ' + tissue_name)
         print(datetime.now().strftime('%c'))
+
+# Next, create the variant lookup table
+collection = db['variant_table']
+tbl_chunk = pd.read_csv('GTEx_Analysis_2016-01-15_v7_WholeGenomeSeq_635Ind_PASS_AB02_GQ20_HETX_MISS15_PLINKQC.lookup_table.txt.gz',
+                  sep="\t", chunksize=100, encoding='utf-8')
+for tbl in tbl_chunk:
+    tbl['chr'] = [int(str(x).replace('X','23')) for x in list(tbl['chr'])]
+    tbl_dict = tbl.to_dict(orient='records')
+    collection.insert_many(tbl_dict)
+    
+collection.create_index('variant_id')
+collection.create_index([("chr", pymongo.ASCENDING),
+                         ("variant_pos", pymongo.ASCENDING)])
 
 
 #results = collection.find({'gene_id': gene})

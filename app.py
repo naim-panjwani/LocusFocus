@@ -307,7 +307,21 @@ def get_gtex_v7(tissue, gene_id):
         response = results[0]['eqtl_variants']
     except:
         return jsonify({'Message': f'No eQTL data for {gene_id} in {tissue}'})
-    return jsonify(results[0]['eqtl_variants'])
+    results_df = pd.DataFrame(response)
+    chrom = int(list(results_df['variant_id'])[0].split('_')[0].replace('X','23'))
+    positions = [ int(x.split('_')[1]) for x in list(results_df['variant_id']) ]
+    variants_query = db.variant_table.aggregate([
+        { '$match': { '$and': [ 
+            { 'chr': chrom }, 
+            { 'variant_pos': { '$gte': min(positions), '$lte': max(positions) } } 
+            ] 
+            } 
+        }
+    ])
+    variants_df = pd.DataFrame(list(variants_query)).drop(['_id'], axis=1)
+    x = pd.merge(results_df, variants_df, on='variant_id')
+    x.rename(columns={'rs_id_dbSNP147_GRCh37p13': 'rs_id'}, inplace=True)
+    return jsonify(x)
 
 
 @app.route('/', methods=['GET', 'POST'])
