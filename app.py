@@ -9,7 +9,6 @@ from tqdm import tqdm
 import uuid
 from pprint import pprint
 import subprocess
-import json
 
 import sqlalchemy as sa
 from sqlalchemy.ext.automap import automap_base
@@ -322,7 +321,7 @@ def get_gtex_v7(tissue, gene_id):
     variants_df = pd.DataFrame(list(variants_query)).drop(['_id'], axis=1)
     x = pd.merge(results_df, variants_df, on='variant_id')
     x.rename(columns={'rs_id_dbSNP147_GRCh37p13': 'rs_id'}, inplace=True)
-    return jsonify(x.to_json(orient='records'))
+    return jsonify(x.to_dict(orient='records'))
 
 
 @app.route('/', methods=['GET', 'POST'])
