@@ -282,14 +282,17 @@ def get1KGPopulations():
 def getGeneNames():
     return jsonify(list(collapsed_genes_df['name']))
 
-@app.route("/gtex_v7/{tissue}/{gene_id}")
+
+@app.route("/gtex_v7/<tissue>/<gene_id>")
 def get_gtex_v7(tissue, gene_id):
+    tissue = tissue.title().replace(' ','_')
+    gene_id = gene_id.upper()
+    ensg_name = ""
     if tissue not in db.list_collection_names():
         raise InvalidUsage('Tissue not found', status_code=410)
     collection = db[tissue]
     if gene_id.startswith('ENSG'):
-        i = [x.split('.')[0] for x in list(ensg_to_genename_map['ENSG_name'])].index(gene_id)
-        genename = list(ensg_to_genename_map['name'])[i]
+        i = [x.split('.')[0] for x in list(ensg_to_genename_map['ENSG_name'])].index(gene_id.split('.')[0])
         ensg_name = list(ensg_to_genename_map['ENSG_name'])[i]
     elif gene_id in list(ensg_to_genename_map['name']):
         i = list(ensg_to_genename_map['name']).index(gene_id)
@@ -299,8 +302,26 @@ def get_gtex_v7(tissue, gene_id):
     results = list(collection.find({'gene_id': ensg_name}))
     #results_df = pd.DataFrame(results[0]['eqtl_variants'])
     #return jsonify(results_df.to_dict(orient='list'))
-    return results
-
+    response = []
+    try:
+        response = results[0]['eqtl_variants']
+    except:
+        return jsonify({'Message': f'No eQTL data for {gene_id} in {tissue}'})
+    results_df = pd.DataFrame(response)
+    chrom = int(list(results_df['variant_id'])[0].split('_')[0].replace('X','23'))
+    positions = [ int(x.split('_')[1]) for x in list(results_df['variant_id']) ]
+    variants_query = db.variant_table.aggregate([
+        { '$match': { '$and': [ 
+            { 'chr': chrom }, 
+            { 'variant_pos': { '$gte': min(positions), '$lte': max(positions) } } 
+            ] 
+            } 
+        }
+    ])
+    variants_df = pd.DataFrame(list(variants_query)).drop(['_id'], axis=1)
+    x = pd.merge(results_df, variants_df, on='variant_id')
+    x.rename(columns={'rs_id_dbSNP147_GRCh37p13': 'rs_id'}, inplace=True)
+    return jsonify(x.to_dict(orient='records'))
 
 
 my_session_id = uuid.uuid4()

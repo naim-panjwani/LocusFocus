@@ -1,3 +1,10 @@
+to do:
+- gene name mapping file consistency required; ensure ENSG names have versions added or robustify searching
+- create the session data in Mongo
+- allow downloading of the integrated session data
+- allow deleting of the session data
+- allow option to match variant names by just chrom:pos information (currently should only be either all rsid's or all variant_id format)
+
 - Write documentation
 - Option of LD matrix should be either from user of 1KG, not both
 - Test different LD matrix file inputs

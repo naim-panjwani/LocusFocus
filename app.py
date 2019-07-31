@@ -39,8 +39,8 @@ ALLOWED_EXTENSIONS = set(['txt', 'tsv'])
 #     token = f.read().replace('\n','')
 
 collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
-ensg_to_genename_map = pd.read_csv(os.path.join(MYDIR, 'data/gencode_ensg_to_name_map.txt'), sep='\t', encoding='utf-8', header=None)
-ensg_to_genename_map.columns = ['ENSG_name', 'name']
+# ensg_to_genename_map = pd.read_csv(os.path.join(MYDIR, 'data/gencode_ensg_to_name_map.txt'), sep='\t', encoding='utf-8', header=None)
+# ensg_to_genename_map.columns = ['ENSG_name', 'name']
 ld_mat_diag_constant = 1e-6
 
 conn = "mongodb://localhost:27017"
@@ -109,9 +109,9 @@ def plink_ldmat(pop, chrom, snp_positions, outfilename):
     try:
         chrom = int(chrom)
     except:
-        raise "Invalid chromosome"
+        raise InvalidUsage("Invalid chromosome", status_code=410)
     if chrom not in np.arange(1,24):
-        raise InvalidUsage("Invalid chromosome")
+        raise InvalidUsage("Invalid chromosome", status_code=410)
     plink_filepath = ""
     if chrom == 23:
         plink_filepath = os.path.join(MYDIR, "data", pop, "chrX")
@@ -133,7 +133,7 @@ def plink_ldmat(pop, chrom, snp_positions, outfilename):
         , "--out", outfilename
         ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if plinkrun.returncode != 0:
-        raise InvalidUsage(plinkrun.stdout.decode('utf-8'))
+        raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_snps = list(pd.read_csv(outfilename + ".bim", sep="\t", header=None).iloc[:,1])
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
     return ld_snps, ldmat
@@ -145,9 +145,9 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     try:
         chrom = int(chrom)
     except:
-        raise "Invalid chromosome"
+        raise InvalidUsage("Invalid chromosome", status_code=410)
     if chrom not in np.arange(1,24):
-        raise InvalidUsage("Invalid chromosome")
+        raise InvalidUsage("Invalid chromosome", status_code=410)
     plink_filepath = ""
     if chrom == 23:
         plink_filepath = os.path.join(MYDIR, "data", pop, "chrX")
@@ -173,7 +173,7 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
         , "--out", outfilename
         ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if plinkrun.returncode != 0:
-        raise InvalidUsage(plinkrun.stdout.decode('utf-8'))
+        raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_results = pd.read_csv(outfilename + ".ld", delim_whitespace=True)
     available_r2_positions = ld_results[['BP_B', 'R2']]
     pos_df = pd.DataFrame({'pos': snp_positions})
@@ -181,75 +181,92 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     merged_df.fillna(-1, inplace=True)
     return merged_df
 
+def get_gtex_v7(tissue, gene_id):
+    tissue = tissue.title().replace(' ','_')
+    gene_id = gene_id.upper()
+    ensg_name = ""
+    if tissue not in db.list_collection_names():
+        raise InvalidUsage('Tissue not found', status_code=410)
+    collection = db[tissue]
+    if gene_id.startswith('ENSG'):
+        i = list(collapsed_genes_df['ENSG_name']).index(gene_id)
+        ensg_name = list(collapsed_genes_df['ENSG_name'])[i]
+    elif gene_id in list(collapsed_genes_df['name']):
+        i = list(collapsed_genes_df['name']).index(gene_id)
+        ensg_name = list(collapsed_genes_df['ENSG_name'])[i]
+    else:
+        raise InvalidUsage(f'Gene name {gene_id} not found', status_code=410)
+    results = list(collection.find({'gene_id': ensg_name}))
+    response = []
+    try:
+        response = results[0]['eqtl_variants']
+    except:
+        return pd.DataFrame([{'error': f'No eQTL data for {gene_id} in {tissue}'}])
+    results_df = pd.DataFrame(response)
+    chrom = int(list(results_df['variant_id'])[0].split('_')[0].replace('X','23'))
+    positions = [ int(x.split('_')[1]) for x in list(results_df['variant_id']) ]
+    variants_query = db.variant_table.aggregate([
+        { '$match': { '$and': [ 
+            { 'chr': chrom }, 
+            { 'variant_pos': { '$gte': min(positions), '$lte': max(positions) } } 
+            ] 
+            } 
+        }
+    ])
+    variants_df = pd.DataFrame(list(variants_query)).drop(['_id'], axis=1)
+    x = pd.merge(results_df, variants_df, on='variant_id')
+    x.rename(columns={'rs_id_dbSNP147_GRCh37p13': 'rs_id'}, inplace=True)
+    return x
 
 
-def get_gtex_data(tissue, gene, snp_list, positions, raiseErrors = False):
+def get_gtex_data(tissue, gene, snp_list, raiseErrors = False):
     gtex_data = []
-    # ensembl_eqtl_base_url = 'http://grch37.rest.ensembl.org/eqtl/variant_name/homo_sapiens/'
-    ensembl_eqtl_base_url = 'https://grch37.rest.ensembl.org/eqtl/id/homo_sapiens/'
+    rsids = True
+    if snp_list[0].startswith('rs'):
+        rsids = True
+    elif snp_list[0].endswith('_b37'):
+        rsids = False
+    else:
+        raise InvalidUsage('Variant naming format not supported; ensure all are rs ID\'s or formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37')
     ensg_gene = gene
     if gene in list(collapsed_genes_df['name']):
         ensg_gene = collapsed_genes_df['ENSG_name'][list(collapsed_genes_df['name']).index(gene)]
     if gene in list(collapsed_genes_df['ENSG_name']):
         gene = collapsed_genes_df['name'][list(collapsed_genes_df['ENSG_name']).index(gene)]
-    gene_query = f'{ensg_gene}?'
-    query_suffix = 'statistic=p-value;content-type=application/json'
-    #for tissue in tqdm(gtex_tissues):
     print(f'Gathering eQTL data for {gene} ({ensg_gene}) in {tissue}')
-    tissue_query = f'tissue={tissue};'
-    url = ensembl_eqtl_base_url + gene_query + tissue_query + query_suffix
-    response = requests.get(url, headers={ "Content-Type" : "application/json"})
-    if response:
-        eqtl = response.json()
-        # Resolving a problem introduced by Ensembl in that
-        # the genomic coordinates returned are GRCh37 coordinates that
-        # have been lifted over to GRCh38. 
-        # Resolving this by merging with the GWAS dataset 
-        # (which is in GRCh37 coordinates) by SNP name
-        if len(eqtl) > 0:
-            for obj in eqtl:
-                for k,v in obj.items():
-                    if(k == 'snp' and v in snp_list):
-                        obj['seq_region_start'] = positions[snp_list.index(v)]
-                        obj['seq_region_end'] = positions[snp_list.index(v)]
-                        gtex_data.append(obj)
+    response_df = get_gtex_v7(tissue, gene)
+    if 'error' not in response_df.columns:
+        eqtl = response_df
+        if rsids:
+            snp_df = pd.DataFrame(snp_list, columns=['rs_id'])
+            gtex_data = snp_df.reset_index().merge(eqtl, on='rs_id', how='left', sort=False).sort_values('index')
+        else:
+            snp_df = pd.DataFrame(snp_list, columns=['variant_id'])
+            gtex_data = snp_df.reset_index().merge(eqtl, on='variant_id', how='left', sort=False).sort_values('index')
     else:
         try:
-            error_message = response.json()['error']
+            error_message = list(response_df['error'])[0]
             if raiseErrors:
-                raise InvalidUsage(error_message)
+                raise InvalidUsage(error_message, status_code=410)
         except:
             if raiseErrors:
-                raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene + " ( " + ensg_gene + " )")
+                raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene + " ( " + ensg_gene + " )", status_code=410)
     return gtex_data
 
 
 def get_gtex_data_pvalues(eqtl_data, snp_list):
-    pvalues = np.repeat(np.nan, len(snp_list))
-    if len(eqtl_data) > 0:
-        for obj in eqtl_data:
-            for k,v in obj.items():
-                if(k == 'snp' and v in snp_list):
-                    pvalues[snp_list.index(v)] = 10**(-obj['minus_log10_p_value'])
-    return list(pvalues)
-
-
-####################################
-# HG19 positions' querying from UCSC's snp151 table 
-# Currently not in use (very slow as positions in UCSC are not indexed) 
-# Require basepair positions from user
-####################################
-def getSNPPositions(snp_list):
-    pos = []
-    allowed_chars = 'rs' + string.digits
-    engine = sa.create_engine('mysql://genome@genome-mysql.cse.ucsc.edu:3306/hg19')
-    for snp in tqdm(snp_list):
-        querysnp = snp.split(';')[0]
-        if any([char not in allowed_chars for char in querysnp]):
-            pos.append(-1)
-        else:
-            pos.append(engine.execute(f"select chromEnd from snp151 where name='{querysnp}'").fetchall()[0][0])
-    return pos
+    rsids = True
+    if snp_list[0].startswith('rs'):
+        rsids = True
+    elif snp_list[0].endswith('_b37'):
+        rsids = False
+    else:
+        raise InvalidUsage('Variant naming format not supported; ensure all are rs ID\'s or formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37')    
+    if rsids:
+        gtex_data = pd.merge(eqtl_data, pd.DataFrame(snp_list, columns=['rs_id']), on='rs_id', how='right')
+    else:
+        gtex_data = pd.merge(eqtl_data, pd.DataFrame(snp_list, columns=['variant_id']), on='variant_id', how='right')
+    return list(gtex_data['pval'])
 
 #####################################
 # API Routes
@@ -282,47 +299,31 @@ def get1KGPopulations():
 def getGeneNames():
     return jsonify(list(collapsed_genes_df['name']))
 
+@app.route("/gtex_v7/tissues_list")
+def list_tissues():
+    tissues = list(db.list_collection_names())
+    tissues.remove('variant_table')
+    return jsonify(tissues)
 
 @app.route("/gtex_v7/<tissue>/<gene_id>")
-def get_gtex_v7(tissue, gene_id):
-    tissue = tissue.title().replace(' ','_')
-    gene_id = gene_id.upper()
-    ensg_name = ""
-    if tissue not in db.list_collection_names():
-        raise InvalidUsage('Tissue not found', status_code=410)
-    collection = db[tissue]
-    if gene_id.startswith('ENSG'):
-        i = [x.split('.')[0] for x in list(ensg_to_genename_map['ENSG_name'])].index(gene_id.split('.')[0])
-        ensg_name = list(ensg_to_genename_map['ENSG_name'])[i]
-    elif gene_id in list(ensg_to_genename_map['name']):
-        i = list(ensg_to_genename_map['name']).index(gene_id)
-        ensg_name = list(ensg_to_genename_map['ENSG_name'])[i]
-    else:
-        raise InvalidUsage(f'Gene name {gene_id} not found', status_code=410)
-    results = list(collection.find({'gene_id': ensg_name}))
-    #results_df = pd.DataFrame(results[0]['eqtl_variants'])
-    #return jsonify(results_df.to_dict(orient='list'))
-    response = []
-    try:
-        response = results[0]['eqtl_variants']
-    except:
-        return jsonify({'Message': f'No eQTL data for {gene_id} in {tissue}'})
-    results_df = pd.DataFrame(response)
-    chrom = int(list(results_df['variant_id'])[0].split('_')[0].replace('X','23'))
-    positions = [ int(x.split('_')[1]) for x in list(results_df['variant_id']) ]
-    variants_query = db.variant_table.aggregate([
-        { '$match': { '$and': [ 
-            { 'chr': chrom }, 
-            { 'variant_pos': { '$gte': min(positions), '$lte': max(positions) } } 
-            ] 
-            } 
-        }
-    ])
-    variants_df = pd.DataFrame(list(variants_query)).drop(['_id'], axis=1)
-    x = pd.merge(results_df, variants_df, on='variant_id')
-    x.rename(columns={'rs_id_dbSNP147_GRCh37p13': 'rs_id'}, inplace=True)
+def get_gtex(tissue, gene_id):
+    x = get_gtex_v7(tissue, gene_id)
     return jsonify(x.to_dict(orient='records'))
 
+@app.route("/gtex_v7/<tissue>/<gene_id>/<variant>")
+def get_gtex_variant(tissue, gene_id, variant):
+    x = get_gtex_v7(tissue, gene_id)
+    response_df = x
+    result = []
+    if variant.startswith("rs"):
+        result = response_df.loc[ response_df['rs_id'] == variant ]
+    elif variant.endswith("_b37"):
+        result = response_df.loc[ response_df['variant_id'] == variant ]
+    else:
+        raise InvalidUsage(f'variant name {variant} not found', status_code=410)
+    if result.shape[0] == 0:
+        raise InvalidUsage(f'variant name {variant} not found', status_code=410)
+    return jsonify(result.to_dict(orient='records'))
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
@@ -361,25 +362,25 @@ def upload_file():
             chromcol = request.form['chrom-col']
             if chromcol=='': chromcol='#CHROM'
             if chromcol not in gwas_data.columns:
-                raise InvalidUsage('Chromosome column not found')
+                raise InvalidUsage('Chromosome column not found', status_code=410)
             poscol = request.form['pos-col']
             if poscol=='': poscol='BP'
             if poscol not in gwas_data.columns:
-                raise InvalidUsage('Basepair position column not found')
+                raise InvalidUsage('Basepair position column not found', status_code=410)
             snpcol = request.form['snp-col']
             if snpcol=='': snpcol='SNP'
             if snpcol not in gwas_data.columns:
-                raise InvalidUsage('SNP column not found')
+                raise InvalidUsage('SNP column not found', status_code=410)
             pcol = request.form['pval-col']
             if pcol=='': pcol='P'
             if pcol not in gwas_data.columns:
-                raise InvalidUsage('Basepair position column not found')
+                raise InvalidUsage('Basepair position column not found', status_code=410)
             lead_snp = request.form['leadsnp']
             snp_list = list(gwas_data[snpcol])
             snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
             if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][snpcol])[0].split(';')[0]
             if lead_snp not in snp_list:
-                raise InvalidUsage('Lead SNP not found')
+                raise InvalidUsage('Lead SNP not found', status_code=410)
             lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0]
             regiontext = request.form['locus']
             print('regiontext',regiontext)
@@ -387,7 +388,7 @@ def upload_file():
             print('Parsing region text')
             chrom, startbp, endbp = parseRegionText(regiontext)
             if (endbp - startbp) > genomicWindowLimit:
-                raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit} bp')
+                raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit} bp', status_code=410)
             print(chrom,startbp,endbp)
             print('Subsetting GWAS data to entered region')            
             if chrom == 23 and list(gwas_data[chromcol])[0] == "X":
@@ -409,7 +410,7 @@ def upload_file():
             if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)            
             gene = request.form['gencodeID']
             if gene=='': 
-                gene='ENSG00000174502'
+                gene='ENSG00000174502.14'
             elif not (str(gene).upper().startswith('ENSG')):
                 try:
                     gene = str(list(collapsed_genes_df.loc[ collapsed_genes_df['name'] == str(gene).upper() ]['ENSG_name'])[0])
@@ -425,10 +426,6 @@ def upload_file():
             positions = list(gwas_data[poscol])
             #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
             ld_df = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
-            # # Get SNP positions via queries to UCSC Genome's MySQL snp151 table:
-            # print('Gathering HG19 positions from UCSC dbSNP151 database')
-            # positions = getSNPPositions(snp_list)
-            # Make a data dictionary to return as JSON for javascript plot:
             data = {}
             data['snps'] = snp_list
             data['pvalues'] = list(gwas_data[pcol])
@@ -444,7 +441,7 @@ def upload_file():
             print('Gathering GTEx data')
             gtex_data = {}
             for tissue in tqdm(gtex_tissues):
-                gtex_data[tissue] = get_gtex_data(tissue, gene, snp_list, positions, raiseErrors=True)
+                gtex_data[tissue] = get_gtex_data(tissue, gene, snp_list, raiseErrors=True).to_dict(orient='records')
             data.update(gtex_data)
             
             # Determine the region to calculate the Simple Sum (SS):
@@ -505,11 +502,18 @@ def upload_file():
             gwas_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/gwas_df-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
             # 3. Determine the genes to query
             query_genes = list(genes_to_draw['name'])
-            # 4. Query and extract the eQTL p-values for all tissues x genes from GTEx (via Ensembl API)
+            # 4. Query and extract the eQTL p-values for all tissues & genes from GTEx
             for tissue in gtex_tissues:
                 for gene in query_genes:
-                    pvalues = get_gtex_data_pvalues(get_gtex_data(tissue, gene, SS_snp_list, SS_positions), SS_snp_list)
+                    gtex_eqtl_df = get_gtex_data(tissue, gene, SS_snp_list)
+                    print(len(gtex_eqtl_df))
+                    if len(gtex_eqtl_df) > 0:
+                        pvalues = list(gtex_eqtl_df['pval'])
+                    else:
+                        pvalues = np.repeat(np.nan, len(SS_snp_list))
                     PvaluesMat.append(pvalues)
+                    print(f'tissue: {tissue}, gene: {gene}, len(pvalues): {len(pvalues)}')
+                    print(f'len(SS_positions): {len(SS_positions)}, len(SS_snp_list): {len(SS_snp_list)}')
                     # Extra files written:
                     eqtl_df = pd.DataFrame({
                         'Position': SS_positions,
@@ -547,7 +551,7 @@ def upload_file():
             Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
             RscriptRun = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
             if RscriptRun.returncode != 0:
-                raise InvalidUsage(RscriptRun.stdout)
+                raise InvalidUsage(RscriptRun.stdout, status_code=410)
             SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
             SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
             for i in np.arange(len(SSPvalues)):
