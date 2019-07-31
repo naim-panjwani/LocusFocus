@@ -441,7 +441,10 @@ def upload_file():
             print('Gathering GTEx data')
             gtex_data = {}
             for tissue in tqdm(gtex_tissues):
-                gtex_data[tissue] = get_gtex_data(tissue, gene, snp_list, raiseErrors=True).to_dict(orient='records')
+                eqtl_df = get_gtex_data(tissue, gene, snp_list, raiseErrors=True)
+                if len(eqtl_df) > 0:
+                    eqtl_df.fillna(-1, inplace=True)
+                gtex_data[tissue] = eqtl_df.to_dict(orient='records')
             data.update(gtex_data)
             
             # Determine the region to calculate the Simple Sum (SS):
