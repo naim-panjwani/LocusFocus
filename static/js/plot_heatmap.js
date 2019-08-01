@@ -4,9 +4,19 @@ function plot_heatmap(genes, tissues, SSPvalues) {
           x: genes,
           y: tissues,
           type: 'heatmap',
+          name: '-log10(Simple Sum P-value)',
           hovertemplate: 'Gene: %{x}' +
                          '<br>Tissue: %{y}<br>' +
-                         '-log10(SS P-value): %{z}'
+                         '-log10(SS P-value): %{z}',
+          colorbar: {title: '-log10(Simple Sum P-value)'}
     }];
-    Plotly.newPlot('heatmap', data);
+    var layout = {
+        margin: {
+            r: 50,
+            t: 50,
+            b: 80,
+            l: 100
+        }
+    }
+    Plotly.newPlot('heatmap', data, layout);
 }
