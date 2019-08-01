@@ -198,13 +198,13 @@ function plot_gwas(data, genesdata) {
       gtex_snps[gtex_tissues[i]] = [];
       data[gtex_tissues[i]].forEach(eqtl => {
         Object.keys(eqtl).forEach(k => {
-          if(k === 'seq_region_start')  {
+          if(k === 'variant_pos')  {
             gtex_positions[gtex_tissues[i]].push(+eqtl[k]);
           }
-          else if (k === 'minus_log10_p_value') {
-            gtex_log10_pvalues[gtex_tissues[i]].push(+eqtl[k]);
+          else if (k === 'pval') {
+            gtex_log10_pvalues[gtex_tissues[i]].push(-Math.log10(+eqtl[k]));
           }
-          else if (k === 'snp') {
+          else if (k === 'rs_id') {
             gtex_snps[gtex_tissues[i]].push(eqtl[k]);
           }
         });
