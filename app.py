@@ -182,11 +182,11 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     return merged_df
 
 def get_gtex_v7(tissue, gene_id):
-    tissue = tissue.title().replace(' ','_')
+    tissue = tissue.replace(' ','_')
     gene_id = gene_id.upper()
     ensg_name = ""
     if tissue not in db.list_collection_names():
-        raise InvalidUsage('Tissue not found', status_code=410)
+        raise InvalidUsage(f'Tissue {tissue} not found', status_code=410)
     collection = db[tissue]
     if gene_id.startswith('ENSG'):
         i = list(collapsed_genes_df['ENSG_name']).index(gene_id)
@@ -246,8 +246,7 @@ def get_gtex_data(tissue, gene, snp_list, raiseErrors = False):
     else:
         try:
             error_message = list(response_df['error'])[0]
-            if raiseErrors:
-                raise InvalidUsage(error_message, status_code=410)
+            gtex_data = pd.DataFrame({})
         except:
             if raiseErrors:
                 raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene + " ( " + ensg_gene + " )", status_code=410)
