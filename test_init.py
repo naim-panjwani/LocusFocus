@@ -362,6 +362,7 @@ data['ld_populations'] = pops
 data['gtex_tissues'] = gtex_tissues
 # Get GTEx data for the tissues and SNPs selected:
 print('Gathering GTEx data')
+t1 = datetime.now()
 gtex_data = {}
 for tissue in tqdm(gtex_tissues):
     gtex_data[tissue] = get_gtex_data(tissue, gene, snp_list, positions, raiseErrors=True)

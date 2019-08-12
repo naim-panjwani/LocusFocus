@@ -9,6 +9,7 @@ from tqdm import tqdm
 import uuid
 from pprint import pprint
 import subprocess
+from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy.ext.automap import automap_base
@@ -357,6 +358,7 @@ def upload_file():
             my_session_id = uuid.uuid4()
             print(f'Session ID: {my_session_id}')
             print('Loading file')
+            t1 = datetime.now()
             gwas_data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
             chromcol = request.form['chrom-col']
             if chromcol=='': chromcol='#CHROM'
@@ -421,6 +423,9 @@ def upload_file():
             snp_list = list(gwas_data[snpcol])
             snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
             # Get LD:
+            t2 = datetime.now()
+            print('Time to load and subset data: ' + str(t2 - t1))
+            t1 = datetime.now()
             print('Calculating pairwise LD using PLINK')
             positions = list(gwas_data[poscol])
             #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
@@ -436,6 +441,9 @@ def upload_file():
             data['endbp'] = endbp
             data['ld_populations'] = pops
             data['gtex_tissues'] = gtex_tissues
+            t2 = datetime.now()
+            print('Time to calculate LD matrix: ' + str(t2 - t1))
+            t1 = datetime.now()
             # Get GTEx data for the tissues and SNPs selected:
             print('Gathering GTEx data')
             gtex_data = {}
@@ -445,7 +453,8 @@ def upload_file():
                     eqtl_df.fillna(-1, inplace=True)
                 gtex_data[tissue] = eqtl_df.to_dict(orient='records')
             data.update(gtex_data)
-            
+            t2 = datetime.now()
+            print('Time to get eQTL data: ' + str(t2 - t1))
             # Determine the region to calculate the Simple Sum (SS):
             SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
             SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
@@ -505,17 +514,19 @@ def upload_file():
             # 3. Determine the genes to query
             query_genes = list(genes_to_draw['name'])
             # 4. Query and extract the eQTL p-values for all tissues & genes from GTEx
+            t1 = datetime.now()
+            print('Obtaining eQTL p-values for selected tissues and surrounding genes')
             for tissue in gtex_tissues:
                 for gene in query_genes:
                     gtex_eqtl_df = get_gtex_data(tissue, gene, SS_snp_list)
-                    print(len(gtex_eqtl_df))
+                    #print(len(gtex_eqtl_df))
                     if len(gtex_eqtl_df) > 0:
                         pvalues = list(gtex_eqtl_df['pval'])
                     else:
                         pvalues = np.repeat(np.nan, len(SS_snp_list))
                     PvaluesMat.append(pvalues)
-                    print(f'tissue: {tissue}, gene: {gene}, len(pvalues): {len(pvalues)}')
-                    print(f'len(SS_positions): {len(SS_positions)}, len(SS_snp_list): {len(SS_snp_list)}')
+                    #print(f'tissue: {tissue}, gene: {gene}, len(pvalues): {len(pvalues)}')
+                    #print(f'len(SS_positions): {len(SS_positions)}, len(SS_snp_list): {len(SS_snp_list)}')
                     # Extra files written:
                     eqtl_df = pd.DataFrame({
                         'Position': SS_positions,
@@ -523,6 +534,10 @@ def upload_file():
                         'P': pvalues
                     })
                     eqtl_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/eqtl_df-{tissue}-{gene}-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
+            t2 = datetime.now()
+            print('Time to extract eQTL data for surrounding genes: ' + str(t2 - t1))
+            t1 = datetime.now()
+            print('Extracting LD matrix')
             # 5. Get the LD matrix via PLINK subprocess call:
             plink_outfilename = f'session_data/ld-{my_session_id}'
             plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
@@ -534,6 +549,8 @@ def upload_file():
                 ld_mat_snps, ld_mat = plink_ldmat(pops, chrom, SS_positions, plink_outfilepath)
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
             np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
+            t2 = datetime.now()
+            print('Time to get the LD matrix for SS: ' + str(t2 - t1))
             # 6. Shrink the P-values matrix to include only the SNPs available in the LD matrix:
             PvaluesMat = np.matrix(PvaluesMat)
             Pmat_indices = [i for i, e in enumerate(SS_positions) if e in ld_mat_positions]
@@ -549,6 +566,8 @@ def upload_file():
             writeList(ld_mat_snps, os.path.join(MYDIR,'static', f'session_data/ldmat_snps-{my_session_id}.txt'))
             writeList(ld_mat_positions, os.path.join(MYDIR,'static', f'session_data/ldmat_positions-{my_session_id}.txt'))
             ####
+            print('Calculating Simple Sum stats')
+            t1 = datetime.now()
             Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
             Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
             RscriptRun = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
@@ -568,6 +587,8 @@ def upload_file():
             SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
             json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
+            t2 = datetime.now()
+            print('Time to calculate Simple Sum stats: ' + str(t2 - t1))
             return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file)
         return render_template("invalid_input.html")
     return render_template("index.html")
