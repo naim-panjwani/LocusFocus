@@ -1,5 +1,5 @@
 import json
-import requests
+#import requests
 import pandas as pd
 import numpy as np
 import os
@@ -11,16 +11,16 @@ from pprint import pprint
 import subprocess
 from datetime import datetime
 
-import sqlalchemy as sa
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine, inspect, String, Integer
+#import sqlalchemy as sa
+#from sqlalchemy.ext.automap import automap_base
+#from sqlalchemy.orm import Session
+#from sqlalchemy import create_engine, inspect, String, Integer
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash
 from werkzeug.utils import secure_filename
-from flask_sqlalchemy import SQLAlchemy
-import pymysql
-pymysql.install_as_MySQLdb()
+#from flask_sqlalchemy import SQLAlchemy
+#import pymysql
+#pymysql.install_as_MySQLdb()
 from pymongo import MongoClient
 #thepwd = open('pwd.txt').readline().replace('\n', '')
 
