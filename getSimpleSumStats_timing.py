@@ -17,12 +17,27 @@ import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
 
 imhof = importr(str("CompQuadForm")).__dict__['imhof']
+davies = importr(str("CompQuadForm")).__dict__['davies']
 
 def get_p(ss_stat, eig_values, m):
-
+    import time
+    
+    print("imof")
+    start = time.time()
     res = imhof(ss_stat, eig_values)
     p = np.array(res[res.names.index('Qq')])
-
+    end = time.time()
+    print(end - start)
+    
+    
+    print("davies")
+    start = time.time()
+    res2 = davies(ss_stat, eig_values)
+    p2 = np.array(res2[res2.names.index('Qq')])
+    end = time.time()
+    print(end - start)
+    
+    print("---\n" + str(p) + "\n" + str(p2))
     return abs(p[0])
 
   
@@ -133,6 +148,7 @@ def main():
     pss, n = [], []
     
     for i in range(n_iter):  
+        print(i)
         p_eqtl_i = np.asarray(p_eqtl[i,] if n_iter > 1 else p_eqtl)
         
         #remove nans        
