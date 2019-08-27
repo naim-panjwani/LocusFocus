@@ -308,6 +308,7 @@ def list_tissues():
 @app.route("/gtex_v7/<tissue>/<gene_id>")
 def get_gtex(tissue, gene_id):
     x = get_gtex_v7(tissue, gene_id)
+    x = x.fillna(-1)
     return jsonify(x.to_dict(orient='records'))
 
 @app.route("/gtex_v7/<tissue>/<gene_id>/<variant>")

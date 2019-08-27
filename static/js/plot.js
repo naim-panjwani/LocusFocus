@@ -33,6 +33,7 @@ function plot_gwas(data, genesdata) {
     var extra_y_range = 0.05 * log10pvalue_range;
     var eqtl_smoothing_window_size = (regionsize/100000) * 15;
     var percent_occupied_by_one_char = 0.011;
+    var font_height = 0.5;
     // console.log(eqtl_smoothing_window_size)
 
     // Helper functions:
@@ -401,17 +402,149 @@ function plot_gwas(data, genesdata) {
     }
     all_traces.push(genenames_trace);
 
-
+    var gwas_ymax = d3.max(log10pvalues);
+    var gtex_ymax = getYmax(gtex_line_traces);
     
+    // Find a place for gene names text
+
+    function point_overlap(point, rect) {
+      var overlap = false;
+      xcheck = (point[0]>=rect[0] && point[0]<=rect[2]);
+      ycheck = (point[1]>=rect[1] && point[1]<=rect[4]);
+      return(xcheck && ycheck);
+    }
+
+    function rect_overlap(rect1, rect2) {
+      var overlap = false;
+      var xbin_rect1 = [rect1[0], rect1[2]];
+      var ybin_rect1 = [rect1[1], rect1[3]];
+      if( point_overlap(rect2[0], rect1) || 
+          point_overlap(rect2[1], rect1) || 
+          point_overlap(rect2[2], rect1) || 
+          point_overlap(rect2[3], rect1)) {
+        overlap = true;
+      }
+      return(overlap);
+    }
+
+    function curr_rect_overlaps(rect_bin, rect_bins) {
+      overlap = false;
+      for(var i=0; i<rect_bins.length; i++) {
+        var curr_rect_bin = rect_bins[i];
+        if(rect_overlap(rect_bin, curr_rect_bin)) {
+          return(true);
+        }
+      }
+      return(overlap);
+    }
+
+    var full_y_range = gwas_ymax+extra_y_range+gene_area_height;
+    i = 0;
+    midx = (genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2;
+    midy = -(genesdata[i]['geneRow'] * row_height) + text_height + gene_margin + ((exon_height - intron_height)/2) + intron_height/2;
+    thegenename = genesdata[i]['name'];
+    var xrefloc = (midx - (startbp - extra_x_range)) / (regionsize + 2 * extra_x_range);
+    var x0 = d3.max([xrefloc - thegenename.length/2 * percent_occupied_by_one_char, 0]);
+    var x1 = xrefloc + thegenename.length/2 * percent_occupied_by_one_char;
+    if(x0>1) {
+      x0=1;
+    } else if (x0<0) {
+      x0=0;
+    }
+    if(x1>1) {
+      x1=1;
+    } else if(x1<0) {
+      x1=0;
+    }
+    var y0 = gene_area_height/full_y_range - (-1*midy)/full_y_range - font_height/full_y_range;
+    var y1 = gene_area_height/full_y_range - (-1*midy)/full_y_range;
+    var first_rect_bin = [x0,y0,x1,y1];
+    var roughly_half_row_height = text_height + gene_margin + ((exon_height - intron_height)/2) + intron_height/2;
+
+    var rect_bins = [];
+    rect_bins = [first_rect_bin];
     var annotations_x2 = [];
     var annotations_y2 = [];
     var annotations_text2 = [];
-    for(var i=1; i < annotations_x.length-1; i=i+3) {
-      annotations_x2.push(annotations_x[i]);
-      annotations_y2.push(annotations_y[i] - exon_height/2);
-      annotations_text2.push(annotations_text[i]);
+    annotations_x2.push((genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2);
+    annotations_y2.push(-(genesdata[i]['geneRow'] * row_height) + roughly_half_row_height);
+    annotations_text2.push(genesdata[i]['name']);
+    for(var i=1; i < genesdata.length; i++) {
+      midx = (genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2;
+      midy = -(genesdata[i]['geneRow'] * row_height) + roughly_half_row_height;
+      thegenename = genesdata[i]['name'];
+      var xrefloc = (midx - (startbp - extra_x_range)) / (regionsize + 2 * extra_x_range);
+      var x0 = d3.max([xrefloc - annotations_text[i].length/2 * percent_occupied_by_one_char, 0]);
+      var x1 = xrefloc + thegenename.length/2 * percent_occupied_by_one_char;
+      if(x0>1) {
+        x0=1;
+      } else if (x0<0) {
+        x0=0;
+      }
+      if(x1>1) {
+        x1=1;
+      } else if(x1<0) {
+        x1=0;
+      }
+      var y0 = gene_area_height/full_y_range - (-1*midy)/full_y_range - font_height/full_y_range;
+      var y1 = gene_area_height/full_y_range - (-1*midy)/full_y_range;
+      var curr_rect_bin = [x0,y0,x1,y1];
+      if(curr_rect_overlaps(curr_rect_bin, rect_bins)) {
+        // try the top area of the gene
+        y0 = (gene_area_height - (-1*midy) + roughly_half_row_height - font_height)/full_y_range;
+        y1 = (gene_area_height - (-1*midy) + roughly_half_row_height)/full_y_range;
+        curr_rect_bin = [x0,y0,x1,y1];
+        if(curr_rect_overlaps(curr_rect_bin, rect_bins)) {
+          rect_bins.push([-1,-1,-1,-1]); // don't output the genename text then
+          annotations_x2.push(-1);
+          annotations_y2.push(-1);
+          annotations_text2.push(genesdata[i]['name']);
+        } else {
+          rect_bins.push(curr_rect_bin); // put gene name text at the top of the gene
+          annotations_x2.push((genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2);
+          annotations_y2.push(-(genesdata[i]['geneRow'] * row_height) + roughly_half_row_height*2 - text_height/2);
+          annotations_text2.push(genesdata[i]['name']);
+        }
+      } else {
+        // default to putting the gene name text at the bottom of the gene
+        annotations_x2.push((genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2);
+        annotations_y2.push(-(genesdata[i]['geneRow'] * row_height) + roughly_half_row_height);
+        annotations_text2.push(genesdata[i]['name']);
+      }
     }
+
+    // SOME TEMPORARY TRIAL CODE FOR DETERMINING TEXT BINNING
+
+    var i = 13;
+    var xrefloc = (((genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2) - (startbp - extra_x_range)) / (regionsize + 2 * extra_x_range);
+    var leftside = d3.max([xrefloc - annotations_text2[i].length/2 * percent_occupied_by_one_char, 0]);
+    var rightside = xrefloc + annotations_text2[i].length/2 * percent_occupied_by_one_char;
+    if(rightside>1) {
+      rightside=1
+    } else if (rightside<0) {
+      rightside=0;
+    };
+    if(leftside>1) {
+      leftside=1
+    } else if (leftside<0) {
+      leftside=0;
+    };
+  
+    var trial_trace = {
+      type: 'rect',
+      xref: 'paper',
+      yref: 'paper',
+      x0: leftside,
+      y0: gene_area_height/full_y_range - (-1*annotations_y2[i])/full_y_range - font_height/full_y_range,
+      x1: rightside,
+      y1: gene_area_height/full_y_range - (-1*annotations_y2[i])/full_y_range,
+      fillcolor: 'red',
+      opacity: 0.3,
+      line: {width: 1}
+    }
+    rectangle_shapes.push(trial_trace);
     
+
     var genenames_trace2 = {
       x: annotations_x2,
       y: annotations_y2,
@@ -427,10 +560,7 @@ function plot_gwas(data, genesdata) {
       textposition: 'bottom'
     }
     all_traces.push(genenames_trace2);
-
-    var gwas_ymax = d3.max(log10pvalues);
-    var gtex_ymax = getYmax(gtex_line_traces);
-
+    
     // Shade the Simple Sum Region
     var SS_shade_shape = {
       type: 'rect',
@@ -446,34 +576,6 @@ function plot_gwas(data, genesdata) {
     }
     rectangle_shapes.push(SS_shade_shape);
 
-
-    // SOME TEMPORARY TRIAL CODE FOR DETERMINING TEXT BINNING
-
-    var i = 5;
-    var xrefloc = (annotations_x2[i] - (startbp - extra_x_range)) / (regionsize + 2 * extra_x_range);
-    var leftside = d3.max([xrefloc - annotations_text2[i].length/2 * percent_occupied_by_one_char, 0]);
-    var rightside = xrefloc + annotations_text2[i].length/2 * percent_occupied_by_one_char;
-    if(rightside>1) {rightside=1};
-    if(leftside>1) {leftside=1};
-    
-    console.log(startbp);
-    console.log(xrefloc);
-    console.log(leftside);
-    console.log(rightside);
-
-    var trial_trace = {
-      type: 'rect',
-      xref: 'paper',
-      yref: 'paper',
-      x0: leftside,
-      y0: 0,
-      x1: rightside,
-      y1: 0.5,
-      fillcolor: 'red',
-      opacity: 0.3,
-      line: {width: 1}
-    }
-    rectangle_shapes.push(trial_trace);
 
     var layout = {
       xaxis: {
