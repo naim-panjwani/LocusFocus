@@ -32,6 +32,7 @@ function plot_gwas(data, genesdata) {
     var extra_x_range = 0.05 * regionsize;
     var extra_y_range = 0.05 * log10pvalue_range;
     var eqtl_smoothing_window_size = (regionsize/100000) * 15;
+    var percent_occupied_by_one_char = 0.011;
     // console.log(eqtl_smoothing_window_size)
 
     // Helper functions:
@@ -130,10 +131,13 @@ function plot_gwas(data, genesdata) {
 
     // console.log(genesdata);
     // console.log(geneRows);
-    var gene_area_height = d3.min([0.1 * log10pvalue_range * geneRows.length, 0.7 * log10pvalue_range]);
+    var gene_area_percentage = 0.15;
+    var max_num_gene_rows = 7;
+    var gene_area_height = d3.min([gene_area_percentage * log10pvalue_range * geneRows.length, gene_area_percentage * max_num_gene_rows * log10pvalue_range]);
     var row_height = gene_area_height / geneRows.length;
+    var text_height = row_height * 0.15
     var gene_margin = row_height * 0.15;
-    var exon_height = row_height - (2 * gene_margin);
+    var exon_height = row_height - (2 * (gene_margin + text_height));
     var intron_height = exon_height * 0.4;
 
     var rectangle_shapes = [];
@@ -147,9 +151,9 @@ function plot_gwas(data, genesdata) {
         xref: 'x',
         yref: 'y',
         x0: genesdata[i]['txStart'],
-        y0: -(genesdata[i]['geneRow'] * row_height) + gene_margin + ((exon_height - intron_height)/2),
+        y0: -(genesdata[i]['geneRow'] * row_height) + text_height + gene_margin + ((exon_height - intron_height)/2),
         x1: genesdata[i]['txEnd'],
-        y1: -(genesdata[i]['geneRow'] * row_height) + gene_margin + ((exon_height - intron_height)/2) + intron_height,
+        y1: -(genesdata[i]['geneRow'] * row_height) + text_height + gene_margin + ((exon_height - intron_height)/2) + intron_height,
         line: {
           color: 'rgb(55, 128, 191)',
           width: 1
@@ -160,7 +164,7 @@ function plot_gwas(data, genesdata) {
       annotations_x.push(genesdata[i]['txStart']);
       annotations_x.push((genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2);
       annotations_x.push(genesdata[i]['txEnd']);
-      var y = -(genesdata[i]['geneRow'] * row_height) + gene_margin + ((exon_height - intron_height)/2) + intron_height/2;
+      var y = -(genesdata[i]['geneRow'] * row_height) + text_height + gene_margin + ((exon_height - intron_height)/2) + intron_height/2;
       annotations_y.push(y);
       annotations_y.push(y);
       annotations_y.push(y);
@@ -174,9 +178,9 @@ function plot_gwas(data, genesdata) {
           xref: 'x',
           yref: 'y',
           x0: genesdata[i]['exonStarts'][j],
-          y0: -(genesdata[i]['geneRow'] * row_height) + gene_margin,
+          y0: -(genesdata[i]['geneRow'] * row_height) + text_height + gene_margin,
           x1: genesdata[i]['exonEnds'][j],
-          y1: -(genesdata[i]['geneRow'] * row_height) + gene_margin + exon_height,
+          y1: -(genesdata[i]['geneRow'] * row_height) + text_height + gene_margin + exon_height,
           line: {
             color: 'rgb(55, 128, 191)',
             width: 1
@@ -397,6 +401,33 @@ function plot_gwas(data, genesdata) {
     }
     all_traces.push(genenames_trace);
 
+
+    
+    var annotations_x2 = [];
+    var annotations_y2 = [];
+    var annotations_text2 = [];
+    for(var i=1; i < annotations_x.length-1; i=i+3) {
+      annotations_x2.push(annotations_x[i]);
+      annotations_y2.push(annotations_y[i] - exon_height/2);
+      annotations_text2.push(annotations_text[i]);
+    }
+    
+    var genenames_trace2 = {
+      x: annotations_x2,
+      y: annotations_y2,
+      text: annotations_text2,
+      type: 'scatter',
+      mode: 'markers+text',
+      marker: {
+        opacity: 0
+      },
+      yaxis: 'y1',
+      showlegend: false,
+      name: 'Gene name',
+      textposition: 'bottom'
+    }
+    all_traces.push(genenames_trace2);
+
     var gwas_ymax = d3.max(log10pvalues);
     var gtex_ymax = getYmax(gtex_line_traces);
 
@@ -414,6 +445,35 @@ function plot_gwas(data, genesdata) {
       line: { width: 0 }
     }
     rectangle_shapes.push(SS_shade_shape);
+
+
+    // SOME TEMPORARY TRIAL CODE FOR DETERMINING TEXT BINNING
+
+    var i = 5;
+    var xrefloc = (annotations_x2[i] - (startbp - extra_x_range)) / (regionsize + 2 * extra_x_range);
+    var leftside = d3.max([xrefloc - annotations_text2[i].length/2 * percent_occupied_by_one_char, 0]);
+    var rightside = xrefloc + annotations_text2[i].length/2 * percent_occupied_by_one_char;
+    if(rightside>1) {rightside=1};
+    if(leftside>1) {leftside=1};
+    
+    console.log(startbp);
+    console.log(xrefloc);
+    console.log(leftside);
+    console.log(rightside);
+
+    var trial_trace = {
+      type: 'rect',
+      xref: 'paper',
+      yref: 'paper',
+      x0: leftside,
+      y0: 0,
+      x1: rightside,
+      y1: 0.5,
+      fillcolor: 'red',
+      opacity: 0.3,
+      line: {width: 1}
+    }
+    rectangle_shapes.push(trial_trace);
 
     var layout = {
       xaxis: {
