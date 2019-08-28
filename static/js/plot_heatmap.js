@@ -15,7 +15,7 @@ function plot_heatmap(genes, tissues, SSPvalues) {
             r: 50,
             t: 50,
             b: 80,
-            l: 225
+            l: 300
         }
     }
     Plotly.newPlot('heatmap', data, layout);
