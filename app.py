@@ -433,9 +433,9 @@ def upload_file():
             gene = request.form['gencodeID']
             if gene=='': 
                 gene='ENSG00000174502.14'
-            elif not (str(gene).upper().startswith('ENSG')):
+            elif not (str(gene).startswith('ENSG')):
                 try:
-                    gene = str(list(collapsed_genes_df.loc[ collapsed_genes_df['name'] == str(gene).upper() ]['ENSG_name'])[0])
+                    gene = str(list(collapsed_genes_df.loc[ collapsed_genes_df['name'] == str(gene) ]['ENSG_name'])[0])
                 except:
                     raise InvalidUsage('Gene name not recognized', status_code=410)
             # Omit any rows with missing values:
