@@ -184,7 +184,7 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
 
 def get_gtex_v7(tissue, gene_id):
     tissue = tissue.replace(' ','_')
-    gene_id = gene_id.upper()
+    #gene_id = gene_id.upper()
     ensg_name = ""
     if tissue not in db.list_collection_names():
         raise InvalidUsage(f'Tissue {tissue} not found', status_code=410)
