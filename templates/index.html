@@ -7,23 +7,32 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>LocusFocus: Prioritize Genes and Tissues for Study from GWAS and eQTL Integration</title>
   <link rel="shortcut icon" href="#" />
-   <!-- Font Awesome -->
-   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
-   <!-- JQuery-UI -->
-   <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}"/>
-   <!-- JQuery -->
-   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-   <!-- JQuery-UI -->
-   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
-   <!-- Bootstrap core CSS -->
-   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-   <!-- Material Design Bootstrap -->
-   <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
-   <!-- DataTables -->
-   <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}"/>
-   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}"/>
-   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
-   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/d3Style.css') }}">
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-147321656-2"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-147321656-2');
+  </script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
+  <!-- JQuery-UI -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}"/>
+  <!-- JQuery -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <!-- JQuery-UI -->
+  <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <!-- Material Design Bootstrap -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}"/>
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-multiselect.css') }}"/>
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/d3Style.css') }}">
 </head>
 
 <body> 
@@ -36,9 +45,8 @@
     </div>
     <div class="row">
       <div class="col-md-12 borderit">
-        <div class="col-md-10">
-          <h5>To load a previous session, click <a href="/previous_session">here</a></h5>
-        </div>
+        <a href="/previous_session" role="button" class="btn btn-primary btn-lg">Session ID</a>
+        <a href="https://locusfocus.readthedocs.io" role="button" class="btn btn-primary btn-lg">Documentation</a>
       </div>
     </div>
     <div class="inputs-and-upload-form">
