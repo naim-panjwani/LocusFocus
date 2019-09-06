@@ -338,13 +338,35 @@ def prev_session():
             sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
             genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
+        else: # blank input
+            raise InvalidUsage('Invalid input')
         print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
         print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
         print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
         if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath)):
             raise InvalidUsage(f'Could not locate session {my_session_id}')
-        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
     return render_template('session_form.html')
+
+@app.route("/session_id/<old_session_id>")
+def prev_session_input(old_session_id):
+    if old_session_id != '':
+        my_session_id = old_session_id
+        sessionfile =  f'session_data/form_data-{my_session_id}.json'
+        genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
+        SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
+        sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
+        genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
+        SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
+    else: # blank input
+        raise InvalidUsage('Invalid input')
+    print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
+    print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
+    print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
+    if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath)):
+        raise InvalidUsage(f'Could not locate session {my_session_id}')
+    return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
+    
+
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
