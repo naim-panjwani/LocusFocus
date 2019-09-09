@@ -345,6 +345,7 @@ def prev_session():
         print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
         if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath)):
             raise InvalidUsage(f'Could not locate session {my_session_id}')
+        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
     return render_template('session_form.html')
 
 @app.route("/session_id/<old_session_id>")
