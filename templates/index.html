@@ -88,13 +88,6 @@
                 <input class="form-control" id="leadsnp" name="leadsnp" type="text" placeholder="default: top marker">
               </div>
             </div>
-            <div class="row">
-              <div class="col-md-4">
-                <br>
-                <h5>LD matrix (optional):</h5>
-                <p><input type=file name=ldmat></p>
-              </div>
-            </div>
           </div>
         </div> <!-- row closing div -->
         
@@ -110,6 +103,14 @@
                 <option id="ASN" value="ASN" label="1000 Genomes 2012 ASN"></option>
               </select>
             </div>
+            <div class="row"><div class="col-md-6"><p><h6>OR</h6></p></div></div>
+            <div class="row">
+              <div class="col-md-6">
+                <br>
+                <h5>LD matrix (optional):</h5>
+                <p><input type=file name=ldmat></p>
+              </div>
+            </div>
             <!--
             <select id="ld-type" name="ld-type">
               <option id="r2" value="r2">r<sup>2</sup></option>
@@ -121,6 +122,7 @@
         <div class="row">
           <div class="col-md-12 borderit">
             <h5>Select GTEx Tissues to Render</h5>
+            <h6><i>We recommend selecting only tissues that are thought to be relevant for the disease under study</i></h6>
             <div class="col-md-6">
               <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple"></select>
             </div>
@@ -133,6 +135,9 @@
         <div class="row">
           <div class="col-md-12"><input id="submit-btn" type="submit" class="btn btn-default" value="Submit"></div>
         </div> <!-- row closing div -->
+        <div class="row">
+          <div class="col-md-12"><h6><b><i>By hitting submit, you understand that you are uploading your dataset to a public server</i></b></h6></div>
+        </div>
       </form>
       <div class="row"><div class="col-md-12"><div id="error-messages" class="error-text"></div></div></div>
     </div> <!-- inputs-and-upload-form closing div -->

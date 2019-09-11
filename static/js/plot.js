@@ -628,6 +628,10 @@ function plot_gwas(data, genesdata) {
       height: 700,
       width: 960,
       showlegend: true,
+      legend: {
+        x: 1.1,
+        y: 1
+      },
       zeroline: true,
       hovermode: "closest",
       shapes: rectangle_shapes
