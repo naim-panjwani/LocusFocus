@@ -1,7 +1,7 @@
 # LocusFocus
 ## Explore GWAS Results with GTEx's eQTL Association Results 
 
-This app is to enable the exploration and annotation of GWAS results to assess what gene and tissue are the most probable candidates for the GWAS signal via integration with [GTEx eQTL association results](https://gtexportal.org/home/) into a single interactive plot, and application of the [Simple Sum method](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1008007) to visualize the results in a heatmap plot.
+This web application is to enable the exploration and annotation of GWAS results to assess what gene and tissue are the most probable candidates for the GWAS signal via integration with [GTEx eQTL association results](https://gtexportal.org/home/) into a single interactive plot, and application of the [Simple Sum method](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1008007) to visualize the results in a heatmap plot.
 
 LD information is calculated using PLINK on the 1000 Genomes Project to enable viewing of LD given a lead SNP. The default lead SNP is the top SNP.
 
