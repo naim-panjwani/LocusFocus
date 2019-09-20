@@ -1,7 +1,7 @@
 function plot_heatmap(genes, tissues, SSPvalues) {
     var data = [{
           z: SSPvalues,
-          x: genes,
+          x: genes.map(gene => `<i>${gene}</i>`),
           y: tissues,
           type: 'heatmap',
           name: '-log10(Simple Sum P-value)',

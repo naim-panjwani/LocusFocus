@@ -637,6 +637,24 @@ function plot_gwas(data, genesdata) {
       shapes: rectangle_shapes
     };
 
-  Plotly.newPlot('plot', all_traces, layout);
+  var img_svg = d3.select("#svg-try");
+  Plotly.newPlot('plot', all_traces, layout)
+
+  
+  // .then(
+  //   function(gd)
+  //   {
+  //     Plotly.toImage(gd,{height:1080,width:1080})
+  //       .then(
+  //         function(url)
+  //         {
+  //           // console.log(url);
+  //           img_svg.attr("src", url);
+  //           return Plotly.toImage(gd,{format:'png', height:1080,width:1080});
+  //         }
+  //       )
+  //   }
+  // )
+
 }
 
