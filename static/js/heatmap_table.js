@@ -38,7 +38,8 @@ function buildTable(genes, tissues, SSPvalues) {
                 },
                 {
                     extend: 'excel',
-                    filename: 'SS_pvalues'
+                    filename: 'SS_pvalues',
+                    messageTop: 'Simple Sum P-values'
                 }
             ]
         });
