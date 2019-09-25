@@ -15,8 +15,9 @@
    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/css/mdb.min.css" rel="stylesheet">
    <!-- DataTables -->
    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.dataTables.min.css') }}"/>
-   <link rel="stylesheet" type="text/css" href="../static/css/style.css">
-   <link rel="stylesheet" type="text/css" href="../static/css/d3Style.css">
+   <link rel="stylesheet" href="{{ url_for('static', filename='DataTables/datatables.min.css') }}"/>
+   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}"/>
+   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/d3Style.css') }}"/>
 </head>
 
 <body>
@@ -35,22 +36,13 @@
     </div>
     <div class="row"><div class="col-md-11"><div class="d-flex justify-content-center align-items-center"></div><div id="heatmap"></div></div></div></div>
     <div class="row">
-        <div class="col-md-12">
+        <div class="col-md-11">
             <div id="table-area">
-                <table id="variants-table" class="table table-striped table-bordered table-sm sortable" cellspacing="0" width="100%">
+                <table id="variants-table" class="table table-striped table-bordered table-condensed table-sm sortable" cellspacing="0" width="90%">
                     <thead>
-                    <!--
-                    <tr>
-                        <th class="th-sm">Chromosome</th>
-                        <th class="th-sm">Position</th>
-                        <th class="th-sm">rs ID</th>
-                        <th class="th-sm">MAF</th>
-                        <th class="th-sm">Consequence</th>
-                        <th class="th-sm">Consequence category</th>
-                        <th class="th-sm">Beta</th>
-                        <th class="th-sm">P-value</th>
-                    </tr>
-                    -->
+                        <tr>
+                            <th class="th-sm">Gene</th>
+                        </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -64,6 +56,7 @@
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/plot.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/plot_heatmap.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/heatmap_table.js') }}"></script>
   <script type="text/javascript">
     var thefile="{{ sessionfile }}";
     var genesfile="{{ genesfile }}";
@@ -81,6 +74,7 @@
                 var genesdata = genesResponse;
                 plot_gwas(data, genesdata);
                 plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+                buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues)
             });
         });
     });
@@ -95,6 +89,7 @@
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.7.4/js/mdb.min.js"></script>
   <!-- DataTables -->
   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.dataTables.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='DataTables/datatables.min.js') }}"></script>
 
 </body>
 
