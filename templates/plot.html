@@ -21,9 +21,10 @@
 </head>
 
 <body>
-<div class="row">
-        <div class="col-md-9"><div class="d-flex justify-content-left align-items-left"><div id="plot"></div></div></div>
-        <div class="col-md-3"><div class="d-flex justify-content-right align-items-right">
+    <div class="container">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="d-flex justify-content-center align-items-center">
                 <div class="card border-primary mb-3" style="max-width: 20rem;">
                     <div class="card-header">Session ID</div>
                     <div class="card-body">
@@ -32,12 +33,20 @@
                         <p class="card-text">Plots older than 7 days are deleted.</p>
                     </div>
                 </div>
-        </div></div>
+            </div>
+        </div>
     </div>
-    <div class="row"><div class="col-md-11"><div class="d-flex justify-content-center align-items-center"></div><div id="heatmap"></div></div></div></div>
     <div class="row">
-        <div class="col-md-11">
+        <div class="col-md-12"><h3>Co-localization Plot</h3><div id="plot"></div></div>
+    </div>
+    <div class="row">
+        <div class="col-md-12"><h3>Heatmap of Simple Sum Co-localization P-values</h3><div id="heatmap"></div></div>
+    </div>
+        
+    <div class="row">
+        <div class="col-md-12">
             <div id="table-area">
+                <h3>Simple Sum P-values Table</h3>
                 <table id="variants-table" class="table table-striped table-bordered table-condensed table-sm sortable" cellspacing="0" width="90%">
                     <thead>
                         <tr>
@@ -49,6 +58,7 @@
             </div> <!-- table-area closing div -->
         </div> <!-- col-md-12 closing div -->
     </div> <!-- row closing div -->
+    </div> <!-- container closing div -->
 
     <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
