@@ -39,10 +39,6 @@ function buildTable(genes, tissues, SSPvalues) {
                 {
                     extend: 'excel',
                     filename: 'SS_pvalues'
-                },
-                {
-                    extend: 'pdf',
-                    filename: 'SS_pvalues'
                 }
             ]
         });
