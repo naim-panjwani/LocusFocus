@@ -202,7 +202,11 @@ def get_gtex_v7(tissue, gene_id):
         ensg_name = list(collapsed_genes_df['ENSG_name'])[i]
     else:
         raise InvalidUsage(f'Gene name {gene_id} not found', status_code=410)
+    #t1=datetime.now()
     results = list(collection.find({'gene_id': ensg_name}))
+    #t2=datetime.now()
+    #print(f'Time to retrieve gene collection: {t2-t1}')
+    #t1=datetime.now()
     response = []
     try:
         response = results[0]['eqtl_variants']
@@ -211,16 +215,30 @@ def get_gtex_v7(tissue, gene_id):
     results_df = pd.DataFrame(response)
     chrom = int(list(results_df['variant_id'])[0].split('_')[0].replace('X','23'))
     positions = [ int(x.split('_')[1]) for x in list(results_df['variant_id']) ]
-    variants_query = db.variant_table.aggregate([
-        { '$match': { '$and': [ 
+    #t2=datetime.now()
+    print(f'Reformatting time: {t2-t1}')
+    #t1=datetime.now()
+    variants_query = db.variant_table.find(
+        { '$and': [ 
             { 'chr': chrom }, 
             { 'variant_pos': { '$gte': min(positions), '$lte': max(positions) } } 
-            ] 
-            } 
-        }
-    ])
-    variants_df = pd.DataFrame(list(variants_query)).drop(['_id'], axis=1)
+        ]} 
+    )
+    #t2=datetime.now()
+    #print(f'Time for variant table query: {t2-t1}')
+    #t1=datetime.now()
+    variants_df = pd.DataFrame(list(variants_query))
+    #print(variants_df.shape)
+    #t2=datetime.now()
+    #print(f'Reformatting time: {t2-t1}')
+    #t1=datetime.now()
+    variants_df = variants_df.drop(['_id'], axis=1)
+    #t2=datetime.now()
+    #print(f'_id dropping time: {t2-t1}')
+    #t1=datetime.now()
     x = pd.merge(results_df, variants_df, on='variant_id')
+    #t2=datetime.now()
+    #print(f'Merging time: {t2-t1}')
     x.rename(columns={'rs_id_dbSNP147_GRCh37p13': 'rs_id'}, inplace=True)
     return x
 
