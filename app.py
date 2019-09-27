@@ -11,18 +11,9 @@ from pprint import pprint
 import subprocess
 from datetime import datetime
 
-#import sqlalchemy as sa
-#from sqlalchemy.ext.automap import automap_base
-#from sqlalchemy.orm import Session
-#from sqlalchemy import create_engine, inspect, String, Integer
-
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash
 from werkzeug.utils import secure_filename
-#from flask_sqlalchemy import SQLAlchemy
-#import pymysql
-#pymysql.install_as_MySQLdb()
 from pymongo import MongoClient
-#thepwd = open('pwd.txt').readline().replace('\n', '')
 
 genomicWindowLimit = 2000000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
@@ -35,18 +26,13 @@ app.config['UPLOAD_FOLDER'] = 'static/upload'
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit * 1024
 ALLOWED_EXTENSIONS = set(['txt', 'tsv'])
 
-# token = ""
-# with open('tokens.txt') as f:
-#     token = f.read().replace('\n','')
-
 collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
-# ensg_to_genename_map = pd.read_csv(os.path.join(MYDIR, 'data/gencode_ensg_to_name_map.txt'), sep='\t', encoding='utf-8', header=None)
-# ensg_to_genename_map.columns = ['ENSG_name', 'name']
 ld_mat_diag_constant = 1e-6
 
 conn = "mongodb://localhost:27017"
 client = MongoClient(conn)
 db = client.GTEx_V7
+
 
 ####################################
 # Helper functions
@@ -99,6 +85,19 @@ def writeMat(aMat, filename):
             for col in np.arange(aMat.shape[1] - 1):
                 f.write("%s\t" % str(aMat[row,col]))
             f.write("%s\n" % str(aMat[row,-1]))
+
+
+def genenames(genename):
+    # Given either ENSG gene name or HUGO gene name, returns both HUGO and ENSG names
+    ensg_gene = genename
+    if genename in list(collapsed_genes_df['name']):
+        ensg_gene = collapsed_genes_df['ENSG_name'][list(collapsed_genes_df['name']).index(genename)]
+    if genename in list(collapsed_genes_df['ENSG_name']):
+        genename = collapsed_genes_df['name'][list(collapsed_genes_df['ENSG_name']).index(genename)]
+    return genename, ensg_gene
+
+
+
 
 ####################################
 # LD Calculation from 1KG using PLINK
@@ -182,6 +181,12 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     merged_df.fillna(-1, inplace=True)
     return merged_df
 
+
+####################################
+# Getting GTEx Data from Local MongoDB Database
+####################################
+
+# This is the main function to extract the data for a tissue and gene_id:
 def get_gtex_v7(tissue, gene_id):
     tissue = tissue.replace(' ','_')
     #gene_id = gene_id.upper()
@@ -219,7 +224,7 @@ def get_gtex_v7(tissue, gene_id):
     x.rename(columns={'rs_id_dbSNP147_GRCh37p13': 'rs_id'}, inplace=True)
     return x
 
-
+# Function to merge the GTEx data with a particular snp_list
 def get_gtex_data(tissue, gene, snp_list, raiseErrors = False):
     gtex_data = []
     rsids = True
@@ -229,12 +234,8 @@ def get_gtex_data(tissue, gene, snp_list, raiseErrors = False):
         rsids = False
     else:
         raise InvalidUsage('Variant naming format not supported; ensure all are rs ID\'s or formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37')
-    ensg_gene = gene
-    if gene in list(collapsed_genes_df['name']):
-        ensg_gene = collapsed_genes_df['ENSG_name'][list(collapsed_genes_df['name']).index(gene)]
-    if gene in list(collapsed_genes_df['ENSG_name']):
-        gene = collapsed_genes_df['name'][list(collapsed_genes_df['ENSG_name']).index(gene)]
-    print(f'Gathering eQTL data for {gene} ({ensg_gene}) in {tissue}')
+    hugo_gene, ensg_gene = genenames(gene)
+    print(f'Gathering eQTL data for {hugo_gene} ({ensg_gene}) in {tissue}')
     response_df = get_gtex_v7(tissue, gene)
     if 'error' not in response_df.columns:
         eqtl = response_df
@@ -250,10 +251,12 @@ def get_gtex_data(tissue, gene, snp_list, raiseErrors = False):
             gtex_data = pd.DataFrame({})
         except:
             if raiseErrors:
-                raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + gene + " ( " + ensg_gene + " )", status_code=410)
+                raise InvalidUsage("No response for tissue " + tissue.replace("_"," ") + " and gene " + hugo_gene + " ( " + ensg_gene + " )", status_code=410)
     return gtex_data
 
 
+# This function simply merges the eqtl_data extracted with the snp_list, 
+# then returns a list of the eQTL pvalues for snp_list (if available)
 def get_gtex_data_pvalues(eqtl_data, snp_list):
     rsids = True
     if snp_list[0].startswith('rs'):
@@ -267,6 +270,7 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
     else:
         gtex_data = pd.merge(eqtl_data, pd.DataFrame(snp_list, columns=['variant_id']), on='variant_id', how='right')
     return list(gtex_data['pval'])
+
 
 #####################################
 # API Routes
@@ -373,6 +377,26 @@ def prev_session_input(old_session_id):
 def upload_file():
     data = {"success": False}
     ldmat_file_supplied = False
+    
+    # Initializing timing variables:
+    t1_total = datetime.now()
+    file_size = np.nan
+    ldmat_file_size = np.nan
+    upload_time = np.nan
+    ldmat_upload_time = np.nan
+    gwas_load_time = np.nan
+    ld_pairwise_time = np.nan
+    gtex_one_gene_time = np.nan
+    gene_list_time = np.nan
+    SS_region_subsetting_time = np.nan
+    gtex_all_queries_time = np.nan
+    ldmat_time = np.nan
+    ldmat_subsetting_time = np.nan
+    SS_time = np.nan
+    
+    #######################################################
+    # Uploading files
+    #######################################################
     if request.method == 'POST':
         if request.files.get('file'):
             # read the file
@@ -383,6 +407,7 @@ def upload_file():
                 # create a path to the uploads folder
                 filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
+                file_size = os.stat(filepath).st_size
             else:
                 raise InvalidUsage('GWAS summary statistics file type not allowed', status_code=410)
             try:
@@ -394,15 +419,19 @@ def upload_file():
                     ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], ldmat_filename)
                     file.save(ldmat_filepath)
                     ldmat_file_supplied = True
+                    ldmat_file_size = os.stat(ldmat_filepath).st_size
+                    ldmat_upload_time = datetime.now() - t1
                 else:
                     raise InvalidUsage('LD matrix file type not allowed', status_code=410)
             except:
                 pass
-            # Load
+            #######################################################
+            # Checking form input parameters and subsetting GWAS file
+            #######################################################
             my_session_id = uuid.uuid4()
             print(f'Session ID: {my_session_id}')
             print('Loading file')
-            t1 = datetime.now()
+            t1 = datetime.now() # timing started for GWAS loading/subsetting/cleaning
             gwas_data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
             chromcol = request.form['chrom-col']
             if chromcol=='': chromcol='#CHROM'
@@ -466,10 +495,11 @@ def upload_file():
             gwas_data.dropna(inplace=True)
             snp_list = list(gwas_data[snpcol])
             snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+            gwas_load_time = datetime.now() - t1
+
+            ####################################################################################################
             # Get LD:
-            t2 = datetime.now()
-            print('Time to load and subset data: ' + str(t2 - t1))
-            t1 = datetime.now()
+            t1 = datetime.now() # timing started for pairwise LD
             print('Calculating pairwise LD using PLINK')
             positions = list(gwas_data[poscol])
             #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
@@ -485,9 +515,10 @@ def upload_file():
             data['endbp'] = endbp
             data['ld_populations'] = pops
             data['gtex_tissues'] = gtex_tissues
-            t2 = datetime.now()
-            print('Time to calculate LD matrix: ' + str(t2 - t1))
-            t1 = datetime.now()
+            ld_pairwise_time = datetime.now() - t1
+            
+            ####################################################################################################
+            t1 = datetime.now() # set timer for extracting GTEx data for selected gene:
             # Get GTEx data for the tissues and SNPs selected:
             print('Gathering GTEx data')
             gtex_data = {}
@@ -497,9 +528,11 @@ def upload_file():
                     eqtl_df.fillna(-1, inplace=True)
                 gtex_data[tissue] = eqtl_df.to_dict(orient='records')
             data.update(gtex_data)
-            t2 = datetime.now()
-            print('Time to get eQTL data: ' + str(t2 - t1))
+            gtex_one_gene_time = datetime.now() - t1
+            
+            ####################################################################################################
             # Determine the region to calculate the Simple Sum (SS):
+            t1 = datetime.now() # timer for determining the gene list
             SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
             SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
             data['SS_region'] = [SS_start, SS_end]
@@ -519,7 +552,9 @@ def upload_file():
                     ,'exonStarts': [int(bp) for bp in list(genes_to_draw['exonStarts'])[i].split(',')]
                     ,'exonEnds': [int(bp) for bp in list(genes_to_draw['exonEnds'])[i].split(',')]
                 })
+            gene_list_time = datetime.now() - t1
 
+            ####################################################################################################
             # Indicate that the request was a success
             data['success'] = True
             print('Loading a success')
@@ -532,8 +567,10 @@ def upload_file():
             genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile) 
             json.dump(genes_data, open(genes_sessionfilepath, 'w'))
 
+            ####################################################################################################
             # # Getting Simple Sum P-values
             # 2. Subset the region (step 1 was determining the region to do the SS calculation on - see above SS_start and SS_end variables):
+            t1 = datetime.now() # timer for subsetting SS region
             print('SS_start: ' + str(SS_start))
             print('SS_end:' + str(SS_end))
             chromList = [('chr' + str(chrom).replace('23','X')), str(chrom).replace('23','X')]
@@ -555,14 +592,17 @@ def upload_file():
                 'P': list(SS_gwas_data[pcol])
             })
             gwas_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/gwas_df-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
+            SS_region_subsetting_time = datetime.now() - t1
+            
+            ####################################################################################################
             # 3. Determine the genes to query
             query_genes = list(genes_to_draw['name'])
             # 4. Query and extract the eQTL p-values for all tissues & genes from GTEx
-            t1 = datetime.now()
+            t1 = datetime.now() # timer set to check how long data extraction from Mongo takes
             print('Obtaining eQTL p-values for selected tissues and surrounding genes')
             for tissue in gtex_tissues:
-                for gene in query_genes:
-                    gtex_eqtl_df = get_gtex_data(tissue, gene, SS_snp_list)
+                for agene in query_genes:
+                    gtex_eqtl_df = get_gtex_data(tissue, agene, SS_snp_list)
                     #print(len(gtex_eqtl_df))
                     if len(gtex_eqtl_df) > 0:
                         pvalues = list(gtex_eqtl_df['pval'])
@@ -577,12 +617,14 @@ def upload_file():
                         'SNP': SS_snp_list,
                         'P': pvalues
                     })
-                    eqtl_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/eqtl_df-{tissue}-{gene}-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
-            t2 = datetime.now()
-            print('Time to extract eQTL data for surrounding genes: ' + str(t2 - t1))
-            t1 = datetime.now()
+                    eqtl_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/eqtl_df-{tissue}-{agene}-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
+                    print(f'Time to extract eQTLs for {tissue} and {agene}:' + str(datetime.now()-t1))
+            gtex_all_queries_time = datetime.now() - t1
+
+            ####################################################################################################
             print('Extracting LD matrix')
             # 5. Get the LD matrix via PLINK subprocess call:
+            t1 = datetime.now() # timer for calculating the LD matrix
             plink_outfilename = f'session_data/ld-{my_session_id}'
             plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
             if ldmat_file_supplied:
@@ -593,8 +635,9 @@ def upload_file():
                 ld_mat_snps, ld_mat = plink_ldmat(pops, chrom, SS_positions, plink_outfilepath)
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
             np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
-            t2 = datetime.now()
-            print('Time to get the LD matrix for SS: ' + str(t2 - t1))
+            ldmat_time = datetime.now() - t1
+            
+            ####################################################################################################
             # 6. Shrink the P-values matrix to include only the SNPs available in the LD matrix:
             PvaluesMat = np.matrix(PvaluesMat)
             Pmat_indices = [i for i, e in enumerate(SS_positions) if e in ld_mat_positions]
@@ -609,9 +652,12 @@ def upload_file():
             #### Extra files written for LD matrix:
             writeList(ld_mat_snps, os.path.join(MYDIR,'static', f'session_data/ldmat_snps-{my_session_id}.txt'))
             writeList(ld_mat_positions, os.path.join(MYDIR,'static', f'session_data/ldmat_positions-{my_session_id}.txt'))
+            ldmat_subsetting_time = datetime.now() - t1
             ####
+            
+            ####################################################################################################
             print('Calculating Simple Sum stats')
-            t1 = datetime.now()
+            t1 = datetime.now() # timer for Simple Sum calculation time
             Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
             Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
             RscriptRun = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
@@ -631,8 +677,36 @@ def upload_file():
             SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
             json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
-            t2 = datetime.now()
-            print('Time to calculate Simple Sum stats: ' + str(t2 - t1))
+            SS_time = datetime.now() - t1
+            t2_total = datetime.now() - t1_total
+
+            print('-----------------------------------------------------------')
+            print(' Times Report ')
+            print('-----------------------------------------------------------')
+            print(f'File size: {file_size/1000:.0f} KB')
+            print(f'Upload time: {upload_time}')
+            if not np.isnan(ldmat_upload_time):
+                print(f'LD matrix file size: {ldmat_file_size/1000} KB')
+                print(f'LD matrix upload time: {ldmat_upload_time}')
+            print(f'GWAS load time: {gwas_load_time}')
+            print(f'Pairwise LD calculation time: {ld_pairwise_time}')
+            print(f'Extracting GTEx eQTLs for user-specified gene: {gtex_one_gene_time}')
+            print(f'Finding all genes to draw and query time: {gene_list_time}')
+            print(f'Number of genes found in the region: {genes_to_draw.shape[0]}')
+            print(f'Time to subset Simple Sum region: {SS_region_subsetting_time}')
+            print(f'Time to extract all eQTL data from {len(gtex_tissues)} tissues and {len(query_genes)} genes: {gtex_all_queries_time}')
+            print(f'Time for calculating the LD matrix: {ldmat_time}')
+            print(f'Time for subsetting the LD matrix: {ldmat_subsetting_time}')
+            num_nmiss_tissues = -1 # because first row are the GWAS pvalues
+            for i in np.arange(len(PvaluesMat.tolist())):
+                if not np.isnan(PvaluesMat.tolist()[i][0]):
+                    num_nmiss_tissues += 1
+            print(f'Time for calculating the Simple Sum P-values: {SS_time}')
+            print(f'For {num_nmiss_tissues} pairwise calculations out of {PvaluesMat.shape[0]-1}')
+            print(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}')
+            print(f'Time per SS calculation: {SS_time/num_nmiss_tissues}')
+            print(f'Total time: {t2_total}')
+
             return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
         return render_template("invalid_input.html")
     return render_template("index.html")
