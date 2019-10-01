@@ -216,7 +216,7 @@ def get_gtex_v7(tissue, gene_id):
     chrom = int(list(results_df['variant_id'])[0].split('_')[0].replace('X','23'))
     positions = [ int(x.split('_')[1]) for x in list(results_df['variant_id']) ]
     #t2=datetime.now()
-    print(f'Reformatting time: {t2-t1}')
+    #print(f'Reformatting time: {t2-t1}')
     #t1=datetime.now()
     variants_query = db.variant_table.find(
         { '$and': [ 
@@ -227,7 +227,14 @@ def get_gtex_v7(tissue, gene_id):
     #t2=datetime.now()
     #print(f'Time for variant table query: {t2-t1}')
     #t1=datetime.now()
-    variants_df = pd.DataFrame(list(variants_query))
+    t1=datetime.now()
+    variants_list = list(variants_query)
+    t2=datetime.now()
+    print(f'Time for variant query conversion to list: {t2-t1}')
+    t1=datetime.now()
+    variants_df = pd.DataFrame(variants_list)
+    t2=datetime.now()
+    print(f'Time to convert the variant list to dataframe: {t2-t1}')
     #print(variants_df.shape)
     #t2=datetime.now()
     #print(f'Reformatting time: {t2-t1}')
