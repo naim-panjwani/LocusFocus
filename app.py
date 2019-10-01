@@ -397,7 +397,7 @@ def upload_file():
     ldmat_file_supplied = False
     
     # Initializing timing variables:
-    t1_total = datetime.now()
+    t1_total = np.nan
     file_size = np.nan
     ldmat_file_size = np.nan
     upload_time = np.nan
@@ -416,21 +416,25 @@ def upload_file():
     # Uploading files
     #######################################################
     if request.method == 'POST':
+        t1_total = datetime.now()
         if request.files.get('file'):
             # read the file
             file = request.files['file']
             # read the filename
+            t1 = datetime.now () # timer to get total upload time
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename) # more secure
                 # create a path to the uploads folder
                 filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
                 file_size = os.stat(filepath).st_size
+                upload_time = datetime.now - t1
             else:
                 raise InvalidUsage('GWAS summary statistics file type not allowed', status_code=410)
             try:
                 ldmat_file = request.files['ldmat']
                 # read the filename
+                t1 = datetime.now () # timer to get total upload time for the ld matrix
                 if ldmat_file and allowed_file(ldmat_file.filename):
                     ldmat_filename = secure_filename(ldmat_file.filename) # more secure
                     # create a path to the uploads folder
@@ -517,23 +521,26 @@ def upload_file():
 
             ####################################################################################################
             # Get LD:
-            t1 = datetime.now() # timing started for pairwise LD
-            print('Calculating pairwise LD using PLINK')
-            positions = list(gwas_data[poscol])
-            #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
-            ld_df = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
-            data = {}
-            data['snps'] = snp_list
-            data['pvalues'] = list(gwas_data[pcol])
-            data['lead_snp'] = lead_snp
-            data['ld_values'] = list(ld_df['R2'])
-            data['positions'] = positions
-            data['chrom'] = chrom
-            data['startbp'] = startbp
-            data['endbp'] = endbp
-            data['ld_populations'] = pops
-            data['gtex_tissues'] = gtex_tissues
-            ld_pairwise_time = datetime.now() - t1
+            if not ldmat_file_supplied:
+                t1 = datetime.now() # timing started for pairwise LD
+                print('Calculating pairwise LD using PLINK')
+                positions = list(gwas_data[poscol])
+                #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
+                ld_df = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
+                data = {}
+                data['snps'] = snp_list
+                data['pvalues'] = list(gwas_data[pcol])
+                data['lead_snp'] = lead_snp
+                data['ld_values'] = list(ld_df['R2'])
+                data['positions'] = positions
+                data['chrom'] = chrom
+                data['startbp'] = startbp
+                data['endbp'] = endbp
+                data['ld_populations'] = pops
+                data['gtex_tissues'] = gtex_tissues
+                ld_pairwise_time = datetime.now() - t1
+            else:
+                ld_df = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8')
             
             ####################################################################################################
             t1 = datetime.now() # set timer for extracting GTEx data for selected gene:
