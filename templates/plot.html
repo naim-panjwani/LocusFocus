@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>LocusFocus: Prioritize Genes and Tissues for Study from GWAS and eQTL Integration</title>
+  <title>LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration</title>
   <link rel="shortcut icon" href="#" />
    <!-- Font Awesome -->
    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
@@ -36,14 +36,17 @@
     </div>
     <hr/>
     <div class="row">
-        <div class="col-md-12"><h3>Co-localization Plot</h3><div id="plot"></div></div>
+        <div class="col-md-12"><h3>Colocalization Plot</h3><div id="plot"></div></div>
     </div>
     <hr/>
     <div class="row">
         <div class="col-md-12">
-            <h3>Heatmap of Simple Sum Co-localization P-values</h3>
+            <h3>Heatmap of Simple Sum Colocalization P-values</h3>
             <div id="heatmap"></div>
-            <h6><b><i>The -1 values correspond to unavailable Simple Sum P-values due to either insufficient data for accurate computation or insufficient gene expression</i></b></h6>
+            <div class="alert alert-dismissible alert-info">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <strong>-1 values correspond to unavailable Simple Sum P-values due to either insufficient data for accurate computation or insufficient gene expression</strong>
+            </div>
         </div>
     </div>
     <hr/>
@@ -60,7 +63,10 @@
                     <tbody></tbody>
                 </table>
             </div> <!-- table-area closing div -->
-            <h6><b><i>The -1 values correspond to unavailable Simple Sum P-values due to either insufficient data for accurate computation or insufficient gene expression</i></b></h6>
+            <div class="alert alert-dismissible alert-info">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <strong>-1 values correspond to unavailable Simple Sum P-values due to either insufficient data for accurate computation or insufficient gene expression</strong>
+            </div>
         </div> <!-- col-md-12 closing div -->
     </div> <!-- row closing div -->
     <hr/>

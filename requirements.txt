@@ -41,3 +41,5 @@ statsmodels==0.9.0
 tqdm==4.31.1
 Werkzeug==0.15.3
 dnspython
+blinker==1.4
+flask-sitemap==0.3.0

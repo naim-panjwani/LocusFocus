@@ -13,6 +13,8 @@ from datetime import datetime
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash
 from werkzeug.utils import secure_filename
+from flask_sitemap import Sitemap
+
 from pymongo import MongoClient
 
 genomicWindowLimit = 2000000
@@ -22,9 +24,11 @@ fileSizeLimit = 500 # in KB
 MYDIR = os.path.dirname(__file__)
 
 app = Flask(__name__)
+ext = Sitemap(app=app)
 app.config['UPLOAD_FOLDER'] = 'static/upload'
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit * 1024
 ALLOWED_EXTENSIONS = set(['txt', 'tsv'])
+
 
 collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
 ld_mat_diag_constant = 1e-6
@@ -399,7 +403,7 @@ def prev_session_input(old_session_id):
 
 
 @app.route('/', methods=['GET', 'POST'])
-def upload_file():
+def index():
     data = {"success": False}
     ldmat_file_supplied = False
     
@@ -435,7 +439,7 @@ def upload_file():
                 filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
                 file_size = os.stat(filepath).st_size
-                upload_time = datetime.now - t1
+                upload_time = datetime.now() - t1
             else:
                 raise InvalidUsage('GWAS summary statistics file type not allowed', status_code=410)
             try:
@@ -712,36 +716,55 @@ def upload_file():
             SS_time = datetime.now() - t1
             t2_total = datetime.now() - t1_total
 
-            print('-----------------------------------------------------------')
-            print(' Times Report ')
-            print('-----------------------------------------------------------')
-            print(f'File size: {file_size/1000:.0f} KB')
-            print(f'Upload time: {upload_time}')
-            if not np.isnan(ldmat_upload_time):
-                print(f'LD matrix file size: {ldmat_file_size/1000} KB')
-                print(f'LD matrix upload time: {ldmat_upload_time}')
-            print(f'GWAS load time: {gwas_load_time}')
-            print(f'Pairwise LD calculation time: {ld_pairwise_time}')
-            print(f'Extracting GTEx eQTLs for user-specified gene: {gtex_one_gene_time}')
-            print(f'Finding all genes to draw and query time: {gene_list_time}')
-            print(f'Number of genes found in the region: {genes_to_draw.shape[0]}')
-            print(f'Time to subset Simple Sum region: {SS_region_subsetting_time}')
-            print(f'Time to extract all eQTL data from {len(gtex_tissues)} tissues and {len(query_genes)} genes: {gtex_all_queries_time}')
-            print(f'Time for calculating the LD matrix: {ldmat_time}')
-            print(f'Time for subsetting the LD matrix: {ldmat_subsetting_time}')
-            num_nmiss_tissues = -1 # because first row are the GWAS pvalues
-            for i in np.arange(len(PvaluesMat.tolist())):
-                if not np.isnan(PvaluesMat.tolist()[i][0]):
-                    num_nmiss_tissues += 1
-            print(f'Time for calculating the Simple Sum P-values: {SS_time}')
-            print(f'For {num_nmiss_tissues} pairwise calculations out of {PvaluesMat.shape[0]-1}')
-            print(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}')
-            print(f'Time per SS calculation: {SS_time/num_nmiss_tissues}')
-            print(f'Total time: {t2_total}')
+            timing_file = f'session_data/times-{my_session_id}.txt'
+            timing_file_path = os.path.join(MYDIR, 'static', timing_file)
+            with open(timing_file_path, 'w') as f:
+                f.write('-----------------------------------------------------------\n')
+                f.write(' Times Report\n')
+                f.write('-----------------------------------------------------------\n')
+                f.write(f'File size: {file_size/1000:.0f} KB\n')
+                f.write(f'Upload time: {upload_time}\n')
+                if not np.isnan(ldmat_upload_time):
+                    f.write(f'LD matrix file size: {ldmat_file_size/1000} KB\n')
+                    f.write(f'LD matrix upload time: {ldmat_upload_time}\n')
+                f.write(f'GWAS load time: {gwas_load_time}\n')
+                f.write(f'Pairwise LD calculation time: {ld_pairwise_time}\n')
+                f.write(f'Extracting GTEx eQTLs for user-specified gene: {gtex_one_gene_time}\n')
+                f.write(f'Finding all genes to draw and query time: {gene_list_time}\n')
+                f.write(f'Number of genes found in the region: {genes_to_draw.shape[0]}\n')
+                f.write(f'Time to subset Simple Sum region: {SS_region_subsetting_time}\n')
+                f.write(f'Time to extract all eQTL data from {len(gtex_tissues)} tissues and {len(query_genes)} genes: {gtex_all_queries_time}\n')
+                f.write(f'Time for calculating the LD matrix: {ldmat_time}\n')
+                f.write(f'Time for subsetting the LD matrix: {ldmat_subsetting_time}\n')
+                num_nmiss_tissues = -1 # because first row are the GWAS pvalues
+                for i in np.arange(len(PvaluesMat.tolist())):
+                    if not np.isnan(PvaluesMat.tolist()[i][0]):
+                        num_nmiss_tissues += 1
+                f.write(f'Time for calculating the Simple Sum P-values: {SS_time}\n')
+                f.write(f'For {num_nmiss_tissues} pairwise calculations out of {PvaluesMat.shape[0]-1}\n')
+                f.write(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}\n')
+                f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
+                f.write(f'Total time: {t2_total}\n')
 
             return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
         return render_template("invalid_input.html")
     return render_template("index.html")
+
+
+
+app.config['SITEMAP_URL_SCHEME'] = 'https'
+
+
+@ext.register_generator
+def index():
+    # Not needed if you set SITEMAP_INCLUDE_RULES_WITHOUT_PARAMS=True
+    # yield 'index', {}
+    urls = ['locusfocus.research.sickkids.ca',
+        'https://locusfocus.research.sickkids.ca/session_id/00dfdb4d-c86a-423b-adc7-4740b7b43695',
+        'https://locusfocus.research.sickkids.ca/previous_session']
+    return urls
+
+
 
 if __name__ == "__main__":
     app.run()
