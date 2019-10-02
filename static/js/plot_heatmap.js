@@ -16,7 +16,7 @@ function plot_heatmap(genes, tissues, SSPvalues) {
         margin: {
             r: 50,
             t: 50,
-            b: 80,
+            b: 100,
             l: 300
         }
     }
