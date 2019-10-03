@@ -528,6 +528,7 @@ def index():
             gwas_data.dropna(inplace=True)
             snp_list = list(gwas_data[snpcol])
             snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+
             gwas_load_time = datetime.now() - t1
 
             ####################################################################################################
@@ -538,21 +539,22 @@ def index():
                 positions = list(gwas_data[poscol])
                 #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
                 ld_df = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
-                data = {}
-                data['snps'] = snp_list
-                data['pvalues'] = list(gwas_data[pcol])
-                data['lead_snp'] = lead_snp
-                data['ld_values'] = list(ld_df['R2'])
-                data['positions'] = positions
-                data['chrom'] = chrom
-                data['startbp'] = startbp
-                data['endbp'] = endbp
-                data['ld_populations'] = pops
-                data['gtex_tissues'] = gtex_tissues
                 ld_pairwise_time = datetime.now() - t1
             else:
                 ld_df = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8')
             
+            data = {}
+            data['snps'] = snp_list
+            data['pvalues'] = list(gwas_data[pcol])
+            data['lead_snp'] = lead_snp
+            data['ld_values'] = list(ld_df['R2'])
+            data['positions'] = positions
+            data['chrom'] = chrom
+            data['startbp'] = startbp
+            data['endbp'] = endbp
+            data['ld_populations'] = pops
+            data['gtex_tissues'] = gtex_tissues
+
             ####################################################################################################
             t1 = datetime.now() # set timer for extracting GTEx data for selected gene:
             # Get GTEx data for the tissues and SNPs selected:

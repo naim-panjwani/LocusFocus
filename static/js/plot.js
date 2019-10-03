@@ -40,6 +40,8 @@ function plot_gwas(data, genesdata) {
     function smoothing(x,y,xrange,window_size) {
       window_partition = window_size;
       windowing = (xrange[1]-xrange[0])/window_partition;
+      // console.log(windowing);
+      // console.log(xrange);
       curr = xrange[0];
       smooth_curve_x = [];
       smooth_curve_y = [];
@@ -48,7 +50,9 @@ function plot_gwas(data, genesdata) {
         if(v>=curr && v<=(curr+windowing)) indices.push(i);
       });
 
+      // console.log(x);
       while(indices.length == 0 && curr < xrange[1]) {
+        // console.log(curr);
         curr = curr + windowing + 1;
         x.map((v,i) => {
           if(v>=curr && v<=(curr+windowing)) indices.push(i);
@@ -233,8 +237,8 @@ function plot_gwas(data, genesdata) {
       });
       gtex_line_traces[gtex_tissues[i]] = smoothing(gtex_positions[gtex_tissues[i]], gtex_log10_pvalues[gtex_tissues[i]], 
           [startbp, endbp], eqtl_smoothing_window_size);
-      // console.log(gtex_line_traces);
-    }    
+      // console.log(data['Pancreas']);
+    }
 
     // Assign each SNP to an LD group:
     for(i=0; i<ld_values.length; i++) {

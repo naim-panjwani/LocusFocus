@@ -1,27 +1,21 @@
+Known bugs:
+- Fix issue where gene names overlap in larger-defined regions
+- Test different LD matrix file inputs
+- chrX plots do not show correctly
+
 to do:
-- gene name mapping file consistency required; ensure ENSG names have versions added or robustify searching
-- create the session data in Mongo
 - allow downloading of the integrated session data
 - allow deleting of the session data
 - allow option to match variant names by just chrom:pos information (currently should only be either all rsid's or all variant_id format)
-
-- Write documentation
-- Option of LD matrix should be either from user of 1KG, not both
-- Test different LD matrix file inputs
 - Allow user input for their own eQTL p-values as a tsv file (eg. PsychENCODE eQTLs)​
 - Generate updated 1KG Phase 3 binary PLINK files for LD calculations (currently only have chr1 2012 1KG file)
-- Ensure coordinate range entered is within reasonable limits
-- Inform why not all tissues selected appear in the end
-- Draw the genes with names beside them
 - Store json session data into Mongo Atlas instead for better security
 - Allow download of integrated session data​
 - Add a button for user to be able to delete their session data
 - Add a cron job to delete sessions at regular intervals
-- Allow user to set the window sizes for line drawing
-- Allow downloading a json file
-- Allow loading a session (json) file instead of tsv to get the interactive plot instantly
+- Allow user to set the window sizes for eQTL lines
 - Make a table of GWAS and eQTL merged results
-- Make a MySQL database to hold the GTEx eQTL data (will require at >200GB of space)
-- Change the code to query local GTEx DB
 - Another site for hg38
 - Allow assessment of beta correlations
+- Make P-P plot
+- Allow uploading several secondary datasets for pairwise SS calculations with primary dataset
