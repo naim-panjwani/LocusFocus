@@ -123,4 +123,6 @@ static/upload/
 data/test_chr3_foxp1_afglobal.TSV
 data/GTEx_Analysis_2016-01-15_v7_WholeGenomeSeq_635Ind_PASS_AB02_GQ20_HETX_MISS15_PLINKQC.lookup_table.txt.gz
 start_webservice.sh
+data/GTEx_v7_eQTL/
 *gtf
+
