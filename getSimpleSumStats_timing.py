@@ -1,10 +1,12 @@
-# Adapted from Fan Wang, coverted to Python by Scott Mastromatteo
-# Script to obtain the simple sum P-values for a given set of GWAS p-values, and eQTL p-values for each tissue/gene pair
+# Adapted from Fan Wang, converted to Python by Scott Mastromatteo
+# Script to obtain the Simple Sum P-values for a given set of GWAS p-values, and eQTL p-values for each tissue/gene pair
 # Inputs: P_values_filename (GWAS p-values - for a set of SNPs - tab-separated, and all in one line)
 #         ld_matrix_filename (the LD matrix filename for the set of SNPs input; the values per row must be tab-separated)
 # Ouput: Returns the simple sum P-value, number of SNPs used in each calculation
 # Example: getSimpleSumStat.py p_values_filename ld_matrix_filename
 
+import os
+os.environ['R_HOME'] = '/Library/Frameworks/R.framework/Resources/'
 
 import argparse
 import numpy as np

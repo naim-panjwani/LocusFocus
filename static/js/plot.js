@@ -48,8 +48,16 @@ function plot_gwas(data, genesdata) {
         if(v>=curr && v<=(curr+windowing)) indices.push(i);
       });
 
-      while(curr < d3.min([xrange[1],x[x.length-1]])) {
-        if(indices.length > 0) {
+      while(indices.length == 0 && curr < xrange[1]) {
+        curr = curr + windowing + 1;
+        x.map((v,i) => {
+          if(v>=curr && v<=(curr+windowing)) indices.push(i);
+        })
+      }
+
+      // while(curr < d3.min([xrange[1],x[x.length-1]])) {
+      while(curr < xrange[1]) {
+        // if(indices.length > 0) {
           yAtIndices = indices.map(i => y[i]);
           xAtIndices = indices.map(i => x[i]);
           ymaxAtIndices = d3.max(yAtIndices);
@@ -65,14 +73,20 @@ function plot_gwas(data, genesdata) {
           x.map((v,i) => {
             if(v>=curr && v<=(curr+windowing)) indices.push(i);
           });
-        }
-        else {
-          curr = curr + windowing + 1;
-          indices = [];
-          x.map((v,i) => {
-            if(v>=curr && v<=(curr+windowing)) indices.push(i);
-          });
-        }
+          while(indices.length == 0 && curr < xrange[1]) {
+            curr = curr + windowing + 1;
+            x.map((v,i) => {
+              if(v>=curr && v<=(curr+windowing)) indices.push(i);
+            })
+          }
+        // }
+        // else {
+        //   curr = curr + windowing + 1;
+        //   indices = [];
+        //   x.map((v,i) => {
+        //     if(v>=curr && v<=(curr+windowing)) indices.push(i);
+        //   });
+        // }
       }
       return [smooth_curve_x, smooth_curve_y];
     }
