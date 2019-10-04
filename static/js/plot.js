@@ -591,7 +591,7 @@ function plot_gwas(data, genesdata) {
 
     
     // SOME TEMPORARY TRIAL CODE FOR DETERMINING TEXT BINNING
-    
+    /**
     var i = 18;
     console.log(annotations_text2[i]);
     console.log(locations[i]);
@@ -626,7 +626,7 @@ function plot_gwas(data, genesdata) {
       line: {width: 1}
     }
     rectangle_shapes.push(trial_trace);
-    
+    */
 
     var final_x = [];
     var final_y = [];
