@@ -94,12 +94,11 @@
             d3.json(`static/session_data/SSPvalues-${sessionid}.json`).then(SSResponse => {
                 d3.select("#sessionid").text(sessionid);
                 var data = response;
-                console.log(data['Pancreas']);
                 var genesdata = genesResponse;
                 plot_gwas(data, genesdata);
                 plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
                 buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
-                // console.log(data);
+                // console.log(genesdata);
             });
         });
     });

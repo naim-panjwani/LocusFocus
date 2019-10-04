@@ -32,9 +32,12 @@ function plot_gwas(data, genesdata) {
     var extra_x_range = 0.05 * regionsize;
     var extra_y_range = 0.05 * log10pvalue_range;
     var eqtl_smoothing_window_size = (regionsize/100000) * 15;
+    // var percent_occupied_by_one_char_const = 0.011;
+    // var percent_occupied_by_one_char = percent_occupied_by_one_char_const * (regionsize / 500000);
     var percent_occupied_by_one_char = 0.011;
     var font_height = 0.5;
     // console.log(eqtl_smoothing_window_size)
+    // console.log(percent_occupied_by_one_char);
 
     // Helper functions:
     function smoothing(x,y,xrange,window_size) {
@@ -428,19 +431,41 @@ function plot_gwas(data, genesdata) {
     
     // Find a place for gene names text
 
-    function point_overlap(point, rect) {
-      xcheck = (point[0]>=rect[0] && point[0]<=rect[2]);
-      ycheck = (point[1]>=rect[1] && point[1]<=rect[3]);
-      return(xcheck && ycheck);
-    }
+    // function point_overlap(point, rect) {
+    //   xcheck = (point[0]>=rect[0] && point[0]<=rect[2]);
+    //   ycheck = (point[1]>=rect[1] && point[1]<=rect[3]);
+    //   return(xcheck && ycheck);
+    // }
+
+    // function rect_overlap(rect1, rect2) {
+    //   var overlap = false;
+    //   if( point_overlap([rect2[0],rect2[1]], rect1) || 
+    //       point_overlap([rect2[3], rect2[2]], rect1) || 
+    //       point_overlap([rect2[0], rect2[3]], rect1) || 
+    //       point_overlap([rect2[2], rect2[3]], rect1)) {
+    //     overlap = true;
+    //   }
+    //   return(overlap);
+    // }
 
     function rect_overlap(rect1, rect2) {
       var overlap = false;
-      if( point_overlap([rect2[0],rect2[1]], rect1) || 
-          point_overlap([rect2[3], rect2[2]], rect1) || 
-          point_overlap([rect2[0], rect2[3]], rect1) || 
-          point_overlap([rect2[2], rect2[3]], rect1)) {
-        overlap = true;
+      // If one rectangle is on the left side of other
+      rectA_x1 = rect1[0];
+      rectA_y1 = rect1[1];
+      rectA_x2 = rect1[2];
+      rectA_y2 = rect1[3];
+      rectB_x1 = rect2[0];
+      rectB_y1 = rect2[1];
+      rectB_x2 = rect2[2];
+      rectB_y2 = rect2[3];
+      //if (RectA.Left < RectB.Right && RectA.Right > RectB.Left &&
+      //  RectA.Top > RectB.Bottom && RectA.Bottom < RectB.Top )
+      // if (RectA.X1 < RectB.X2 && RectA.X2 > RectB.X1 &&
+      //   RectA.Y1 > RectB.Y2 && RectA.Y2 < RectB.Y1) ==> the other way for us as the y-axis coordinates are reversed
+      // from https://stackoverflow.com/questions/306316/determine-if-two-rectangles-overlap-each-other
+      if(rectA_x1<=rectB_x2 && rectA_x2>=rectB_x1 && rectA_y1<=rectB_y2 && rectA_y2>=rectB_y1) {
+          return(true);
       }
       return(overlap);
     }
@@ -459,22 +484,23 @@ function plot_gwas(data, genesdata) {
     var full_y_range = gwas_ymax+extra_y_range+gene_area_height;
     i = 0;
     midx = (genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2;
-    midy = -(genesdata[i]['geneRow'] * row_height) + row_height/2;
+    // midy = -(genesdata[i]['geneRow'] * row_height) + row_height/2;
+    midy = -(genesdata[i]['geneRow'] * row_height) + text_height + gene_margin;
     thegenename = genesdata[i]['name'];
     var xrefloc = (midx - (startbp - extra_x_range)) / (regionsize + 2 * extra_x_range);
-    var x0 = d3.max([xrefloc - thegenename.length/2 * percent_occupied_by_one_char, 0]);
-    var x1 = xrefloc + thegenename.length/2 * percent_occupied_by_one_char;
+    var x0 = d3.max([xrefloc - ((thegenename.length/2) * percent_occupied_by_one_char), 0]);
+    var x1 = xrefloc + ((thegenename.length/2) * percent_occupied_by_one_char);
     var tempx2 = (genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2;
-    if (x0<0 && x1>0) {
-      x1=x1 + (-1*x0); // move forward by x0
-      x0=0; // move up to 0
-      tempx2 = (x0/2 + x1/2) * (regionsize + extra_x_range*2) + startbp - extra_x_range;
-    }
-    if(x0<1 && x1>1) {
-      x0=1 - (x1-1); // move back by x1-1
-      x1=1;
-      tempx2 = (x0/2 + x1/2) * (regionsize + extra_x_range*2) + startbp - extra_x_range;
-    }
+    // if (x0<0 && x1>0) {
+    //   x1=x1 + (-1*x0); // move forward by x0
+    //   x0=0; // move up to 0
+    //   tempx2 = (x0/2 + x1/2) * (regionsize + extra_x_range*2) + startbp - extra_x_range;
+    // }
+    // if(x0<1 && x1>1) {
+    //   x0=1 - (x1-1); // move back by x1-1
+    //   x1=1;
+    //   tempx2 = (x0/2 + x1/2) * (regionsize + extra_x_range*2) + startbp - extra_x_range;
+    // }
     var y0 = (gene_area_height - (-1*midy) - font_height) / full_y_range;
     var y1 = (gene_area_height - (-1*midy)) / full_y_range;
     var first_rect_bin = [x0,y0,x1,y1];
@@ -505,24 +531,26 @@ function plot_gwas(data, genesdata) {
       midy = -(genesdata[i]['geneRow'] * row_height) + text_height + gene_margin;
       thegenename = genesdata[i]['name'];
       var xrefloc = (midx - (startbp - extra_x_range)) / (regionsize + 2 * extra_x_range);
-      var x0 = d3.max([xrefloc - annotations_text[i].length/2 * percent_occupied_by_one_char, 0]);
-      var x1 = xrefloc + thegenename.length/2 * percent_occupied_by_one_char;
+      var x0 = d3.max([xrefloc - ((thegenename.length/2) * percent_occupied_by_one_char), 0]);
+      var x1 = xrefloc + ((thegenename.length/2) * percent_occupied_by_one_char);
       var tempx2 = (genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2;
-      if (x0<0 && x1>0) {
-        x1=x1 + (-1*x0); // move forward by x0
-        x0=0; // move up to 0
-        tempx2 = (x0/2 + x1/2) * (regionsize + extra_x_range*2) + startbp - extra_x_range;
-      }
-      if(x0<1 && x1>1) {
-        x0=1 - (x1-1); // move back by x1-1
-        x1=1;
-        tempx2 = (x0/2 + x1/2) * (regionsize + extra_x_range*2) + startbp - extra_x_range;
-      }
+      // if (x0<0 && x1>0) {
+      //   x1=x1 + (-1*x0); // move forward by x0
+      //   x0=0; // move up to 0
+      //   tempx2 = (x0/2 + x1/2) * (regionsize + extra_x_range*2) + startbp - extra_x_range;
+      // }
+      // if(x0<1 && x1>1) {
+      //   x0=1 - (x1-1); // move back by x1-1
+      //   x1=1;
+      //   tempx2 = (x0/2 + x1/2) * (regionsize + extra_x_range*2) + startbp - extra_x_range;
+      // }
       //console.log(font_height);
       //console.log(text_height);
       var y0 = (gene_area_height - (-1*midy) - font_height) / full_y_range;
       var y1 = (gene_area_height - (-1*midy)) / full_y_range;
       var curr_rect_bin = [x0,y0,x1,y1];
+      // console.log(i);
+      // console.log(curr_rect_bin);
       if(curr_rect_overlaps(curr_rect_bin, rect_bins)) {
         // try the top area of the gene
         y0 = (gene_area_height - (-1*midy) - font_height + exon_height) / full_y_range;
@@ -549,6 +577,7 @@ function plot_gwas(data, genesdata) {
         annotations_text2.push(`<i>${genesdata[i]['name']}</i>`);
         locations.push('bottom');
       }
+    // console.log(locations[i]);
     //   temp_data.push({
     //     'genename': annotations_text2[i],
     //     'x': annotations_x2[i],
@@ -562,11 +591,17 @@ function plot_gwas(data, genesdata) {
 
     
     // SOME TEMPORARY TRIAL CODE FOR DETERMINING TEXT BINNING
-    /**
-    var i = 13;
+    
+    var i = 18;
+    console.log(annotations_text2[i]);
+    console.log(locations[i]);
+    console.log(rect_bins[i]);
     var xrefloc = (((genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2) - (startbp - extra_x_range)) / (regionsize + 2 * extra_x_range);
-    var leftside = d3.max([xrefloc - annotations_text2[i].length/2 * percent_occupied_by_one_char, 0]);
-    var rightside = xrefloc + annotations_text2[i].length/2 * percent_occupied_by_one_char;
+    // var leftside = d3.max([xrefloc - annotations_text2[i].length/2 * percent_occupied_by_one_char, 0]);
+    // var rightside = xrefloc + annotations_text2[i].length/2 * percent_occupied_by_one_char;
+    thegenename = genesdata[i]['name'];
+    var leftside = d3.max([xrefloc - ((thegenename.length/2) * percent_occupied_by_one_char), 0]);
+    var rightside = xrefloc + ((thegenename.length/2) * percent_occupied_by_one_char);
     if(rightside>1) {
       rightside=1
     } else if (rightside<0) {
@@ -591,12 +626,22 @@ function plot_gwas(data, genesdata) {
       line: {width: 1}
     }
     rectangle_shapes.push(trial_trace);
-    */
+    
 
+    var final_x = [];
+    var final_y = [];
+    var final_text = [];
+    for(var i = 0; i < locations.length; i++) {
+      if(locations[i] !== 'hidden') {
+        final_x.push(annotations_x2[i]);
+        final_y.push(annotations_y2[i]);
+        final_text.push(annotations_text2[i]);
+      }
+    }
     var genenames_trace2 = {
-      x: annotations_x2,
-      y: annotations_y2,
-      text: annotations_text2,
+      x: final_x,
+      y: final_y,
+      text: final_text,
       type: 'scatter',
       mode: 'markers+text',
       marker: {
