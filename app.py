@@ -16,7 +16,7 @@ from pymongo import MongoClient
 
 genomicWindowLimit = 2000000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
-fileSizeLimit = 100 * 1024 * 1024 * 1024 # in Bytes
+fileSizeLimit = 100 * 1024 * 1024 # in Bytes
 gwas_file_size_limit = 500 * 1024 # in Bytes
 
 MYDIR = os.path.dirname(__file__)
@@ -468,8 +468,11 @@ def index():
                     # create a path to the uploads folder
                     ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], ldmat_filename)
                     file.save(ldmat_filepath)
-                    ldmat_file_supplied = True
                     ldmat_file_size = os.stat(ldmat_filepath).st_size
+                    if ldmat_file_size == 0:
+                        raise InvalidUsage('LD matrix failed to upload', status_code=410)
+                    else:
+                        ldmat_file_supplied = True
                     ldmat_upload_time = datetime.now() - t1
                 else:
                     raise InvalidUsage('LD matrix file type not allowed', status_code=410)
@@ -562,12 +565,13 @@ def index():
                 r2 = list(ld_df['R2'])
                 ld_pairwise_time = datetime.now() - t1
             else:
+                print('---------------------------------')
                 print('Loading user-supplied LD matrix')
+                print('---------------------------------')
                 t1 = datetime.now() # timer started for loading user-defined LD matrix
                 if ldmat_filename.endswith('gz'):
                     print(ldmat_filepath)
                     ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', compression='gzip', header=None)
-                    print('LOADED')
                 else:
                     ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
                 ld_mat = ld_mat.loc[ gwas_indices_kept, gwas_indices_kept ]
