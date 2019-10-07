@@ -835,8 +835,8 @@ def index():
                         num_nmiss_tissues += 1
                 f.write(f'Time for calculating the Simple Sum P-values: {SS_time}\n')
                 f.write(f'For {num_nmiss_tissues} pairwise calculations out of {PvaluesMat.shape[0]-1}\n')
-                f.write(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}\n')
-                f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
+                if num_nmiss_tissues != 0: f.write(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}\n')
+                if num_nmiss_tissues != 0: f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
                 f.write(f'Total time: {t2_total}\n')
 
             return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
