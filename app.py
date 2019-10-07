@@ -788,13 +788,12 @@ def index():
                 if SSPvalues[i] != -1:
                     SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
             SSPvaluesMat = np.array(SSPvalues).reshape(len(gtex_tissues), len(query_genes))
-            print("SS Pvalues matrix:")
-            print(SSPvaluesMat)
+
             SSPvalues_dict = {
                 'Genes': query_genes
                 ,'Tissues': gtex_tissues
                 ,'SSPvalues': SSPvaluesMat.tolist()
-                ,'Num_SNPs_Used_for_SS': num_SNP_used_for_SS
+                ,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
                 ,'Computation method': comp_used
             }
             print(SSPvalues_dict)
