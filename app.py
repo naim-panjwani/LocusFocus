@@ -10,24 +10,31 @@ import uuid
 from pprint import pprint
 import subprocess
 from datetime import datetime
+import secrets
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash
 from werkzeug.utils import secure_filename
 from flask_sitemap import Sitemap
+from flask_uploads import UploadSet, configure_uploads, DATA
 
 from pymongo import MongoClient
 
 genomicWindowLimit = 2000000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
-fileSizeLimit = 500 # in KB
+fileSizeLimit = 100 * 1024 * 1024 # in Bytes
 
 MYDIR = os.path.dirname(__file__)
 
 app = Flask(__name__)
 ext = Sitemap(app=app)
-app.config['UPLOAD_FOLDER'] = 'static/upload'
-app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit * 1024
-ALLOWED_EXTENSIONS = set(['txt', 'tsv'])
+app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
+app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
+app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
+ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld'])
+app.config['UPLOADED_FILES_ALLOW'] = ALLOWED_EXTENSIONS
+app.secret_key = secrets.mysecret
+files = UploadSet('files', DATA)
+configure_uploads(app, files)
 
 
 collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
@@ -74,8 +81,13 @@ def parseRegionText(regiontext):
     else:
         return chrom, startbp, endbp
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def allowed_file(filenames):
+    if type(filenames) == type('str'):
+        return '.' in filenames and filenames.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    for filename in filenames:
+        if not ('.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS):
+            return False
+    return True
 
 def writeList(alist, filename):
     with open(filename, 'w') as f:
@@ -100,6 +112,42 @@ def genenames(genename):
         genename = collapsed_genes_df['name'][list(collapsed_genes_df['ENSG_name']).index(genename)]
     return genename, ensg_gene
 
+def classify_files(filenames):
+    gwas_filepath = ''
+    ldmat_filepath = ''
+    html_filepath = ''
+    extensions = []
+    for file in filenames:
+        filename = secure_filename(file.filename)
+        extension = filename.split('.')[-1]
+        if extension not in extensions:
+            extensions.append(extension)
+        else:
+            raise InvalidUsage('Please upload up to 3 different file types as described', status_code=410)
+        if extension in ['txt', 'tsv']:
+            gwas_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+        elif extension in ['ld']:
+            ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+        elif extension in ['html']:
+            html_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+    return gwas_filepath, ldmat_filepath, html_filepath
+
+
+def isSorted(l):
+    # l is a list
+    # returns True if l is sorted, False otherwise
+    return all(l[i] <= l[i+1] for i in range(len(l)-1))
+
+def Xto23(l):
+    newl = []
+    for x in l:
+        if str(x) == "X":
+            newl.append(23)
+        elif str(x) in [str(x) for x in list(np.arange(1,24))]:
+            newl.append(int(x))
+        else:
+            raise InvalidUsage('Chromosome unrecognized', status_code=410)
+    return newl
 
 
 
@@ -124,18 +172,31 @@ def plink_ldmat(pop, chrom, snp_positions, outfilename):
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
-    plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-    plinkrun = subprocess.run(args=[
-        "./plink", '--bfile', plink_filepath
-        , "--chr", str(chrom)
-        , "--extract", outfilename + "_snps.txt"
-        , "--from-bp", str(min(snp_positions))
-        , "--to-bp", str(max(snp_positions))
-        , "--r2", "square"
-        , "--make-bed"
-        , "--threads", "1"
-        , "--out", outfilename
-        ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    if os.name == 'nt':
+        plinkrun = subprocess.run(args=[
+            "./plink.exe", '--bfile', plink_filepath
+            , "--chr", str(chrom)
+            , "--extract", outfilename + "_snps.txt"
+            , "--from-bp", str(min(snp_positions))
+            , "--to-bp", str(max(snp_positions))
+            , "--r2", "square"
+            , "--make-bed"
+            , "--threads", "1"
+            , "--out", outfilename
+            ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    else:    
+        plinkrun = subprocess.run(args=[
+            "./plink", '--bfile', plink_filepath
+            , "--chr", str(chrom)
+            , "--extract", outfilename + "_snps.txt"
+            , "--from-bp", str(min(snp_positions))
+            , "--to-bp", str(max(snp_positions))
+            , "--r2", "square"
+            , "--make-bed"
+            , "--threads", "1"
+            , "--out", outfilename
+            ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_snps = list(pd.read_csv(outfilename + ".bim", sep="\t", header=None).iloc[:,1])
@@ -160,22 +221,39 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
-    plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-    plinkrun = subprocess.run(args=[
-        "./plink", '--bfile', plink_filepath
-        , "--chr", str(chrom)
-        , "--extract", outfilename + "_snps.txt"
-        , "--from-bp", str(min(snp_positions))
-        , "--to-bp", str(max(snp_positions))
-        , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
-        , "--r2"
-        , "--ld-window-r2", "0"
-        , "--ld-window", "999999"
-        , "--ld-window-kb", "200000"
-        , "--make-bed"
-        , "--threads", "1"
-        , "--out", outfilename
-        ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+    if os.name == 'nt':
+        plinkrun = subprocess.run(args=[
+            "./plink.exe", '--bfile', plink_filepath
+            , "--chr", str(chrom)
+            , "--extract", outfilename + "_snps.txt"
+            , "--from-bp", str(min(snp_positions))
+            , "--to-bp", str(max(snp_positions))
+            , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
+            , "--r2"
+            , "--ld-window-r2", "0"
+            , "--ld-window", "999999"
+            , "--ld-window-kb", "200000"
+            , "--make-bed"
+            , "--threads", "1"
+            , "--out", outfilename
+            ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    else:
+        plinkrun = subprocess.run(args=[
+            "./plink", '--bfile', plink_filepath
+            , "--chr", str(chrom)
+            , "--extract", outfilename + "_snps.txt"
+            , "--from-bp", str(min(snp_positions))
+            , "--to-bp", str(max(snp_positions))
+            , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
+            , "--r2"
+            , "--ld-window-r2", "0"
+            , "--ld-window", "999999"
+            , "--ld-window-kb", "200000"
+            , "--make-bed"
+            , "--threads", "1"
+            , "--out", outfilename
+            ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_results = pd.read_csv(outfilename + ".ld", delim_whitespace=True)
@@ -317,6 +395,10 @@ class InvalidUsage(Exception):
         rv['message'] = self.message
         return rv
 
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return 'File Too Large', 413
+
 @app.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
     response = jsonify(error.to_dict())
@@ -405,7 +487,6 @@ def prev_session_input(old_session_id):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     data = {"success": False}
-    ldmat_file_supplied = False
     
     # Initializing timing variables:
     t1_total = np.nan
@@ -428,36 +509,17 @@ def index():
     #######################################################
     if request.method == 'POST':
         t1_total = datetime.now()
-        if request.files.get('file'):
-            # read the file
-            file = request.files['file']
-            # read the filename
+        if request.files.get('files[]'):
             t1 = datetime.now () # timer to get total upload time
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename) # more secure
-                # create a path to the uploads folder
-                filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-                file_size = os.stat(filepath).st_size
-                upload_time = datetime.now() - t1
-            else:
-                raise InvalidUsage('GWAS summary statistics file type not allowed', status_code=410)
-            try:
-                ldmat_file = request.files['ldmat']
-                # read the filename
-                t1 = datetime.now () # timer to get total upload time for the ld matrix
-                if ldmat_file and allowed_file(ldmat_file.filename):
-                    ldmat_filename = secure_filename(ldmat_file.filename) # more secure
-                    # create a path to the uploads folder
-                    ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], ldmat_filename)
-                    file.save(ldmat_filepath)
-                    ldmat_file_supplied = True
-                    ldmat_file_size = os.stat(ldmat_filepath).st_size
-                    ldmat_upload_time = datetime.now() - t1
-                else:
-                    raise InvalidUsage('LD matrix file type not allowed', status_code=410)
-            except:
-                pass
+            if 'files[]' in request.files:
+                filenames = request.files.getlist('files[]')
+                for file in filenames:
+                    filename = secure_filename(file.filename)
+                    filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+                    file.save(filepath)
+                gwas_filepath, ldmat_filepath, html_filepath = classify_files(filenames)
+            upload_time = datetime.now() - t1
+
             #######################################################
             # Checking form input parameters and subsetting GWAS file
             #######################################################
@@ -465,7 +527,7 @@ def index():
             print(f'Session ID: {my_session_id}')
             print('Loading file')
             t1 = datetime.now() # timing started for GWAS loading/subsetting/cleaning
-            gwas_data = pd.read_csv(filepath, sep="\t", encoding='utf-8')
+            gwas_data = pd.read_csv(gwas_filepath, sep="\t", encoding='utf-8')
             chromcol = request.form['chrom-col']
             if chromcol=='': chromcol='#CHROM'
             if chromcol not in gwas_data.columns:
@@ -482,13 +544,6 @@ def index():
             if pcol=='': pcol='P'
             if pcol not in gwas_data.columns:
                 raise InvalidUsage('Basepair position column not found', status_code=410)
-            lead_snp = request.form['leadsnp']
-            snp_list = list(gwas_data[snpcol])
-            snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
-            if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][snpcol])[0].split(';')[0]
-            if lead_snp not in snp_list:
-                raise InvalidUsage('Lead SNP not found', status_code=410)
-            lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0]
             regiontext = request.form['locus']
             print('regiontext',regiontext)
             if regiontext == "": regiontext = "1:205500000-206000000"
@@ -498,20 +553,35 @@ def index():
                 raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit} bp', status_code=410)
             print(chrom,startbp,endbp)
             print('Subsetting GWAS data to entered region')            
-            if chrom == 23 and list(gwas_data[chromcol])[0] == "X":
-                gwas_data = gwas_data.loc[ (gwas_data[chromcol] == "X") & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
-            else:
-                gwas_data = gwas_data.loc[ (gwas_data[chromcol] == chrom) & (gwas_data[poscol] >= startbp) & (gwas_data[poscol] <= endbp) ]
+            gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
+            bool1 = [x == chrom for x in Xto23(list(gwas_data[chromcol]))]
+            bool2 = [x>=startbp and x<=endbp for x in list(gwas_data[poscol])]
+            bool3 = [not x for x in list(gwas_data.isnull().any(axis=1))]
+            gwas_indices_kept = [ (x and y) and z for x,y,z in zip(bool1,bool2,bool3)]
+            gwas_data = gwas_data.loc[ gwas_indices_kept ]
             if gwas_data.shape[0] == 0:
                 raise InvalidUsage('No data found for entered region', status_code=410)
-            gwas_data.sort_values(by=[ poscol ], inplace=True)
-            #pops = request.form.getlist('LD-populations')
-            #if len(pops) == 0: pops = ['CEU','TSI','FIN','GBR','IBS']
+            if ldmat_filepath != '' and not isSorted(list(gwas_data[poscol])):
+                raise InvalidUsage('GWAS data input is not sorted', status_code=410)
+            else:
+                gwas_data.sort_values(by=[ poscol ], inplace=True)
+            lead_snp = request.form['leadsnp']
+            snp_list = list(gwas_data[snpcol])
+            snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+            if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][snpcol])[0].split(';')[0]
+            if lead_snp not in snp_list:
+                raise InvalidUsage('Lead SNP not found', status_code=410)
+            lead_snp_position_index = list(gwas_data[pcol]).index(min(gwas_data[pcol]))
+#            lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0]
+            lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
+            positions = list(gwas_data[poscol])
+            
+            # LD:
             pops = request.form['LD-populations']
             if len(pops) == 0: pops = 'EUR'
             print('Populations:', pops)
-            # ld_type = request.form['ld-type']
-            # print(ld_type)
+            
+            # GTEx tissues and gene:
             gtex_tissues = request.form.getlist('GTEx-tissues')
             print('GTEx tissues:',gtex_tissues)
             if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)            
@@ -523,31 +593,37 @@ def index():
                     gene = str(list(collapsed_genes_df.loc[ collapsed_genes_df['name'] == str(gene) ]['ENSG_name'])[0])
                 except:
                     raise InvalidUsage('Gene name not recognized', status_code=410)
-            # Omit any rows with missing values:
-            gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
-            gwas_data.dropna(inplace=True)
-            snp_list = list(gwas_data[snpcol])
-            snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+
 
             gwas_load_time = datetime.now() - t1
 
             ####################################################################################################
             # Get LD:
-            if not ldmat_file_supplied:
+            if ldmat_filepath == '':
                 t1 = datetime.now() # timing started for pairwise LD
                 print('Calculating pairwise LD using PLINK')
-                positions = list(gwas_data[poscol])
                 #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
                 ld_df = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
+                r2 = list(ld_df['R2'])
                 ld_pairwise_time = datetime.now() - t1
             else:
-                ld_df = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8')
+                print('---------------------------------')
+                print('Loading user-supplied LD matrix')
+                print('---------------------------------')
+                t1 = datetime.now() # timer started for loading user-defined LD matrix
+                ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+                ld_mat = ld_mat.loc[ gwas_indices_kept, gwas_indices_kept ]
+                r2 = list(ld_mat.iloc[:, lead_snp_position_index])
+                ld_mat = np.matrix(ld_mat)
+                if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == gwas_data.shape[0])):
+                    raise InvalidUsage('GWAS and LD matrix input have different dimensions')
+                user_ld_load_time = datetime.now() - t1
             
             data = {}
             data['snps'] = snp_list
             data['pvalues'] = list(gwas_data[pcol])
             data['lead_snp'] = lead_snp
-            data['ld_values'] = list(ld_df['R2'])
+            data['ld_values'] = r2
             data['positions'] = positions
             data['chrom'] = chrom
             data['startbp'] = startbp
@@ -665,7 +741,7 @@ def index():
             t1 = datetime.now() # timer for calculating the LD matrix
             plink_outfilename = f'session_data/ld-{my_session_id}'
             plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
-            if ldmat_file_supplied:
+            if ldmat_filepath != '':
                 ld_mat_snps = [f'chr{chrom}:{SS_pos}' for SS_pos in SS_positions]
                 ld_mat = np.matrix(pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None))
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
