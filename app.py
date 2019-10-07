@@ -783,7 +783,7 @@ def index():
             #     raise InvalidUsage(RscriptRun.stdout, status_code=410)
             # SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
             # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
-            SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(PvaluesMat, ld_mat)
+            SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] != -1:
                     SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
