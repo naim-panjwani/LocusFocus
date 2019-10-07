@@ -3,11 +3,8 @@ import json
 import pandas as pd
 import numpy as np
 import os
-import math
-import string
 from tqdm import tqdm
 import uuid
-from pprint import pprint
 import subprocess
 from datetime import datetime
 import secrets
@@ -22,11 +19,16 @@ from pymongo import MongoClient
 genomicWindowLimit = 2000000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
 fileSizeLimit = 100 * 1024 * 1024 # in Bytes
+<<<<<<< HEAD
+=======
+gwas_file_size_limit = 500 * 1024 # in Bytes
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
 
 MYDIR = os.path.dirname(__file__)
 
 app = Flask(__name__)
 ext = Sitemap(app=app)
+<<<<<<< HEAD
 app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
 app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
@@ -35,6 +37,11 @@ app.config['UPLOADED_FILES_ALLOW'] = ALLOWED_EXTENSIONS
 app.secret_key = secrets.mysecret
 files = UploadSet('files', DATA)
 configure_uploads(app, files)
+=======
+app.config['UPLOAD_FOLDER'] = 'static/upload'
+app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
+ALLOWED_EXTENSIONS = set(['txt', 'tsv'])
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
 
 
 collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
@@ -112,6 +119,7 @@ def genenames(genename):
         genename = collapsed_genes_df['name'][list(collapsed_genes_df['ENSG_name']).index(genename)]
     return genename, ensg_gene
 
+<<<<<<< HEAD
 def classify_files(filenames):
     gwas_filepath = ''
     ldmat_filepath = ''
@@ -133,6 +141,8 @@ def classify_files(filenames):
     return gwas_filepath, ldmat_filepath, html_filepath
 
 
+=======
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
 def isSorted(l):
     # l is a list
     # returns True if l is sorted, False otherwise
@@ -148,7 +158,10 @@ def Xto23(l):
         else:
             raise InvalidUsage('Chromosome unrecognized', status_code=410)
     return newl
+<<<<<<< HEAD
 
+=======
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
 
 
 ####################################
@@ -496,6 +509,7 @@ def index():
     ldmat_upload_time = np.nan
     gwas_load_time = np.nan
     ld_pairwise_time = np.nan
+    user_ld_load_time = np.nan
     gtex_one_gene_time = np.nan
     gene_list_time = np.nan
     SS_region_subsetting_time = np.nan
@@ -511,6 +525,7 @@ def index():
         t1_total = datetime.now()
         if request.files.get('files[]'):
             t1 = datetime.now () # timer to get total upload time
+<<<<<<< HEAD
             if 'files[]' in request.files:
                 filenames = request.files.getlist('files[]')
                 for file in filenames:
@@ -520,6 +535,40 @@ def index():
                 gwas_filepath, ldmat_filepath, html_filepath = classify_files(filenames)
             upload_time = datetime.now() - t1
 
+=======
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename) # more secure
+                # create a path to the uploads folder
+                filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                file_size = os.stat(filepath).st_size
+                if file_size > gwas_file_size_limit:
+                    raise InvalidUsage('GWAS file size is larger than 500KB. \
+                                       Please reduce the file size and upload again',\
+                                       status_code=410)
+                upload_time = datetime.now() - t1
+            else:
+                raise InvalidUsage('GWAS summary statistics file type not allowed', status_code=410)
+            try:
+                ldmat_file = request.files['ldmat']
+                # read the filename
+                t1 = datetime.now () # timer to get total upload time for the ld matrix
+                if ldmat_file and allowed_file(ldmat_file.filename):
+                    ldmat_filename = secure_filename(ldmat_file.filename) # more secure
+                    # create a path to the uploads folder
+                    ldmat_filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], ldmat_filename)
+                    file.save(ldmat_filepath)
+                    ldmat_file_size = os.stat(ldmat_filepath).st_size
+                    if ldmat_file_size == 0:
+                        raise InvalidUsage('LD matrix failed to upload', status_code=410)
+                    else:
+                        ldmat_file_supplied = True
+                    ldmat_upload_time = datetime.now() - t1
+                else:
+                    raise InvalidUsage('LD matrix file type not allowed', status_code=410)
+            except:
+                pass
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
             #######################################################
             # Checking form input parameters and subsetting GWAS file
             #######################################################
@@ -552,7 +601,11 @@ def index():
             if (endbp - startbp) > genomicWindowLimit:
                 raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit} bp', status_code=410)
             print(chrom,startbp,endbp)
+<<<<<<< HEAD
             print('Subsetting GWAS data to entered region')            
+=======
+            print('Subsetting GWAS data to entered region')
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
             gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
             bool1 = [x == chrom for x in Xto23(list(gwas_data[chromcol]))]
             bool2 = [x>=startbp and x<=endbp for x in list(gwas_data[poscol])]
@@ -561,7 +614,11 @@ def index():
             gwas_data = gwas_data.loc[ gwas_indices_kept ]
             if gwas_data.shape[0] == 0:
                 raise InvalidUsage('No data found for entered region', status_code=410)
+<<<<<<< HEAD
             if ldmat_filepath != '' and not isSorted(list(gwas_data[poscol])):
+=======
+            if ldmat_file_supplied and not isSorted(list(gwas_data[poscol])):
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
                 raise InvalidUsage('GWAS data input is not sorted', status_code=410)
             else:
                 gwas_data.sort_values(by=[ poscol ], inplace=True)
@@ -574,13 +631,21 @@ def index():
             lead_snp_position_index = list(gwas_data[pcol]).index(min(gwas_data[pcol]))
 #            lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0]
             lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
+<<<<<<< HEAD
             positions = list(gwas_data[poscol])
             
+=======
+
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
             # LD:
             pops = request.form['LD-populations']
             if len(pops) == 0: pops = 'EUR'
             print('Populations:', pops)
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
             # GTEx tissues and gene:
             gtex_tissues = request.form.getlist('GTEx-tissues')
             print('GTEx tissues:',gtex_tissues)
@@ -598,8 +663,13 @@ def index():
             gwas_load_time = datetime.now() - t1
 
             ####################################################################################################
+<<<<<<< HEAD
             # Get LD:
             if ldmat_filepath == '':
+=======
+            # Get pairwise LD with lead SNP:
+            if not ldmat_file_supplied:
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
                 t1 = datetime.now() # timing started for pairwise LD
                 print('Calculating pairwise LD using PLINK')
                 #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
@@ -611,7 +681,15 @@ def index():
                 print('Loading user-supplied LD matrix')
                 print('---------------------------------')
                 t1 = datetime.now() # timer started for loading user-defined LD matrix
+<<<<<<< HEAD
                 ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+=======
+                if ldmat_filename.endswith('gz'):
+                    print(ldmat_filepath)
+                    ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', compression='gzip', header=None)
+                else:
+                    ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+>>>>>>> 92195bc187c75902572f85869931fad5a773a617
                 ld_mat = ld_mat.loc[ gwas_indices_kept, gwas_indices_kept ]
                 r2 = list(ld_mat.iloc[:, lead_snp_position_index])
                 ld_mat = np.matrix(ld_mat)
@@ -644,13 +722,8 @@ def index():
             data.update(gtex_data)
             gtex_one_gene_time = datetime.now() - t1
             
-            ####################################################################################################
-            # Determine the region to calculate the Simple Sum (SS):
-            t1 = datetime.now() # timer for determining the gene list
-            SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
-            SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
-            data['SS_region'] = [SS_start, SS_end]
-            
+            ####################################################################################################            
+            t1 = datetime.now() # timer for determining the gene list            
             # Obtain any genes to be plotted in the region:
             print('Summarizing genes to be plotted in this region')
             genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
@@ -668,6 +741,12 @@ def index():
                 })
             gene_list_time = datetime.now() - t1
 
+            ####################################################################################################
+            # 1. Determine the region to calculate the Simple Sum (SS):
+            SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
+            SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
+            data['SS_region'] = [SS_start, SS_end]
+            
             ####################################################################################################
             # Indicate that the request was a success
             data['success'] = True
@@ -690,7 +769,8 @@ def index():
             chromList = [('chr' + str(chrom).replace('23','X')), str(chrom).replace('23','X')]
             gwas_chrom_col = pd.Series([str(x) for x in list(gwas_data[chromcol])])
             SS_chrom_bool = [x for x in gwas_chrom_col.isin(chromList) if x == True]
-            SS_gwas_data = gwas_data.loc[ SS_chrom_bool & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end) ]
+            SS_indices = SS_chrom_bool & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end)
+            SS_gwas_data = gwas_data.loc[ SS_indices ]
             #print(gwas_data.shape)
             #print(SS_gwas_data.shape)
             #print(SS_gwas_data)
@@ -743,8 +823,8 @@ def index():
             plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
             if ldmat_filepath != '':
                 ld_mat_snps = [f'chr{chrom}:{SS_pos}' for SS_pos in SS_positions]
-                ld_mat = np.matrix(pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None))
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
+                ld_mat = ld_mat[SS_indices ][:,SS_indices]
             else:
                 ld_mat_snps, ld_mat = plink_ldmat(pops, chrom, SS_positions, plink_outfilepath)
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
@@ -805,6 +885,7 @@ def index():
                 if not np.isnan(ldmat_upload_time):
                     f.write(f'LD matrix file size: {ldmat_file_size/1000} KB\n')
                     f.write(f'LD matrix upload time: {ldmat_upload_time}\n')
+                    f.write(f'LD matrix loading and subsetting time: {user_ld_load_time}\n')
                 f.write(f'GWAS load time: {gwas_load_time}\n')
                 f.write(f'Pairwise LD calculation time: {ld_pairwise_time}\n')
                 f.write(f'Extracting GTEx eQTLs for user-specified gene: {gtex_one_gene_time}\n')
