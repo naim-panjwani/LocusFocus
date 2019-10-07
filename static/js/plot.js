@@ -34,7 +34,7 @@ function plot_gwas(data, genesdata) {
   var eqtl_smoothing_window_size = (regionsize/100000) * 15;
   // var percent_occupied_by_one_char_const = 0.011;
   // var percent_occupied_by_one_char = percent_occupied_by_one_char_const * (regionsize / 500000);
-  var percent_occupied_by_one_char = 0.013;
+  var percent_occupied_by_one_char = 0.012;
   var font_height = 0.5;
   // console.log(eqtl_smoothing_window_size)
   // console.log(percent_occupied_by_one_char);
@@ -577,10 +577,6 @@ function plot_gwas(data, genesdata) {
       annotations_text2.push(`<i>${genesdata[i]['name']}</i>`);
       locations.push('bottom');
     }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> fffbc62bcd605065edd5241ace713f5917da3c1e
     // console.log(temp_data);
 
     
@@ -645,70 +641,6 @@ function plot_gwas(data, genesdata) {
       showlegend: false,
       name: 'Gene name',
       textposition: 'bottom'
-<<<<<<< HEAD
-=======
-  // console.log(locations[i]);
-  //   temp_data.push({
-  //     'genename': annotations_text2[i],
-  //     'x': annotations_x2[i],
-  //     'y': annotations_y2[i],
-  //     'rect_bin': curr_rect_bin,
-  //     'all rect_bins': rect_bins,
-  //     'location': locations[i]
-  //   });
-  }
-  // console.log(temp_data);
-
-  
-  // SOME TEMPORARY TRIAL CODE FOR DETERMINING TEXT BINNING
-  /**
-  var i = 18;
-  console.log(annotations_text2[i]);
-  console.log(locations[i]);
-  console.log(rect_bins[i]);
-  var xrefloc = (((genesdata[i]['txStart'] + genesdata[i]['txEnd']) / 2) - (startbp - extra_x_range)) / (regionsize + 2 * extra_x_range);
-  // var leftside = d3.max([xrefloc - annotations_text2[i].length/2 * percent_occupied_by_one_char, 0]);
-  // var rightside = xrefloc + annotations_text2[i].length/2 * percent_occupied_by_one_char;
-  thegenename = genesdata[i]['name'];
-  var leftside = d3.max([xrefloc - ((thegenename.length/2) * percent_occupied_by_one_char), 0]);
-  var rightside = xrefloc + ((thegenename.length/2) * percent_occupied_by_one_char);
-  if(rightside>1) {
-    rightside=1
-  } else if (rightside<0) {
-    rightside=0;
-  };
-  if(leftside>1) {
-    leftside=1
-  } else if (leftside<0) {
-    leftside=0;
-  };
-
-  var trial_trace = {
-    type: 'rect',
-    xref: 'paper',
-    yref: 'paper',
-    x0: leftside,
-    y0: gene_area_height/full_y_range - (-1*annotations_y2[i])/full_y_range - font_height/full_y_range,
-    x1: rightside,
-    y1: gene_area_height/full_y_range - (-1*annotations_y2[i])/full_y_range,
-    fillcolor: 'red',
-    opacity: 0.3,
-    line: {width: 1}
-  }
-  rectangle_shapes.push(trial_trace);
-  */
-
-  var final_x = [];
-  var final_y = [];
-  var final_text = [];
-  for(var i = 0; i < locations.length; i++) {
-    if(locations[i] !== 'hidden') {
-      final_x.push(annotations_x2[i]);
-      final_y.push(annotations_y2[i]);
-      final_text.push(annotations_text2[i]);
->>>>>>> development
-=======
->>>>>>> fffbc62bcd605065edd5241ace713f5917da3c1e
     }
   }
   var genenames_trace2 = {
