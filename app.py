@@ -567,6 +567,10 @@ def index():
                 raise InvalidUsage('GWAS data input is not sorted', status_code=410)
             else:
                 gwas_data.sort_values(by=[ poscol ], inplace=True)
+            # Check for invalid p=0 rows:
+            zero_p = [x for x in list(gwas_data[pcol]) if x==0]
+            if len(zero_p)>0:
+                raise InvalidUsage('P-values of zero detected; please replace with a non-zero p-value')
             lead_snp = request.form['leadsnp']
             snp_list = list(gwas_data[snpcol])
             snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit

@@ -1,6 +1,4 @@
 Known bugs:
-- Fix issue where gene names overlap in larger-defined regions
-- Test different LD matrix file inputs
 - chrX plots do not show correctly
 
 to do:

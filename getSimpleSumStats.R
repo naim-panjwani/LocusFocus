@@ -87,13 +87,17 @@ get_eigenvalue<-function(eqtl_evid,ld.mat,m){
   return(eigenvalues)
 }
 
-get_p<-function(m,eigen_value,teststats){
+get_p<-function(m,eigen_value,teststats, meth='davies'){
   l=length(eigen_value)
-  pv<-abs(imhof(teststats,eigen_value,h=rep(1,l),delta=rep(0,l))$Qq)
+  if(meth == 'davies'){
+    pv<-abs(davies(teststats,eigen_value,h=rep(1,l),delta=rep(0,l))$Qq)
+  } else if(meth == 'imhof') {
+    pv<-abs(imhof(teststats,eigen_value,h=rep(1,l),delta=rep(0,l))$Qq)
+  }
   return(pv)
 }
 
-get_simplesumP<-function(P_gwas,P_eqtl,ld.mat,cut,m){
+get_simplesumP<-function(P_gwas,P_eqtl,ld.mat,cut,m, meth='davies'){
   ##need to match the GWAS SNP with the eQTL SNP and get m
   Z=qnorm(P_gwas/2)
   Zsq=Z^2
@@ -104,7 +108,7 @@ get_simplesumP<-function(P_gwas,P_eqtl,ld.mat,cut,m){
   ##get eigenvalues:
   eig_values<-get_eigenvalue(eqtl_evid,ld.mat,m)
   ##get Simple Sum p-values
-  pv<-get_p(m,eig_values,SS_stats)
+  pv<-get_p(m,eig_values,SS_stats, meth=meth)
   return(pv)
 }
 
@@ -161,13 +165,16 @@ for(i in 1:num_iterations) {
     m <- nrow(tempmat)
     tryCatch(
     {
-      P = get_simplesumP(P_gwas=as.numeric(tempmat[,1]), P_eqtl=as.numeric(tempmat[,2]), ld.mat=ldmat[-NArows, -NArows], cut=0, m=m)
+      P = get_simplesumP(P_gwas=as.numeric(tempmat[,1]), P_eqtl=as.numeric(tempmat[,2]), ld.mat=ldmat[-NArows, -NArows], cut=0, m=m, meth='davies')
+      if(P==0 | P<0){
+        P = get_simplesumP(P_gwas=as.numeric(tempmat[,1]), P_eqtl=as.numeric(tempmat[,2]), ld.mat=ldmat[-NArows, -NArows], cut=0, m=m, meth='imhof')
+      }
     }
-    , error = function(e) {P = -1}
+    , error = function(e) {P = -2} # could not compute SS
     )
     Pss = c(Pss, P)
   } else {
-    Pss = c(Pss, -1)
+    Pss = c(Pss, -1) # no eQTL data matching GWAS data
   }
 }
 

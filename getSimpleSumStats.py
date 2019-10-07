@@ -157,7 +157,7 @@ def get_simple_sum_p(p_mat, ld_mat):
         
         try:
             P = simple_sum_p(gwas_, eqtl_, ld_, cut=0, m=snp_count, meth='davies')
-            if P == 0:
+            if P == 0 or P<0:
                 P = simple_sum_p(gwas_, eqtl_, ld_, cut=0, m=snp_count, meth='imhof')
                 comp_used.append('imhof')
                 pss.append(P)

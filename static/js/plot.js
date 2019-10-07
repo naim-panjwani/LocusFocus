@@ -38,6 +38,7 @@ function plot_gwas(data, genesdata) {
   var font_height = 0.5;
   // console.log(eqtl_smoothing_window_size)
   // console.log(percent_occupied_by_one_char);
+  console.log(d3.min(pvalues));
 
   // Helper functions:
   function smoothing(x,y,xrange,window_size) {
