@@ -17,10 +17,14 @@ import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
 
 imhof = importr(str("CompQuadForm")).__dict__['imhof']
+davies = importr(str("CompQuadForm")).__dict__['davies']
 
-def get_p(ss_stat, eig_values, m):
+def get_p(ss_stat, eig_values, m, meth='davies'):
 
-    res = imhof(ss_stat, eig_values)
+    if meth == 'davies':
+        res = davies(ss_stat, eig_values)
+    elif meth == 'imhof':
+        res = imhof(ss_stat, eig_values)
     p = np.array(res[res.names.index('Qq')])
 
     return abs(p[0])
@@ -76,7 +80,7 @@ def get_eqtl_evid(p, cut, m):
     return covariate
 
 
-def simple_sum_p(gwas_, eqtl_, ld_, cut, m):
+def simple_sum_p(gwas_, eqtl_, ld_, cut, m, meth='davies'):
     ##need to match the GWAS SNP with the eQTL SNP and get m
     z = norm.ppf(gwas_/2)
     zsq = np.square(z)
@@ -91,7 +95,7 @@ def simple_sum_p(gwas_, eqtl_, ld_, cut, m):
     eig_values = get_eigenvalues(eqtl_evid, ld_, m)
     
     ##get Simple Sum p-values
-    return get_p(ss_stat, eig_values, m)
+    return get_p(ss_stat, eig_values, m, meth=meth)
 
 
 def parse_param():
@@ -118,9 +122,9 @@ def parse_param2():
 
 
 #todo: pass in p_mat, ld_mat
-def main():
+def get_simple_sum_p(p_mat, ld_mat):
     
-    p_mat, ld_mat = parse_param2()
+    #p_mat, ld_mat = parse_param2()
     
     if p_mat.ndim == 2 and np.size(p_mat, 0) > 1:
         n_iter = np.size(p_mat, 0) - 1
@@ -130,7 +134,7 @@ def main():
     p_gwas = np.asarray(p_mat[0,])
     p_eqtl = p_mat[1:,]
    
-    pss, n = [], []
+    pss, n, comp_used = [], [], []
     
     for i in range(n_iter):  
         p_eqtl_i = np.asarray(p_eqtl[i,] if n_iter > 1 else p_eqtl)
@@ -147,17 +151,24 @@ def main():
         n.append(snp_count)
         
         if snp_count < 1:
-            pss.append(-1)
+            pss.append(-1) # no eqtl data
+            comp_used.append('NA')
             continue
         
         try:
-            P = simple_sum_p(gwas_, eqtl_, ld_, cut=0, m=snp_count)
-            pss.append(P)
+            P = simple_sum_p(gwas_, eqtl_, ld_, cut=0, m=snp_count, meth='davies')
+            if P == 0:
+                P = simple_sum_p(gwas_, eqtl_, ld_, cut=0, m=snp_count, meth='imhof')
+                comp_used.append('imhof')
+                pss.append(P)
+            else:
+                comp_used.append('davies')
+                pss.append(P)
         except:
-            pss.append(-1)
+            pss.append(-2) # could not compute a SS p-value
 
                 
-    return(pss, n)
+    return (pss, n, comp_used)
 
 
     

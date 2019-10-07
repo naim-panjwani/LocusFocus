@@ -16,6 +16,8 @@ from flask_uploads import UploadSet, configure_uploads, DATA
 
 from pymongo import MongoClient
 
+import getSimpleSumStats
+
 genomicWindowLimit = 2000000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
 fileSizeLimit = 100 * 1024 * 1024 # in Bytes
@@ -118,7 +120,10 @@ def classify_files(filenames):
         filename = secure_filename(file.filename)
         extension = filename.split('.')[-1]
         if extension not in extensions:
-            extensions.append(extension)
+            if extension in ['txt', 'tsv']:
+                extensions.extend(['txt','tsv'])
+            else:
+                extensions.append(extension)
         else:
             raise InvalidUsage('Please upload up to 3 different file types as described', status_code=410)
         if extension in ['txt', 'tsv']:
@@ -736,7 +741,7 @@ def index():
 
             ####################################################################################################
             print('Extracting LD matrix')
-            # 5. Get the LD matrix via PLINK subprocess call:
+            # 5. Get the LD matrix via PLINK subprocess call or use user-provided LD matrix:
             t1 = datetime.now() # timer for calculating the LD matrix
             plink_outfilename = f'session_data/ld-{my_session_id}'
             plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
@@ -771,22 +776,28 @@ def index():
             ####################################################################################################
             print('Calculating Simple Sum stats')
             t1 = datetime.now() # timer for Simple Sum calculation time
-            Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
-            Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-            RscriptRun = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-            if RscriptRun.returncode != 0:
-                raise InvalidUsage(RscriptRun.stdout, status_code=410)
-            SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
-            SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
+            # Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
+            # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
+            # RscriptRun = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+            # if RscriptRun.returncode != 0:
+            #     raise InvalidUsage(RscriptRun.stdout, status_code=410)
+            # SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
+            # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
+            SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(PvaluesMat, ld_mat)
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] != -1:
                     SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
             SSPvaluesMat = np.array(SSPvalues).reshape(len(gtex_tissues), len(query_genes))
+            print("SS Pvalues matrix:")
+            print(SSPvaluesMat)
             SSPvalues_dict = {
                 'Genes': query_genes
                 ,'Tissues': gtex_tissues
                 ,'SSPvalues': SSPvaluesMat.tolist()
+                ,'Num_SNPs_Used_for_SS': num_SNP_used_for_SS
+                ,'Computation method': comp_used
             }
+            print(SSPvalues_dict)
             SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
             json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
