@@ -14,6 +14,8 @@ from datetime import datetime
 import dask.dataframe as dd
 import subprocess
 import os
+import gzip
+import shutil
 
 #passwd = pd.read_csv('.passwd', header=None, encoding='utf-8').iloc[0,0]
 
@@ -49,17 +51,25 @@ def push_variant_dict(gene_df):
     gene_dict = {'gene_id': geneid, 'eqtl_variants': variants_list }
     collection.insert_one(gene_dict)
 
+def decompress(f):
+    with gzip.open(f, 'rb') as f_in:
+        with open(f.replace('.gz',''), 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+            
+
 for file in files_list:
     tissue_name = file.split('.')[0].replace(' ','_')
     if tissue_name not in db.list_collection_names():
         collection = db[tissue_name]
         if file.endswith('gz') and os.path.isfile(file):
             print('Decompressing ' + file)
-            subprocess.run(args=['gunzip','-f',file])
-        print('Reading file ' + file)
+            #subprocess.run(args=['gunzip','-f', file])
+            #decompress(file)
+        print('Reading file ' + file.replace('.gz',''))
         tissue_eqtls = dd.read_csv(file.replace('.gz',''), sep="\t", 
                                    usecols=['gene_id', 'variant_id', 'pval_nominal',
-                                            'slope', 'slope_se', 'ma_samples', 'ma_count', 'maf'])
+                                            'slope', 'slope_se', 'ma_samples', 'ma_count', 'maf'],
+                                    assume_missing=True)
         tissue_eqtls = tissue_eqtls.set_index('gene_id')
         genes_dict_list = []
         #tissue_eqtls = tissue_eqtls.loc[:, ~tissue_eqtls.columns.isin(['chr','pos'])]
@@ -81,7 +91,7 @@ for file in files_list:
         #print('Recompressing ' + file.replace('.gz',''))
         #subprocess.run(args=['gzip', file.replace('.gz','')])
         print('Deleting ' + file.replace('.gz',''))
-        subprocess.run(args=['rm', '-f', file.replace('.gz','')])
+        #subprocess.run(args=['rm', '-f', file.replace('.gz','')])
         print('Done with tissue ' + tissue_name)
         print(datetime.now().strftime('%c'))
 
