@@ -34,7 +34,7 @@ function plot_gwas(data, genesdata) {
   var eqtl_smoothing_window_size = (regionsize/100000) * 15;
   // var percent_occupied_by_one_char_const = 0.011;
   // var percent_occupied_by_one_char = percent_occupied_by_one_char_const * (regionsize / 500000);
-  var percent_occupied_by_one_char = 0.011;
+  var percent_occupied_by_one_char = 0.013;
   var font_height = 0.5;
   // console.log(eqtl_smoothing_window_size)
   // console.log(percent_occupied_by_one_char);
