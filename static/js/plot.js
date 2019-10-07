@@ -34,7 +34,7 @@ function plot_gwas(data, genesdata) {
   var eqtl_smoothing_window_size = (regionsize/100000) * 15;
   // var percent_occupied_by_one_char_const = 0.011;
   // var percent_occupied_by_one_char = percent_occupied_by_one_char_const * (regionsize / 500000);
-  var percent_occupied_by_one_char = 0.011;
+  var percent_occupied_by_one_char = 0.013;
   var font_height = 0.5;
   // console.log(eqtl_smoothing_window_size)
   // console.log(percent_occupied_by_one_char);
@@ -578,6 +578,9 @@ function plot_gwas(data, genesdata) {
       locations.push('bottom');
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> fffbc62bcd605065edd5241ace713f5917da3c1e
     // console.log(temp_data);
 
     
@@ -642,6 +645,7 @@ function plot_gwas(data, genesdata) {
       showlegend: false,
       name: 'Gene name',
       textposition: 'bottom'
+<<<<<<< HEAD
 =======
   // console.log(locations[i]);
   //   temp_data.push({
@@ -703,6 +707,8 @@ function plot_gwas(data, genesdata) {
       final_y.push(annotations_y2[i]);
       final_text.push(annotations_text2[i]);
 >>>>>>> development
+=======
+>>>>>>> fffbc62bcd605065edd5241ace713f5917da3c1e
     }
   }
   var genenames_trace2 = {

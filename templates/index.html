@@ -58,98 +58,120 @@
       </div>
     </div>
     <div class="inputs-and-upload-form">
-      <form method=post enctype=multipart/form-data>
-        <div class="row">
-          <div class="col-md-12 borderit">
-            <div class="col-md-6">
-              <h5>GWAS Summary Statistics:</h5>
-              <p><input type=file name=file>
-                <br>Must be a tab-separated file
-                <br>Max size: 500KB
+    <form method=post enctype=multipart/form-data>
+      <div class="row">
+        <div class="col-md-12 borderit">
+          <h5>Select files to upload</h5>
+            <dl>
+              <p>
+                <input type="file" name="files[]" multiple="true" autocomplete="off" required
+                data-toggle="tooltip" title="tsv/txt: GWAS; .ld: LD matrix; .html: set of secondary colocalizing datasets">
               </p>
+            </dl>
+            <p>
+              <div class="alert alert-dismissible alert-info">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <strong>You may upload up to 3 files:</strong>
+                <ul>
+                  <li>.txt or .tsv (required): tab-separated primary summary statistics (eg. GWAS)</li>
+                  <li>.ld (optional): PLINK-generated LD matrix -- must have the same number of SNPs as primary file</li>
+                  <li>.html (optional): Secondary datasets to test colocalization with. Each data table must be preceded by an &lt;h3&gt; title tag describing the table</li>
+                  <ul>
+                    <li>This feature is currently not supported -- choose relevant GTEx (v7) tissues below instead</li>
+                  </ul>
+                </ul>
+              </div>
+            </p>
+
+          <div class="row">
+            <div class="col-md-3">
+              <label for="chrom" id="chrom">Chromosome Column Name:</label>
+              <input class="form-control" id="chrom-col" name="chrom-col" type="text" placeholder="#CHROM">
             </div>
-            <div class="row">
-              <div class="col-md-3">
-                <label for="chrom" id="chrom">Chromosome Column Name:</label>
-                <input class="form-control" id="chrom-col" name="chrom-col" type="text" placeholder="#CHROM">
-              </div>
-              <div class="col-md-3">
-                <label for="position" id="position">Position Column Name:</label>
-                <input class="form-control" id="pos-col" name="pos-col" type="text" placeholder="BP">
-              </div>
-              <div class="col-md-3">
-                <label for="rsName" id="rsid">Marker Column Name:</label>
-                <input class="form-control" id="snp-col" name="snp-col" type="text" placeholder="SNP">
-              </div>
-              <div class="col-md-3">
-                <label for="p-value" id="p_value">P-value Column Name:</label>
-                <input class="form-control" id="pval-col" name="pval-col" type="text" placeholder="P">
-              </div>
+            <div class="col-md-3">
+              <label for="position" id="position">Position Column Name:</label>
+              <input class="form-control" id="pos-col" name="pos-col" type="text" placeholder="BP">
             </div>
-            <div class="row">
-              <div class="col-md-3">
-                <label for="region" id="locusText">HG19 Coordinates</label>
-                <input class="form-control" id="locus" name="locus" type="text" placeholder="1:205500000-206000000">
-              </div>
-              <div class="col-md-3">
-                <label for="lead-snp" id="lead_snp">Lead Marker Name:</label>
-                <input class="form-control" id="leadsnp" name="leadsnp" type="text" placeholder="default: top marker">
-              </div>
+            <div class="col-md-3">
+              <label for="rsName" id="rsid">Marker Column Name:</label>
+              <input class="form-control" id="snp-col" name="snp-col" type="text" placeholder="SNP">
             </div>
-          </div>
-        </div> <!-- row closing div -->
-        
-        <div class="row">
-          <div class="col-md-12 borderit">
-            <h5>Select Populations for LD:</h5>
-            <div class="col-md-6">
-              <select id="LD-populations" name="LD-populations">
-                <option id="AFR" value="AFR" label="1000 Genomes 2012 AFR"></option>
-                <option id="AMR" value="AMR" label="1000 Genomes 2012 AMR"></option>
-                <!-- <option id="EAS" value="EAS" label="(EAS) East Asian"></option> -->
-                <option id="EUR" value="EUR" label="1000 Genomes 2012 EUR" selected="selected"></option>
-                <option id="ASN" value="ASN" label="1000 Genomes 2012 ASN"></option>
-              </select>
-            </div>
-            <div class="row"><div class="col-md-6"><p><h6>OR</h6></p></div></div>
-            <div class="row">
-              <div class="col-md-6">
-                <br>
-                <h5>LD matrix (optional):</h5>
-                <p><input type=file name=ldmat></p>
-              </div>
-            </div>
-            <!--
-            <select id="ld-type" name="ld-type">
-              <option id="r2" value="r2">r<sup>2</sup></option>
-              <option id="D-prime" value="d">D'</option>
-            </select>
-            -->
-          </div>
-        </div> <!-- row closing div -->
-        <div class="row">
-          <div class="col-md-12 borderit">
-            <h5>Select GTEx Tissues to Render</h5>
-            <h6><i>We recommend selecting only tissues that are thought to be relevant for the disease under study</i></h6>
-            <div class="col-md-6">
-              <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple"></select>
-            </div>
-            <div class="col-md-6">
-                <label for="gencodeId" id="gencode-id">Enter Gene Name or Gencode ID:</label>
-                <input class="form-control" id="gencodeID" name="gencodeID" type="text" placeholder="SLC26A9">
+            <div class="col-md-3">
+              <label for="p-value" id="p_value">P-value Column Name:</label>
+              <input class="form-control" id="pval-col" name="pval-col" type="text" placeholder="P">
             </div>
           </div>
-        </div> <!-- row closing div -->
-        <div class="row">
-          <div class="col-md-12"><input id="submit-btn" type="submit" class="btn btn-default" value="Submit"></div>
-        </div> <!-- row closing div -->
-        <div class="row">
-          <div class="col-md-12"><h6><b><i>By hitting submit, you understand that you are uploading your dataset to a public server</i></b></h6></div>
+          <div class="row">
+            <div class="col-md-3">
+              <label for="region" id="locusText">HG19 Coordinates</label>
+              <input class="form-control" id="locus" name="locus" type="text" placeholder="1:205500000-206000000">
+            </div>
+            <div class="col-md-3">
+              <label for="lead-snp" id="lead_snp">Lead Marker Name:</label>
+              <input class="form-control" id="leadsnp" name="leadsnp" type="text" placeholder="default: top marker">
+            </div>
+          </div>
         </div>
-      </form>
-      <div class="row"><div class="col-md-12"><div id="error-messages" class="error-text"></div></div></div>
-    </div> <!-- inputs-and-upload-form closing div -->
-  </div> <!-- container closing div -->
+      </div> <!-- row closing div -->
+        
+      <div class="row">
+        <div class="col-md-12 borderit">
+          <h5>Select Populations for LD</h5>
+          <div class="col-md-6">
+            <select id="LD-populations" name="LD-populations">
+              <option id="AFR" value="AFR" label="1000 Genomes 2012 AFR"></option>
+              <option id="AMR" value="AMR" label="1000 Genomes 2012 AMR"></option>
+              <!-- <option id="EAS" value="EAS" label="(EAS) East Asian"></option> -->
+              <option id="EUR" value="EUR" label="1000 Genomes 2012 EUR" selected="selected"></option>
+              <option id="ASN" value="ASN" label="1000 Genomes 2012 ASN"></option>
+            </select>
+            <p>
+            <div class="alert alert-dismissible alert-info">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <strong>Ignored if a valid .ld file is uploaded</strong>
+            </div>
+            </p>
+          </div>
+          <!--
+          <select id="ld-type" name="ld-type">
+            <option id="r2" value="r2">r<sup>2</sup></option>
+            <option id="D-prime" value="d">D'</option>
+          </select>
+          -->
+        </div>
+      </div> <!-- row closing div -->
+
+      <div class="row">
+        <div class="col-md-12 borderit">
+          <h5>Select GTEx Tissues to Render</h5>
+          <h6><i>We recommend selecting only tissues that are thought to be relevant for the disease under study</i></h6>
+          <div class="col-md-6">
+            <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple"></select>
+          </div>
+          <div class="col-md-6">
+              <label for="gencodeId" id="gencode-id">Enter Gene Name or Gencode ID:</label>
+              <input class="form-control" id="gencodeID" name="gencodeID" type="text" placeholder="SLC26A9">
+          </div>
+        </div>
+      </div> <!-- row closing div -->
+
+      <div class="row">
+        <div class="col-md-12"><input id="submit-btn" type="submit" class="btn btn-default" value="Submit"></div>
+      </div> <!-- row closing div -->
+
+      <div class="row">
+        <div class="col-md-12"><h6><b><i>By hitting submit, you understand that you are uploading your dataset to a public server</i></b></h6></div>
+      </div> <!-- row closing div -->
+    
+    </form>
+
+    <div class="row">
+      <div class="col-md-12">
+        <div id="error-messages" class="error-text"></div>
+      </div>
+    </div>
+  </div> <!-- inputs-and-upload-form closing div -->
+</div> <!-- container closing div -->
 
   <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
@@ -157,6 +179,7 @@
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   <!-- Bootstrap tooltips -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/tooltip.min.js') }}"></script>
   <!-- Bootstrap core JavaScript -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
   <!-- MDB core JavaScript -->
