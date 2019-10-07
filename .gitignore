@@ -108,6 +108,7 @@ venv.bak/
 tokens.py
 tokens.txt
 pass.txt
+secrets.py
 initdb.py
 .vscode/
 data/snp151.gz
