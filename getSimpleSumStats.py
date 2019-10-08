@@ -19,6 +19,20 @@ rpy2.robjects.numpy2ri.activate()
 imhof = importr(str("CompQuadForm")).__dict__['imhof']
 davies = importr(str("CompQuadForm")).__dict__['davies']
 
+def set_based_test(summary_stats, ld_, num_genes, alpha=0.05):
+    z = norm.ppf(summary_stats/2)
+    zsq = np.square(z)
+    statistic = sum(zsq)
+    m = len(zsq)
+    eigenvalues = np.linalg.eigvals(ld_).real
+    res = imhof(statistic, eigenvalues)
+    pv = abs(np.array(res[res.names.index('Qq')]))
+    if pv < (alpha / num_genes):
+        return True
+    else:
+        return False
+
+
 def get_p(ss_stat, eig_values, m, meth='davies'):
 
     if meth == 'davies':
@@ -121,8 +135,11 @@ def parse_param2():
     return (p_mat, ld_mat)
 
 
-#todo: pass in p_mat, ld_mat
-def get_simple_sum_p(p_mat, ld_mat):
+def get_simple_sum_p(p_mat, ld_mat): # main function to use
+    # P-values returned can be negative and have the following meanings:
+    # -1: there was no eQTL data
+    # -2: fails the set_based_test(), so eQTL region is not significant after Bonferroni correction
+    # -3: could not compute the Simple Sum p-value; this is likely due to insufficient number of SNPs
     
     #p_mat, ld_mat = parse_param2()
     
@@ -134,7 +151,7 @@ def get_simple_sum_p(p_mat, ld_mat):
     p_gwas = np.asarray(p_mat[0,])
     p_eqtl = p_mat[1:,]
    
-    pss, n, comp_used = [], [], []
+    pretest, pss, n, comp_used = [], [], [], []
     
     for i in range(n_iter):  
         p_eqtl_i = np.asarray(p_eqtl[i,] if n_iter > 1 else p_eqtl)
@@ -155,26 +172,26 @@ def get_simple_sum_p(p_mat, ld_mat):
             comp_used.append('NA')
             continue
         
+        # do pretest (set_based_test)
         try:
-            P = simple_sum_p(gwas_, eqtl_, ld_, cut=0, m=snp_count, meth='davies')
-            if P == 0 or P<0:
-                P = simple_sum_p(gwas_, eqtl_, ld_, cut=0, m=snp_count, meth='imhof')
-                comp_used.append('imhof')
-                pss.append(P)
+            if set_based_test(eqtl_, ld_, n_iter):
+                P = simple_sum_p(gwas_, eqtl_, ld_, cut=0, m=snp_count, meth='davies')
+                if P == 0 or P<0:
+                    P = simple_sum_p(gwas_, eqtl_, ld_, cut=0, m=snp_count, meth='imhof')
+                    comp_used.append('imhof')
+                    pss.append(P)
+                else:
+                    comp_used.append('davies')
+                    pss.append(P)
             else:
-                comp_used.append('davies')
-                pss.append(P)
+                pss.append(-2) # not significant eQTL given the # of genes
         except:
-            pss.append(-2) # could not compute a SS p-value
+            pss.append(-3) # could not compute a SS p-value (SNPs not dense enough?)
 
                 
     return (pss, n, comp_used)
 
 
-    
-  
-if __name__== "__main__":
-  main()
 
 
 
