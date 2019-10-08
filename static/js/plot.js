@@ -34,11 +34,11 @@ function plot_gwas(data, genesdata) {
   var eqtl_smoothing_window_size = (regionsize/100000) * 15;
   // var percent_occupied_by_one_char_const = 0.011;
   // var percent_occupied_by_one_char = percent_occupied_by_one_char_const * (regionsize / 500000);
-  var percent_occupied_by_one_char = 0.012;
+  var percent_occupied_by_one_char = 0.020;
   var font_height = 0.5;
   // console.log(eqtl_smoothing_window_size)
   // console.log(percent_occupied_by_one_char);
-  console.log(d3.min(pvalues));
+  // console.log(d3.min(pvalues));
 
   // Helper functions:
   function smoothing(x,y,xrange,window_size) {

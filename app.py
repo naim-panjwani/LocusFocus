@@ -577,7 +577,7 @@ def index():
             if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][snpcol])[0].split(';')[0]
             if lead_snp not in snp_list:
                 raise InvalidUsage('Lead SNP not found', status_code=410)
-            lead_snp_position_index = list(gwas_data[pcol]).index(min(gwas_data[pcol]))
+            lead_snp_position_index = list(gwas_data[snpcol]).index(lead_snp)
 #            lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0]
             lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
             positions = list(gwas_data[poscol])
