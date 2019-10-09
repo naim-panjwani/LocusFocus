@@ -52,7 +52,9 @@
             <div id="heatmap"></div>
             <div class="alert alert-dismissible alert-info">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <strong>-1 values correspond to unavailable Simple Sum P-values due to either insufficient data for accurate computation or insufficient gene expression</strong>
+                <strong>Gray cells or -1 values correspond to gene-tissue pairs with no eQTL data (likely due to little or no expression)</strong>
+                <strong>White cells or -2 values correspond to gene-tissue pairs with no significant eQTLs after Bonferroni correction</strong>
+                <strong>Black cells or -3 values correspond to gene-tissue pairs where the Simple Sum P-value computation failed, likely due to insufficient SNPs</strong>
             </div>
         </div>
     </div>

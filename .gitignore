@@ -127,3 +127,4 @@ start_webservice.sh
 data/GTEx_v7_eQTL/
 *gtf
 .Rhistory
+data/MI_GWAS_Summary_Stats_PLoS_Genet.tsv.gz

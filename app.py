@@ -792,7 +792,8 @@ def index():
                 if SSPvalues[i] != -1:
                     SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
             SSPvaluesMat = np.array(SSPvalues).reshape(len(gtex_tissues), len(query_genes))
-
+            if max(SSPvaluesMat.tolist()) < 0:
+                raise InvalidUsage('Could not calculate Simple Sum P-values due to sparse SNP set or other issue')
             SSPvalues_dict = {
                 'Genes': query_genes
                 ,'Tissues': gtex_tissues
