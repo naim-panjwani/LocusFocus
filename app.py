@@ -349,7 +349,14 @@ def get_gtex_data(tissue, gene, snp_list, raiseErrors = False):
         eqtl = response_df
         if rsids:
             snp_df = pd.DataFrame(snp_list, columns=['rs_id'])
+            #idx = pd.Index(list(snp_df['rs_id']))
+            idx2 = pd.Index(list(eqtl['rs_id']))
+            #snp_df = snp_df[~idx.duplicated()]
+            eqtl = eqtl[~idx2.duplicated()]
+            print('snp_df.shape' + str(snp_df.shape))
             gtex_data = snp_df.reset_index().merge(eqtl, on='rs_id', how='left', sort=False).sort_values('index')
+            print('gtex_data.shape' + str(gtex_data.shape))
+            print(gtex_data)
         else:
             snp_df = pd.DataFrame(snp_list, columns=['variant_id'])
             gtex_data = snp_df.reset_index().merge(eqtl, on='variant_id', how='left', sort=False).sort_values('index')
@@ -556,6 +563,7 @@ def index():
             print(chrom,startbp,endbp)
             print('Subsetting GWAS data to entered region')            
             gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
+            gwas_data_numRows = gwas_data.shape[0]
             bool1 = [x == chrom for x in Xto23(list(gwas_data[chromcol]))]
             bool2 = [x>=startbp and x<=endbp for x in list(gwas_data[poscol])]
             bool3 = [not x for x in list(gwas_data.isnull().any(axis=1))]
@@ -618,6 +626,8 @@ def index():
                 print('---------------------------------')
                 t1 = datetime.now() # timer started for loading user-defined LD matrix
                 ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+                if ld_mat.shape[0] != gwas_data_numRows:
+                    raise InvalidUsage('LD matrix provided does not match GWAS number of SNPs dimension', status_code=410)
                 ld_mat = ld_mat.loc[ gwas_indices_kept, gwas_indices_kept ]
                 r2 = list(ld_mat.iloc[:, lead_snp_position_index])
                 ld_mat = np.matrix(ld_mat)
@@ -725,14 +735,17 @@ def index():
             for tissue in gtex_tissues:
                 for agene in query_genes:
                     gtex_eqtl_df = get_gtex_data(tissue, agene, SS_snp_list)
-                    #print(len(gtex_eqtl_df))
+                    print('len(gtex_eqtl_df) '+ str(len(gtex_eqtl_df)))
+                    print('gtex_eqtl_df.shape ' + str(gtex_eqtl_df.shape))
+                    print('len(SS_snp_list) ' + str(len(SS_snp_list)))
                     if len(gtex_eqtl_df) > 0:
+                        #gtex_eqtl_df.fillna(-1, inplace=True)
                         pvalues = list(gtex_eqtl_df['pval'])
                     else:
                         pvalues = np.repeat(np.nan, len(SS_snp_list))
                     PvaluesMat.append(pvalues)
-                    #print(f'tissue: {tissue}, gene: {gene}, len(pvalues): {len(pvalues)}')
-                    #print(f'len(SS_positions): {len(SS_positions)}, len(SS_snp_list): {len(SS_snp_list)}')
+                    print(f'tissue: {tissue}, gene: {gene}, len(pvalues): {len(pvalues)}')
+                    print(f'len(SS_positions): {len(SS_positions)}, len(SS_snp_list): {len(SS_snp_list)}')
                     # Extra files written:
                     eqtl_df = pd.DataFrame({
                         'Position': SS_positions,
@@ -789,11 +802,9 @@ def index():
             # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
             SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
             for i in np.arange(len(SSPvalues)):
-                if SSPvalues[i] != -1:
+                if SSPvalues[i] > 0:
                     SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
             SSPvaluesMat = np.array(SSPvalues).reshape(len(gtex_tissues), len(query_genes))
-            if max(SSPvaluesMat.tolist()) < 0:
-                raise InvalidUsage('Could not calculate Simple Sum P-values due to sparse SNP set or other issue')
             SSPvalues_dict = {
                 'Genes': query_genes
                 ,'Tissues': gtex_tissues

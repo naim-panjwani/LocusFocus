@@ -52,7 +52,8 @@
             <div id="heatmap"></div>
             <div class="alert alert-dismissible alert-info">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <strong>-1 values correspond to unavailable Simple Sum P-values due to either insufficient data for accurate computation or insufficient gene expression</strong>
+                <strong>Gray cells (with negative -log10 Simple Sum p-values) correspond to gene-tissue pairs with no Simple Sum (SS) P-value.<br>
+                    The exact reason for the absence of a SS P-value can be gleaned in the table below </strong>
             </div>
         </div>
     </div>
@@ -72,7 +73,9 @@
             </div> <!-- table-area closing div -->
             <div class="alert alert-dismissible alert-info">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <strong>-1 values correspond to unavailable Simple Sum P-values due to either insufficient data for accurate computation or insufficient gene expression</strong>
+                <p><strong>-1 values correspond to gene-tissue pairs with no eQTL data (likely due to little or no expression)</strong></p>
+                <p><strong>-2 values correspond to gene-tissue pairs with no significant eQTLs after Bonferroni correction</strong></p>
+                <p><strong>-3 values correspond to gene-tissue pairs where the Simple Sum P-value computation failed, likely due to insufficient SNPs</strong></p>
             </div>
         </div> <!-- col-md-11 closing div -->
     </div> <!-- row closing div -->
@@ -88,7 +91,7 @@
   <script type="text/javascript" src="static/js/plot_heatmap.js"></script>
   <script type="text/javascript" src="static/js/heatmap_table.js"></script>
   <script type="text/javascript">
-    var sessionid = '9bbad18f-de52-40f6-bd39-f0e2559a7fb3'
+    var sessionid = '3e8d8688-bad0-4d11-aacd-ade1c0224396'
     d3.json(`static/session_data/form_data-${sessionid}.json`).then(response => {
         d3.json(`static/session_data/genes_data-${sessionid}.json`).then(genesResponse => {
             d3.json(`static/session_data/SSPvalues-${sessionid}.json`).then(SSResponse => {

@@ -1,30 +1,48 @@
+function copy(aObject) {
+    if (!aObject) {
+        return aObject;
+    }
+
+    let v;
+    let bObject = Array.isArray(aObject) ? [] : {};
+    for (const k in aObject) {
+        v = aObject[k];
+        bObject[k] = (typeof v === "object") ? copy(v) : v;
+    }
+
+    return bObject;
+}
+
 function plot_heatmap(genes, tissues, SSPvalues) {
     // remember that these are -log10P-values
     // want the different negative p-value statuses to have white/black/grey colors
-    // prior checks ensure that we have at least one positive -log10 SS Pvalue.
-    var pmax = d3.max(SSPvalues);
-    var pmin = d3.min(SSPvalues);
-    var colorscale_exception_percentage = 0.15;
-    if(pmin === -3) {
-        colorscale_exception_percentage = 0.15;
-    } else if(pmin === -2) {
-        colorscale_exception_percentage = 0.10;
-    } else if(pmin === -1) {
-        colorscale_exception_percentage = 0.05;
+    // can't really do it that way b/c of the different cases that may occur
+    // prior checks ensure that we have at least one positive -log10 SS Pvalue
+    var pmax=0;
+    var newSSPvalues = copy(SSPvalues);
+    for(i=0; i<tissues.length; i++) {
+        for(j=0; j<genes.length; j++) {
+            newSSPvalues[i][j] = parseFloat(newSSPvalues[i][j]);
+            if(newSSPvalues[i][j] === -2) {
+                newSSPvalues[i][j] = -1;
+            } else if(newSSPvalues[i][j] === -3) {
+                newSSPvalues[i] = -1;
+            } else if(newSSPvalues[i][j] > pmax) {
+                pmax = newSSPvalues[i][j];
+            }
+        }
     }
+    var colorscale_exception_percentage = 0.05;
     var new_minp = -1 * (colorscale_exception_percentage / (1-colorscale_exception_percentage)) * pmax;
-    var step = 0.05 * (pmax - new_minp);
-    for(i=0; i<SSPvalues.length;i++) {
-        if(SSPvalues[i] === -3) {
-            SSPvalues[i] = new_minp;
-        } else if(SSPvalues[i] === -2) {
-            SSPvalues[i] = new_minp + step;
-        } else if(SSPvalues[i] === -1) {
-            SSPvalues[i] = new_minp + step * 2;
+    for(i=0; i<tissues.length; i++) {
+        for(j=0; j<genes.length; j++) {
+            if(newSSPvalues[i][j] === -1) {
+                newSSPvalues[i][j] = new_minp;
+            }
         }
     }
     var data = [{
-          z: SSPvalues,
+          z: newSSPvalues,
           x: genes.map(gene => `<i>${gene}</i>`),
           y: tissues,
           //colorscale: 'Portland',
@@ -32,36 +50,36 @@ function plot_heatmap(genes, tissues, SSPvalues) {
           name: '-log10(Simple Sum P-value)',
           hovertemplate: 'Gene: %{x}' +
                          '<br>Tissue: %{y}<br>' +
-                         '-log10(SS P-value): %{z}',
+                         `-log10(SS P-value): %{z}`,
           colorbar: {title: '-log10(Simple<br>Sum P-value)', dtick0: 0, dtick: 1, autotick: false},
           colorscale: [
             // Values between 0-15% of the min and max of z; ie. our negative stasuses
 
-              [0, 'rgb(0,0,0)'], // originally -3; black
-              [0.05, 'rgb(0,0,0)'], // first 5% is black
+            //   [0, 'rgb(0,0,0)'], // originally -3; black
+            //   [0.05, 'rgb(0,0,0)'], // first 5% is black
               
-              [0.05, 'rgb(255,255,255)'], // originally -2; white
-              [0.10, 'rgb(255,255,255)'], // between 5-10%
+            //   [0.05, 'rgb(255,255,255)'], // originally -2; white
+            //   [0.10, 'rgb(255,255,255)'], // between 5-10%
 
-              [0.10, 'rgb(105,105,105)'], // originally -1; gray
-              [0.15, 'rgb(105,105,105)'], // between 10-15% is gray
+              [0, 'rgb(105,105,105)'], // originally -1; gray
+              [0.05, 'rgb(105,105,105)'], 
 
               // Next trying to follow LD colors
 
               // dark blue to bright red HSV gradient in 5 steps:
-              [0.15, 'rgb(0, 0, 128)'], // dark blue
-              [0.32, 'rgb(0, 0, 128)'], // dark blue
+              [0.05, 'rgb(0, 0, 128)'], // dark blue
+              [0.24, 'rgb(0, 0, 128)'], // dark blue
               
-              [0.32, 'rgb(0, 147, 142)'],
-              [0.49, 'rgb(0, 147, 142)'],
+              [0.24, 'rgb(0, 147, 142)'],
+              [0.43, 'rgb(0, 147, 142)'],
               
-              [0.49, 'rgb(10, 166, 0)'],
-              [0.66, 'rgb(10, 166, 0)'],
+              [0.43, 'rgb(10, 166, 0)'],
+              [0.62, 'rgb(10, 166, 0)'],
               
-              [0.66, 'rgb(185, 167, 0)'],
-              [0.83, 'rgb(185, 167, 0)'],
+              [0.62, 'rgb(185, 167, 0)'],
+              [0.81, 'rgb(185, 167, 0)'],
               
-              [0.83, 'rgb(204, 0, 24)'],
+              [0.81, 'rgb(204, 0, 24)'],
               [1.0, 'rgb(204, 0, 24)'] // using darker red instead of rgb(255,0,0) bright red
 
               // // Values between 20-30% of the min and max of z

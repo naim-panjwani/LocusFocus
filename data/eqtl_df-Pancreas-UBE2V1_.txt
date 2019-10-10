@@ -1,0 +1,1 @@
+alt	beta	chr	ma_count	ma_samples	num_alt_per_site	pval	ref	rs_id	sample_maf	se	variant_id	variant_pos
