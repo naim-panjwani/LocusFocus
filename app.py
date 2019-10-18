@@ -871,7 +871,7 @@ def index():
                 if num_nmiss_tissues != 0: f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
                 f.write(f'Total time: {t2_total}\n')
 
-            return render_template("plot.html", sessionfile = sessionfilepath, genesfile = genes_sessionfilepath, SSPvalues_file = SSPvalues_filepath, sessionid = my_session_id)
+            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
         return render_template("invalid_input.html")
     return render_template("index.html")
 
