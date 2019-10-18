@@ -491,6 +491,27 @@ def prev_session_input(old_session_id):
     return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
     
 
+@app.route("/update/<session_id>/<newgene>")
+def update_colocalizing_gene(session_id, newgene):
+    sessionfile = f'session_data/form_data-{session_id}.json'
+    sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
+    data = json.load(open(sessionfilepath, 'r'))
+    gtex_tissues = data['gtex_tissues']
+    snp_list = data['snps']
+    # gtex_data = {}
+    for tissue in tqdm(gtex_tissues):
+        data[tissue] = []
+        eqtl_df = get_gtex_data(tissue, newgene, snp_list, raiseErrors=True)
+        if len(eqtl_df) > 0:
+            eqtl_df.fillna(-1, inplace=True)
+        data[tissue] = eqtl_df.to_dict(orient='records')
+    # data.update(gtex_data)
+    json.dump(data, open(sessionfilepath, 'w'))
+
+    return jsonify(data)
+
+
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -850,7 +871,7 @@ def index():
                 if num_nmiss_tissues != 0: f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
                 f.write(f'Total time: {t2_total}\n')
 
-            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
+            return render_template("plot.html", sessionfile = sessionfilepath, genesfile = genes_sessionfilepath, SSPvalues_file = SSPvalues_filepath, sessionid = my_session_id)
         return render_template("invalid_input.html")
     return render_template("index.html")
 
