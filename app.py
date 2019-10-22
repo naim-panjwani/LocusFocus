@@ -646,6 +646,8 @@ def index():
             data['endbp'] = endbp
             data['ld_populations'] = pops
             data['gtex_tissues'] = gtex_tissues
+            SSlocustext = request.form['SSlocus']
+            # SSlocus defined below
 
             ####################################################################################################
             t1 = datetime.now() # set timer for extracting GTEx data for selected gene:
@@ -681,8 +683,11 @@ def index():
 
             ####################################################################################################
             # 1. Determine the region to calculate the Simple Sum (SS):
-            SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
-            SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
+            if SSlocustext != '':
+                SSchrom, SS_start, SS_end = parseRegionText(SSlocustext)
+            else:
+                SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
+                SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
             data['SS_region'] = [SS_start, SS_end]
             
             ####################################################################################################
