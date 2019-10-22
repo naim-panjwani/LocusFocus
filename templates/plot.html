@@ -102,6 +102,7 @@
                     d3.select("#sessionid").text(sessionid);
                     var data = response;
                     var genesdata = genesResponse;
+                    populate_genes(genesdata, data)
                     plot_gwas(data, genesdata);
                     plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
                     buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
@@ -110,40 +111,40 @@
         });
     }
 
-    function populate_genes() {
+    function populate_genes(genesdata, data) {
         var selector = d3.select("#selGene");
-        d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
-            var genesdata = genesResponse;
-            var genenames = genesdata.map(gene => gene['name']);
-            genenames.forEach((gene) => {
+        var genenames = genesdata.map(gene => gene['name']);
+        genenames.forEach((gene) => {
+            if(gene === data['gene']) {
+                selector
+                    .append("option selected")
+                    .text(gene)
+                    .property('value', gene)
+            }
+            else {
                 selector
                     .append("option")
                     .text(gene)
                     .property('value', gene);
-            });
+            }
         });
     }
 
     function optionChanged(newgene) {
         var newurl=`/update/${sessionid}/${newgene}`
         d3.select('#plot').text("")
-        d3.json(newurl).then(url_response => {
-            d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
-                d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
-                    d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(SSResponse => {
-                        d3.select("#sessionid").text(sessionid);
-                        var data = response;
-                        var genesdata = genesResponse;
-                        plot_gwas(data, genesdata);
-                        // plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
-                        // buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
-                    });
-                });
+        // d3.json("{{ url_for('update_colocalizing_gene', session_id=sessionid, newgene=newgene) }}").then(response => {
+        d3.json(newurl).then(newresponse => {
+            d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
+                var newdata = newresponse;
+                var genesdata = genesResponse;
+                plot_gwas(newdata, genesdata);
+                // plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+                // buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
             });
-        })
+        });
     }
 
-    populate_genes()
     init();
 
   </script>

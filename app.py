@@ -23,6 +23,7 @@ one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
 fileSizeLimit = 100 * 1024 * 1024 # in Bytes
 
 MYDIR = os.path.dirname(__file__)
+APP_STATIC = os.path.join(MYDIR, 'static')
 
 app = Flask(__name__)
 ext = Sitemap(app=app)
@@ -370,10 +371,10 @@ def get_gtex_data(tissue, gene, snp_list, raiseErrors = False):
             idx2 = pd.Index(list(eqtl['rs_id']))
             #snp_df = snp_df[~idx.duplicated()]
             eqtl = eqtl[~idx2.duplicated()]
-            print('snp_df.shape' + str(snp_df.shape))
+            # print('snp_df.shape' + str(snp_df.shape))
             gtex_data = snp_df.reset_index().merge(eqtl, on='rs_id', how='left', sort=False).sort_values('index')
-            print('gtex_data.shape' + str(gtex_data.shape))
-            print(gtex_data)
+            # print('gtex_data.shape' + str(gtex_data.shape))
+            # print(gtex_data)
         else:
             snp_df = pd.DataFrame(snp_list, columns=['variant_id'])
             gtex_data = snp_df.reset_index().merge(eqtl, on='variant_id', how='left', sort=False).sort_values('index')
@@ -480,9 +481,9 @@ def prev_session():
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
         else: # blank input
             raise InvalidUsage('Invalid input')
-        print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
-        print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
-        print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
+        # print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
+        # print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
+        # print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
         if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath)):
             raise InvalidUsage(f'Could not locate session {my_session_id}')
         return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
@@ -511,17 +512,30 @@ def prev_session_input(old_session_id):
 @app.route("/update/<session_id>/<newgene>")
 def update_colocalizing_gene(session_id, newgene):
     sessionfile = f'session_data/form_data-{session_id}.json'
-    sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
+    sessionfilepath = os.path.join(APP_STATIC, sessionfile)
     data = json.load(open(sessionfilepath, 'r'))
     gtex_tissues = data['gtex_tissues']
     snp_list = data['snps']
     # gtex_data = {}
     for tissue in tqdm(gtex_tissues):
-        data[tissue] = []
-        eqtl_df = get_gtex_data(tissue, newgene, snp_list, raiseErrors=True)
-        if len(eqtl_df) > 0:
-            eqtl_df.fillna(-1, inplace=True)
-        data[tissue] = eqtl_df.to_dict(orient='records')
+        data[tissue] = pd.DataFrame({})
+        #eqtl_df = get_gtex_data(tissue, newgene, snp_list, raiseErrors=True)
+        eqtl_filepath = os.path.join(APP_STATIC, f'session_data/eqtl_df-{tissue}-{newgene}-{session_id}.txt')
+        # eqtl_filepath = url_for('static', filename=f'session_data/eqtl_df-{tissue}-{newgene}-{session_id}.txt')
+        # print(f"eqtl_filepath: {eqtl_filepath}")
+        # print(f"os.path.isfile(eqtl_filepath): {os.path.isfile(eqtl_filepath)}")
+        if os.path.isfile(eqtl_filepath):
+            eqtl_df = pd.read_csv(eqtl_filepath, encoding='utf-8', sep="\t")
+            eqtl_df = eqtl_df.rename(columns={
+                "Position": "variant_pos",
+                "SNP": "rs_id",
+                "P": "pval"
+            })
+            if len(eqtl_df) > 0:
+                eqtl_df.fillna(-1, inplace=True)
+            data[tissue] = eqtl_df.to_dict(orient='records')
+        else:
+            data[tissue] = pd.DataFrame({})
     # data.update(gtex_data)
     json.dump(data, open(sessionfilepath, 'w'))
 
@@ -689,6 +703,7 @@ def index():
             data['endbp'] = endbp
             data['ld_populations'] = pops
             data['gtex_tissues'] = gtex_tissues
+            data['gene'] = genenames(gene)[0]
             SSlocustext = request.form['SSlocus']
             # SSlocus defined below
 
