@@ -39,6 +39,7 @@
         <div class="col-md-12">
             <h3>Colocalization Plot</h3>
             <select id="selGene" onchange="optionChanged(this.value)"></select>
+            <div id="plot_message"></div>
             <div id="plot"></div>
             <div class="alert alert-dismissible alert-info">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
@@ -133,12 +134,14 @@
     function optionChanged(newgene) {
         var newurl=`/update/${sessionid}/${newgene}`
         d3.select('#plot').text("")
+        d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing eQTLs for gene ${newgene}`)
         // d3.json("{{ url_for('update_colocalizing_gene', session_id=sessionid, newgene=newgene) }}").then(response => {
         d3.json(newurl).then(newresponse => {
             d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
                 var newdata = newresponse;
                 var genesdata = genesResponse;
                 plot_gwas(newdata, genesdata);
+                d3.select('#plot_message').text("")
                 // plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
                 // buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
             });
