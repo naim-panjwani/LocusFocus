@@ -227,8 +227,8 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, snp_pvalues,
     lead_snp = f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
     the1kg_snps = list(pd.read_csv(plink_filepath + ".bim", sep="\t", header=None).iloc[:,1])
     new_lead_snp = lead_snp
-    new_lead_snp_position = lead_snp_position
-    while (new_lead_snp not in the1kg_snps) or (len(snp_positions) != 0):
+    new_lead_snp_position = int(lead_snp_position)
+    while (new_lead_snp not in the1kg_snps) and (len(snp_positions) != 1):
         lead_snp_index = snp_positions.index(new_lead_snp_position)
         snp_positions.remove(new_lead_snp_position)
         del snp_pvalues[lead_snp_index]
@@ -236,6 +236,8 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, snp_pvalues,
         new_lead_snp = f"chr{str(int(chrom))}:{str(int(new_lead_snp_position))}"
     if len(snp_positions) == 0:
         raise InvalidUsage('No alternative lead SNP found in the 1000 Genomes', status_code=410)
+    lead_snp = new_lead_snp
+    lead_snp_position = new_lead_snp_position
 
     #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
     if os.name == 'nt':
