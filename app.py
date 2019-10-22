@@ -658,12 +658,9 @@ def index():
                 #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
                 ld_df, new_lead_snp_position = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, pvals, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
                 if new_lead_snp_position != lead_snp_position:
-                    newindex = list(gwas_data[poscol]).index(new_lead_snp_position)
-                    lead_snp = snp_list[ newindex ]
-                # lead_snp_position_index = list(gwas_data[snpcol]).index(lead_snp)
-                # lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
-                lead_snp_position_index = newindex
-                lead_snp_position = new_lead_snp_position
+                    lead_snp_position_index = list(gwas_data[poscol]).index(new_lead_snp_position)
+                    lead_snp = snp_list[ lead_snp_position_index ]
+                    lead_snp_position = new_lead_snp_position
                 r2 = list(ld_df['R2'])
                 ld_pairwise_time = datetime.now() - t1
             else:
