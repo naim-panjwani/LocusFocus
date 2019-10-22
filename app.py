@@ -204,7 +204,7 @@ def plink_ldmat(pop, chrom, snp_positions, outfilename):
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
     return ld_snps, ldmat
 
-def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename):
+def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, snp_pvalues, outfilename):
     # positions must be in hg19 coordinates
     # returns NaN for SNPs not in 1KG LD file; preserves order of input snp_positions
     if chrom == 'X': chrom = 23
@@ -222,6 +222,21 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
+    
+    # Ensure lead snp is also present in 1KG; if not, choose next best lead SNP
+    lead_snp = f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
+    the1kg_snps = list(pd.read_csv(plink_filepath + ".bim", sep="\t", header=None).iloc[:,1])
+    new_lead_snp = lead_snp
+    new_lead_snp_position = lead_snp_position
+    while (new_lead_snp not in the1kg_snps) or (len(snp_positions) != 0):
+        lead_snp_index = snp_positions.index(new_lead_snp_position)
+        snp_positions.remove(new_lead_snp_position)
+        del snp_pvalues[lead_snp_index]
+        new_lead_snp_position = snp_positions[ snp_pvalues == min(snp_pvalues) ]
+        new_lead_snp = f"chr{str(int(chrom))}:{str(int(new_lead_snp_position))}"
+    if len(snp_positions) == 0:
+        raise InvalidUsage('No alternative lead SNP found in the 1000 Genomes', status_code=410)
+
     #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
     if os.name == 'nt':
         plinkrun = subprocess.run(args=[
@@ -262,7 +277,7 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, outfilename)
     pos_df = pd.DataFrame({'pos': snp_positions})
     merged_df = pd.merge(pos_df, available_r2_positions, how='left', left_on="pos", right_on="BP_B", sort=False)[['pos', 'R2']]
     merged_df.fillna(-1, inplace=True)
-    return merged_df
+    return merged_df, new_lead_snp_position
 
 
 ####################################
@@ -491,6 +506,27 @@ def prev_session_input(old_session_id):
     return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
     
 
+@app.route("/update/<session_id>/<newgene>")
+def update_colocalizing_gene(session_id, newgene):
+    sessionfile = f'session_data/form_data-{session_id}.json'
+    sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
+    data = json.load(open(sessionfilepath, 'r'))
+    gtex_tissues = data['gtex_tissues']
+    snp_list = data['snps']
+    # gtex_data = {}
+    for tissue in tqdm(gtex_tissues):
+        data[tissue] = []
+        eqtl_df = get_gtex_data(tissue, newgene, snp_list, raiseErrors=True)
+        if len(eqtl_df) > 0:
+            eqtl_df.fillna(-1, inplace=True)
+        data[tissue] = eqtl_df.to_dict(orient='records')
+    # data.update(gtex_data)
+    json.dump(data, open(sessionfilepath, 'w'))
+
+    return jsonify(data)
+
+
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -589,6 +625,7 @@ def index():
 #            lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0]
             lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
             positions = list(gwas_data[poscol])
+            pvals = list(gwas_data[pcol])
             
             # LD:
             pops = request.form['LD-populations']
@@ -617,7 +654,14 @@ def index():
                 t1 = datetime.now() # timing started for pairwise LD
                 print('Calculating pairwise LD using PLINK')
                 #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
-                ld_df = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
+                ld_df, new_lead_snp_position = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, pvals, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
+                if new_lead_snp_position != lead_snp_position:
+                    newindex = list(gwas_data[poscol]).index(new_lead_snp_position)
+                    lead_snp = snp_list[ newindex ]
+                # lead_snp_position_index = list(gwas_data[snpcol]).index(lead_snp)
+                # lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
+                lead_snp_position_index = newindex
+                lead_snp_position = new_lead_snp_position
                 r2 = list(ld_df['R2'])
                 ld_pairwise_time = datetime.now() - t1
             else:

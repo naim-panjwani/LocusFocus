@@ -38,6 +38,7 @@
     <div class="row">
         <div class="col-md-12">
             <h3>Colocalization Plot</h3>
+            <select id="selGene" onchange="optionChanged(this.value)"></select>
             <div id="plot"></div>
             <div class="alert alert-dismissible alert-info">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
@@ -91,8 +92,10 @@
   <script type="text/javascript" src="static/js/plot_heatmap.js"></script>
   <script type="text/javascript" src="static/js/heatmap_table.js"></script>
   <script type="text/javascript">
-    var sessionid = '3e8d8688-bad0-4d11-aacd-ade1c0224396'
-    d3.json(`static/session_data/form_data-${sessionid}.json`).then(response => {
+    // var sessionid = '7404aa6e-f3d8-429b-a678-f5dee6d8fda7'; // SLC26A9
+    var sessionid = '010c9e09-a36b-440a-87a0-84704ca659ca'; // CEBPB
+    function init() {
+        d3.json(`static/session_data/form_data-${sessionid}.json`).then(response => {
         d3.json(`static/session_data/genes_data-${sessionid}.json`).then(genesResponse => {
             d3.json(`static/session_data/SSPvalues-${sessionid}.json`).then(SSResponse => {
                 d3.select("#sessionid").text(sessionid);
@@ -101,10 +104,47 @@
                 plot_gwas(data, genesdata);
                 plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
                 buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
-                // console.log(genesdata);
+                });
             });
         });
-    });
+    }
+
+    function populate_genes() {
+        var selector = d3.select("#selGene");
+        d3.json(`static/session_data/genes_data-${sessionid}.json`).then(genesResponse => {
+            var genesdata = genesResponse;
+            var genenames = genesdata.map(gene => gene['name']);
+            genenames.forEach((gene) => {
+                selector
+                    .append("option")
+                    .text(gene)
+                    .property('value', gene);
+            });
+        });
+    }
+
+    function optionChanged(newgene) {
+        var newurl = `/update/${sessionid}/${newgene}`
+        d3.url(newurl).then(url_response => {
+            console.log(newurl);
+            d3.json(`static/session_data/form_data-${sessionid}.json`).then(response => {
+            d3.json(`static/session_data/genes_data-${sessionid}.json`).then(genesResponse => {
+                d3.json(`static/session_data/SSPvalues-${sessionid}.json`).then(SSResponse => {
+                    d3.select("#sessionid").text(sessionid);
+                    var data = response;
+                    var genesdata = genesResponse;
+                    plot_gwas(data, genesdata);
+                    plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+                    buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+                    });
+                });
+            });
+        })
+    }
+
+    populate_genes()
+    init();
+
   </script>
 
   <!-- JQuery -->

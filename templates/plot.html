@@ -38,6 +38,7 @@
     <div class="row">
         <div class="col-md-12">
             <h3>Colocalization Plot</h3>
+            <select id="selGene" onchange="optionChanged(this.value)"></select>
             <div id="plot"></div>
             <div class="alert alert-dismissible alert-info">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
@@ -94,22 +95,57 @@
     var genesfile="{{ genesfile }}";
     var SSPvalues_file="{{ SSPvalues_file }}";
     var sessionid="{{ sessionid }}"
-    // console.log(thefile);
-    // console.log(genesfile);
-    // console.log(SSPvalues_file);
-    d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
-        d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
-            d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(SSResponse => {
-                // console.log(pvaluesResponse);
-                d3.select("#sessionid").text(sessionid);
-                var data = response;
-                var genesdata = genesResponse;
-                plot_gwas(data, genesdata);
-                plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);                
-                buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+    function init() {
+        d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
+            d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
+                d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(SSResponse => {
+                    d3.select("#sessionid").text(sessionid);
+                    var data = response;
+                    var genesdata = genesResponse;
+                    plot_gwas(data, genesdata);
+                    plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+                    buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+                });
             });
         });
-    });
+    }
+
+    function populate_genes() {
+        var selector = d3.select("#selGene");
+        d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
+            var genesdata = genesResponse;
+            var genenames = genesdata.map(gene => gene['name']);
+            genenames.forEach((gene) => {
+                selector
+                    .append("option")
+                    .text(gene)
+                    .property('value', gene);
+            });
+        });
+    }
+
+    function optionChanged(newgene) {
+        var newurl=`/update/${sessionid}/${newgene}`
+        d3.select('#plot').text("")
+        d3.json(newurl).then(url_response => {
+            d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
+                d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
+                    d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(SSResponse => {
+                        d3.select("#sessionid").text(sessionid);
+                        var data = response;
+                        var genesdata = genesResponse;
+                        plot_gwas(data, genesdata);
+                        // plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+                        // buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+                    });
+                });
+            });
+        })
+    }
+
+    populate_genes()
+    init();
+
   </script>
   <!-- JQuery -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
