@@ -526,15 +526,11 @@ def update_colocalizing_gene(session_id, newgene):
         # if os.path.isfile(eqtl_filepath):
         if len(eqtl_df) > 0:
             eqtl_df.fillna(-1, inplace=True)
-            data[tissue] = eqtl_df.to_dict(orient='records')
-        else:
-            data[tissue] = pd.DataFrame({})
+        data[tissue] = eqtl_df.to_dict(orient='records')
     # data.update(gtex_data)
-    json.dump(data, open(sessionfilepath, 'w'))
+    # json.dump(data, open(sessionfilepath, 'w'))
 
     return jsonify(data)
-
-
 
 
 @app.route('/', methods=['GET', 'POST'])

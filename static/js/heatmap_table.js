@@ -4,11 +4,11 @@ function buildTable(genes, tissues, SSPvalues, transpose = false) {
     // console.log(data);
     var tbody = d3.select("#variants-table").select("tbody");
 
-    // Clear table:
-    if ( $.fn.dataTable.isDataTable( '#variants-table' ) ) {
-        $('#variants-table').DataTable().destroy();
-    }
-    tbody.text("")
+    // // Clear table:
+    // if ( $.fn.dataTable.isDataTable( '#variants-table' ) ) {
+    //     $('#variants-table').DataTable().destroy();
+    // }
+    // tbody.text("")
 
     // Build column headers:
     if(transpose) {
