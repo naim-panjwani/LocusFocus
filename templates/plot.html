@@ -116,18 +116,10 @@
         var selector = d3.select("#selGene");
         var genenames = genesdata.map(gene => gene['name']);
         genenames.forEach((gene) => {
-            if(gene === data['gene']) {
-                selector
-                    .append("option selected")
-                    .text(gene)
-                    .property('value', gene)
-            }
-            else {
                 selector
                     .append("option")
                     .text(gene)
                     .property('value', gene);
-            }
         });
     }
 

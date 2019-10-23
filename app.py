@@ -354,9 +354,11 @@ def get_gtex_v7(tissue, gene_id):
 def get_gtex_data(tissue, gene, snp_list, raiseErrors = False):
     gtex_data = []
     rsids = True
-    if snp_list[0].startswith('rs'):
+    rsid_snps = [ x for x in snp_list if x.startswith('rs') ]
+    b37_snps = [ x for x in snp_list if x.endswith('_b37') ]
+    if len(rsid_snps) > 0:
         rsids = True
-    elif snp_list[0].endswith('_b37'):
+    elif len(b37_snps) > 0:
         rsids = False
     else:
         raise InvalidUsage('Variant naming format not supported; ensure all are rs ID\'s or formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37')
@@ -519,20 +521,11 @@ def update_colocalizing_gene(session_id, newgene):
     # gtex_data = {}
     for tissue in tqdm(gtex_tissues):
         data[tissue] = pd.DataFrame({})
-        #eqtl_df = get_gtex_data(tissue, newgene, snp_list, raiseErrors=True)
-        eqtl_filepath = os.path.join(APP_STATIC, f'session_data/eqtl_df-{tissue}-{newgene}-{session_id}.txt')
-        # eqtl_filepath = url_for('static', filename=f'session_data/eqtl_df-{tissue}-{newgene}-{session_id}.txt')
-        # print(f"eqtl_filepath: {eqtl_filepath}")
-        # print(f"os.path.isfile(eqtl_filepath): {os.path.isfile(eqtl_filepath)}")
-        if os.path.isfile(eqtl_filepath):
-            eqtl_df = pd.read_csv(eqtl_filepath, encoding='utf-8', sep="\t")
-            eqtl_df = eqtl_df.rename(columns={
-                "Position": "variant_pos",
-                "SNP": "rs_id",
-                "P": "pval"
-            })
-            if len(eqtl_df) > 0:
-                eqtl_df.fillna(-1, inplace=True)
+        eqtl_df = get_gtex_data(tissue, newgene, snp_list)
+        #eqtl_filepath = os.path.join(APP_STATIC, f'session_data/eqtl_df-{tissue}-{newgene}-{session_id}.txt')
+        # if os.path.isfile(eqtl_filepath):
+        if len(eqtl_df) > 0:
+            eqtl_df.fillna(-1, inplace=True)
             data[tissue] = eqtl_df.to_dict(orient='records')
         else:
             data[tissue] = pd.DataFrame({})
@@ -713,7 +706,7 @@ def index():
             print('Gathering GTEx data')
             gtex_data = {}
             for tissue in tqdm(gtex_tissues):
-                eqtl_df = get_gtex_data(tissue, gene, snp_list, raiseErrors=True)
+                eqtl_df = get_gtex_data(tissue, gene, snp_list, raiseErrors=True) # for the full region (not just the SS region)
                 if len(eqtl_df) > 0:
                     eqtl_df.fillna(-1, inplace=True)
                 gtex_data[tissue] = eqtl_df.to_dict(orient='records')
