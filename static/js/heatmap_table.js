@@ -1,31 +1,64 @@
 var theTable = d3.select("#variants-table");
 
-function buildTable(genes, tissues, SSPvalues) {
+function buildTable(genes, tissues, SSPvalues, transpose = false) {
     // console.log(data);
     var tbody = d3.select("#variants-table").select("tbody");
 
     // Clear table:
-    // if ( $.fn.dataTable.isDataTable( '#variants-table' ) ) {
-    //     $('#variants-table').DataTable().destroy();
-    // }
+    if ( $.fn.dataTable.isDataTable( '#variants-table' ) ) {
+        $('#variants-table').DataTable().destroy();
+    }
     tbody.text("")
 
     // Build column headers:
-    for(i=0; i<tissues.length; i++) {
-        theTable.select('thead').select('tr')
-            .append('th')
-            .attr('class', 'th-sm')
-            .text(tissues[i]);
-    }
-
-    // Add table body:
-    for(i=0; i<genes.length; i++) { // for each tissue
-        var row = tbody.append('tr');
-        row.append('td').text(genes[i]);
-        for(j=0; j<tissues.length; j++) { // for each column
-            row.append('td').text(SSPvalues[j][i]);
+    if(transpose) {
+        // theTable.select('thead').select('tr')
+        //     .append('th')
+        //     .attr('class', 'th-sm')
+        //     .text('Tissue');
+        d3.select('#GeneOrTissue').text('Tissue');
+        for(i=0; i<genes.length; i++) {
+            theTable.select('thead').select('tr')
+                .append('th')
+                .attr('class', 'th-sm')
+                .text(genes[i]);
         }
     }
+    else {
+        // theTable.select('thead').select('tr')
+        //     .append('th')
+        //     .attr('class', 'th-sm')
+        //     .text('Gene');
+        d3.select('#GeneOrTissue').text('Gene');
+        for(i=0; i<tissues.length; i++) {
+            theTable.select('thead').select('tr')
+                .append('th')
+                .attr('class', 'th-sm')
+                .text(tissues[i]);
+        }
+    }
+    
+
+    // Add table body:
+    if(transpose) {
+        for(i=0; i<tissues.length; i++) { // for each tissue
+            var row = tbody.append('tr');
+            row.append('td').text(tissues[i]);
+            for(j=0; j<genes.length; j++) { // for each column
+                row.append('td').text(SSPvalues[i][j]);
+            }
+        }
+    }
+    else {
+        for(i=0; i<genes.length; i++) { // for each tissue
+            var row = tbody.append('tr');
+            row.append('td').text(genes[i]);
+            for(j=0; j<tissues.length; j++) { // for each column
+                row.append('td').text(SSPvalues[j][i]);
+            }
+        }
+    }
+    
     // Add DataTables functionality:
     varTable = $(document).ready(function () {
         var thedatatable = $('#variants-table').DataTable({
