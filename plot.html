@@ -93,7 +93,7 @@
   <script type="text/javascript" src="static/js/heatmap_table.js"></script>
   <script type="text/javascript">
     // var sessionid = '7404aa6e-f3d8-429b-a678-f5dee6d8fda7'; // SLC26A9
-    var sessionid = '010c9e09-a36b-440a-87a0-84704ca659ca'; // CEBPB
+    var sessionid = '3b31c683-a2f1-45f9-98ef-afb88891652c';
     function init() {
         d3.json(`static/session_data/form_data-${sessionid}.json`).then(response => {
         d3.json(`static/session_data/genes_data-${sessionid}.json`).then(genesResponse => {
@@ -111,16 +111,24 @@
 
     function populate_genes() {
         var selector = d3.select("#selGene");
-        d3.json(`static/session_data/genes_data-${sessionid}.json`).then(genesResponse => {
-            var genesdata = genesResponse;
-            var genenames = genesdata.map(gene => gene['name']);
-            genenames.forEach((gene) => {
-                selector
-                    .append("option")
-                    .text(gene)
-                    .property('value', gene);
+        d3.json(`static/session_data/form_data-${sessionid}.json`).then(response => {
+            d3.json(`static/session_data/genes_data-${sessionid}.json`).then(genesResponse => {
+                var genesdata = genesResponse;
+                var genenames = genesdata.map(gene => gene['name']);
+                var geneindex = 0;
+                Object.keys(genenames).forEach((gene, i) => {
+                    if(genenames[i] === response['gene']) {
+                        geneindex = i;
+                    }
+                    selector
+                        .append("option")
+                        .text(genenames[i])
+                        .property('value', genenames[i]);
+                    
+                });
+                selector.property("selectedIndex", geneindex)
             });
-        });
+        })
     }
 
     function optionChanged(newgene) {

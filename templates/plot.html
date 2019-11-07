@@ -118,15 +118,26 @@
         });
     }
 
-    function populate_genes(genesdata, data) {
+    function populate_genes() {
         var selector = d3.select("#selGene");
-        var genenames = genesdata.map(gene => gene['name']);
-        genenames.forEach((gene) => {
-                selector
-                    .append("option")
-                    .text(gene)
-                    .property('value', gene);
-        });
+        d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
+            d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
+                var genesdata = genesResponse;
+                var genenames = genesdata.map(gene => gene['name']);
+                var geneindex = 0;
+                Object.keys(genenames).forEach((gene, i) => {
+                    if(genenames[i] === response['gene']) {
+                        geneindex = i;
+                    }
+                    selector
+                        .append("option")
+                        .text(genenames[i])
+                        .property('value', genenames[i]);
+                    
+                });
+                selector.property("selectedIndex", geneindex)
+            });
+        })
     }
 
     function optionChanged(newgene) {
