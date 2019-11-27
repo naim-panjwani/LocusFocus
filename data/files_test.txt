@@ -1,0 +1,2 @@
+mQTL_eQTM_SNPs_SAKNORM_For_CoLoc.txt	Delnaz mQTL analysis from Forno
+gwas.public.slc9a3.txt	Lung Function GWAS around SLC9A3
