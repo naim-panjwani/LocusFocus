@@ -130,4 +130,5 @@ data/GTEx_v7_eQTL/
 data/MI_GWAS_Summary_Stats_PLoS_Genet.tsv.gz
 data/gwas.public.txt.gz
 data/uk_biobank/
-data/mQTL_eQTM_SNPs_SAKNORM_For_CoLoc.txt
+data/mQTL_eQTM_SNPs_SAKNORM_For_CoLoc*.txt
+data/Note.txt
