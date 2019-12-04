@@ -7,6 +7,7 @@ from tqdm import tqdm
 import uuid
 import subprocess
 from datetime import datetime
+from bs4 import BeautifulSoup as bs
 import secrets
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash
@@ -24,6 +25,12 @@ fileSizeLimit = 100 * 1024 * 1024 # in Bytes
 
 MYDIR = os.path.dirname(__file__)
 APP_STATIC = os.path.join(MYDIR, 'static')
+# Default column names for secondary datasets:
+CHROM = 'CHROM'
+BP = 'BP'
+SNP = 'SNP'
+P = 'P'
+
 
 app = Flask(__name__)
 ext = Sitemap(app=app)
@@ -642,7 +649,7 @@ def index():
             # GTEx tissues and gene:
             gtex_tissues = request.form.getlist('GTEx-tissues')
             print('GTEx tissues:',gtex_tissues)
-            if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)            
+            #if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)
             gene = request.form['gencodeID']
             if gene=='': 
                 gene='ENSG00000174502.14'
@@ -697,21 +704,51 @@ def index():
             data['gene'] = genenames(gene)[0]
             SSlocustext = request.form['SSlocus']
             # SSlocus defined below
+            
+            
+            #######################################################
+            # Loading any secondary datasets uploaded
+            #######################################################
+            secondary_datasets = {}
+            table_titles = []
+            if html_filepath != '':
+                print('Loading secondary datasets provided')
+                with open(html_filepath, encoding='utf-8', errors='replace') as f:
+                    html = f.read()
+                    if (not html.startswith('<h3>')) and (not html.startswith('<html>')) and (not html.startswith('<table>') and (not html.startswith('<!DOCTYPE html>'))):
+                        raise InvalidUsage('Secondary dataset(s) provided are not formatted correctly. Please use the merge_and_convert_to_html.py script for formatting.', status_code=410)
+                soup = bs(html, 'lxml')
+                table_titles = soup.find_all('h3')
+                table_titles = [x.text for x in table_titles]
+                tables = pd.read_html(html_filepath)
+                for i in np.arange(len(tables)):
+                    table = tables[i]
+                    secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
+            data['secondary_dataset_titles'] = table_titles
+            data['secondary_dataset_colnames'] = [CHROM, BP, SNP, P]
+            data.update(secondary_datasets)
 
             ####################################################################################################
             t1 = datetime.now() # set timer for extracting GTEx data for selected gene:
             # Get GTEx data for the tissues and SNPs selected:
-            print('Gathering GTEx data')
             gtex_data = {}
-            for tissue in tqdm(gtex_tissues):
-                eqtl_df = get_gtex_data(tissue, gene, snp_list, raiseErrors=True) # for the full region (not just the SS region)
-                if len(eqtl_df) > 0:
-                    eqtl_df.fillna(-1, inplace=True)
-                gtex_data[tissue] = eqtl_df.to_dict(orient='records')
+            if len(gtex_tissues)>0:
+                print('Gathering GTEx data')
+                for tissue in tqdm(gtex_tissues):
+                    eqtl_df = get_gtex_data(tissue, gene, snp_list, raiseErrors=True) # for the full region (not just the SS region)
+                    if len(eqtl_df) > 0:
+                        eqtl_df.fillna(-1, inplace=True)
+                    gtex_data[tissue] = eqtl_df.to_dict(orient='records')
             data.update(gtex_data)
             gtex_one_gene_time = datetime.now() - t1
             
-            ####################################################################################################            
+            ####################################################################################################
+            # Checking that there is at least one secondary dataset for colocalization
+            ####################################################################################################
+            if len(gtex_tissues)==0 and html_filepath == '':
+                raise InvalidUsage('Please provide at least one secondary dataset or select at least one GTEx tissue for colocalization analysis')
+            
+            ####################################################################################################
             t1 = datetime.now() # timer for determining the gene list            
             # Obtain any genes to be plotted in the region:
             print('Summarizing genes to be plotted in this region')
@@ -785,30 +822,43 @@ def index():
             query_genes = list(genes_to_draw['name'])
             # 4. Query and extract the eQTL p-values for all tissues & genes from GTEx
             t1 = datetime.now() # timer set to check how long data extraction from Mongo takes
-            print('Obtaining eQTL p-values for selected tissues and surrounding genes')
-            for tissue in gtex_tissues:
-                for agene in query_genes:
-                    gtex_eqtl_df = get_gtex_data(tissue, agene, SS_snp_list)
-                    print('len(gtex_eqtl_df) '+ str(len(gtex_eqtl_df)))
-                    print('gtex_eqtl_df.shape ' + str(gtex_eqtl_df.shape))
-                    print('len(SS_snp_list) ' + str(len(SS_snp_list)))
-                    if len(gtex_eqtl_df) > 0:
-                        #gtex_eqtl_df.fillna(-1, inplace=True)
-                        pvalues = list(gtex_eqtl_df['pval'])
-                    else:
-                        pvalues = np.repeat(np.nan, len(SS_snp_list))
-                    PvaluesMat.append(pvalues)
-                    print(f'tissue: {tissue}, gene: {gene}, len(pvalues): {len(pvalues)}')
-                    print(f'len(SS_positions): {len(SS_positions)}, len(SS_snp_list): {len(SS_snp_list)}')
-                    # Extra files written:
-                    eqtl_df = pd.DataFrame({
-                        'Position': SS_positions,
-                        'SNP': SS_snp_list,
-                        'P': pvalues
-                    })
-                    eqtl_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/eqtl_df-{tissue}-{agene}-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
-                    print(f'Time to extract eQTLs for {tissue} and {agene}:' + str(datetime.now()-t1))
+            if len(gtex_tissues)>0:
+                print('Obtaining eQTL p-values for selected tissues and surrounding genes')
+                for tissue in gtex_tissues:
+                    for agene in query_genes:
+                        gtex_eqtl_df = get_gtex_data(tissue, agene, SS_snp_list)
+#                        print('len(gtex_eqtl_df) '+ str(len(gtex_eqtl_df)))
+#                        print('gtex_eqtl_df.shape ' + str(gtex_eqtl_df.shape))
+#                        print('len(SS_snp_list) ' + str(len(SS_snp_list)))
+                        if len(gtex_eqtl_df) > 0:
+                            #gtex_eqtl_df.fillna(-1, inplace=True)
+                            pvalues = list(gtex_eqtl_df['pval'])
+                        else:
+                            pvalues = np.repeat(np.nan, len(SS_snp_list))
+                        PvaluesMat.append(pvalues)
+#                        print(f'tissue: {tissue}, gene: {gene}, len(pvalues): {len(pvalues)}')
+#                        print(f'len(SS_positions): {len(SS_positions)}, len(SS_snp_list): {len(SS_snp_list)}')
+                        
+                        # Extra files written:
+#                        eqtl_df = pd.DataFrame({
+#                            'Position': SS_positions,
+#                            'SNP': SS_snp_list,
+#                            'P': pvalues
+#                        })
+#                        eqtl_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/eqtl_df-{tissue}-{agene}-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
+#                        print(f'Time to extract eQTLs for {tissue} and {agene}:' + str(datetime.now()-t1))
+
             gtex_all_queries_time = datetime.now() - t1
+
+            ####################################################################################################
+            # 4.2 Extract user's secondary datasets' p-values
+            ####################################################################################################
+            if len(secondary_datasets)>0:
+                print('Obtaining p-values for uploaded secondary dataset(s)')
+                for i in np.arange(len(secondary_datasets)):
+                    secondary_dataset = tables[i]
+                    pvalues = list(secondary_dataset[P])
+                    PvaluesMat.append(pvalues)
 
             ####################################################################################################
             print('Extracting LD matrix')
@@ -854,6 +904,13 @@ def index():
             #     raise InvalidUsage(RscriptRun.stdout, status_code=410)
             # SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
             # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
+            print('PvaluesMat.shape:')
+            print(PvaluesMat.shape)
+            print('len(gtex_tissues)')
+            print(len(gtex_tissues))
+            print('len(query_genes)')
+            print(len(query_genes))
+            print('')
             SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] > 0:
@@ -862,6 +919,7 @@ def index():
             SSPvalues_dict = {
                 'Genes': query_genes
                 ,'Tissues': gtex_tissues
+                ,'Secondary_dataset_titles': table_titles
                 ,'SSPvalues': SSPvaluesMat.tolist()
                 ,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
                 ,'Computation method': comp_used

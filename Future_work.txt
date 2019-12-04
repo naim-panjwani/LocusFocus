@@ -2,6 +2,7 @@ Known bugs:
 - chrX plots do not show correctly
 
 to do:
+- need to expand gwas dataset to include snps missing from it, but available in secondary datasets
 - allow downloading of the integrated session data
 - allow deleting of the session data
 - allow option to match variant names by just chrom:pos information (currently should only be either all rsid's or all variant_id format)
