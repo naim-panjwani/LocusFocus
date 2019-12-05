@@ -1,4 +1,5 @@
 var theTable = d3.select("#variants-table");
+var secondaryTable = d3.select("#secondary-table")
 
 function buildTable(genes, tissues, SSPvalues, transpose = false) {
     // console.log(data);
@@ -88,3 +89,40 @@ function buildTable(genes, tissues, SSPvalues, transpose = false) {
     
 }
 
+function list_secondary_SSPvalues(titles, SSPvalues) {
+    var tbody = d3.select("#secondary-table").select("tbody");
+
+    // Column headers
+    d3.select('#dataset-desc').text('Dataset description');
+    secondaryTable.select('thead').select('tr')
+        .append('th')
+        .attr('class', 'th-sm')
+        .text('Simple Sum -log10P');
+    
+    
+    // Table body:
+    for(i=0; i<titles.length; i++) { // for each title description
+        var row = tbody.append('tr');
+        row.append('td').text(titles[i]);
+        row.append('td').text(SSPvalues[i]);
+    }
+
+    // Add DataTables functionality:
+    secTable = $(document).ready(function () {
+        var thesectable = $('#secondary-table').DataTable({
+            dom: 'Bfrtipl',
+            buttons: [
+                'copy',
+                {
+                    extend: 'csv',
+                    filename: 'Secondary_datasets_SS_pvalues'
+                },
+                {
+                    extend: 'excel',
+                    filename: 'Secondary_datasets_SS_pvalues',
+                    messageTop: 'Simple Sum P-values of Secondary Datasets'
+                }
+                ]
+        });
+    });
+}

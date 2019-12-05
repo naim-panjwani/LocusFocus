@@ -13,6 +13,12 @@ function plot_gwas(data, genesdata) {
   var SS_start = +data.SS_region[0];
   var SS_end = +data.SS_region[1];
 
+  var secondary_dataset_titles = data.secondary_dataset_titles;
+  // var secondary_dataset_chrom_colname = data.secondary_dataset_colnames[0];
+  var secondary_dataset_position_colname = data.secondary_dataset_colnames[1];
+  var secondary_dataset_snp_colname = data.secondary_dataset_colnames[2];
+  var secondary_dataset_pval_colname = data.secondary_dataset_colnames[3];
+
   // console.log(data);
   // console.log(genesdata);
 
@@ -99,10 +105,14 @@ function plot_gwas(data, genesdata) {
     return [smooth_curve_x, smooth_curve_y];
   }
 
-  function getYmax(gtex_traces) {
+  function getYmax(gtex_traces, secondary_traces) {
     ymax = 1;
     for(var i=0; i<gtex_tissues.length; i++) {
       currymax = d3.max(gtex_traces[gtex_tissues[i]][1]);
+      if(currymax > ymax) ymax = currymax;
+    }
+    for(var i=0; i<secondary_dataset_titles.length; i++) {
+      currymax = d3.max(secondary_traces[secondary_dataset_titles[i]][1]);
       if(currymax > ymax) ymax = currymax;
     }
     return ymax;
@@ -242,6 +252,31 @@ function plot_gwas(data, genesdata) {
     gtex_line_traces[gtex_tissues[i]] = smoothing(gtex_positions[gtex_tissues[i]], gtex_log10_pvalues[gtex_tissues[i]], 
         [startbp, endbp], eqtl_smoothing_window_size);
     // console.log(data['Pancreas']);
+  }
+
+  secondary_line_traces = {};
+  secondary_positions = {};
+  secondary_log10_pvalues = {};
+  secondary_snps = {};
+  for(var i = 0; i < secondary_dataset_titles.length; i++) {
+    secondary_positions[secondary_dataset_titles[i]] = [];
+    secondary_log10_pvalues[secondary_dataset_titles[i]] = [];
+    secondary_snps[secondary_dataset_titles[i]] = [];
+    data[secondary_dataset_titles[i]].forEach(marker => {
+      Object.keys(marker).forEach(k => {
+        if(k === secondary_dataset_position_colname) {
+          secondary_positions[secondary_dataset_titles[i]].push(+marker[k]);
+        }
+        else if (k === secondary_dataset_pval_colname) {
+          secondary_log10_pvalues[secondary_dataset_titles[i]].push(-Math.log10(+marker[k]));
+        }
+        else if (k === secondary_dataset_snp_colname) {
+          secondary_snps[secondary_dataset_titles[i]].push(marker[k]);
+        }
+      });
+    });
+    secondary_line_traces[secondary_dataset_titles[i]] = smoothing(secondary_positions[secondary_dataset_titles[i]], secondary_log10_pvalues[secondary_dataset_titles[i]],
+      [startbp, endbp], eqtl_smoothing_window_size);
   }
 
   // Assign each SNP to an LD group:
@@ -412,6 +447,38 @@ function plot_gwas(data, genesdata) {
     all_traces.push(gtex_tissue_trace);
   }
 
+  // Plot secondary dataset lines (secondary_line_traces):
+  for(var i=0; i < secondary_dataset_titles.length; i++) {
+    var secondary_trace = {
+      x: secondary_line_traces[secondary_dataset_titles[i]][0],
+      y: secondary_line_traces[secondary_dataset_titles[i]][1],
+      name: secondary_dataset_titles[i],
+      mode: 'lines',
+      xaxis: 'x1',
+      yaxis: 'y2'
+    };
+    all_traces.push(secondary_trace);
+  }
+
+  for(var i=0; i < secondary_dataset_titles.length; i++) {
+    var secondary_trace = {
+      x: secondary_positions[secondary_dataset_titles[i]],
+      y: secondary_log10_pvalues[secondary_dataset_titles[i]],
+      name: secondary_dataset_titles[i],
+      mode: 'markers',
+      type: 'scatter',
+      text: secondary_snps[secondary_dataset_titles[i]],
+      marker: {
+        size: markersize,
+        opacity: 0.3
+      },
+      xaxis: 'x1',
+      yaxis: 'y2',
+      visible: 'legendonly'
+    };
+    all_traces.push(secondary_trace);
+  }
+
   var genenames_trace = {
     x: annotations_x,
     y: annotations_y,
@@ -428,7 +495,7 @@ function plot_gwas(data, genesdata) {
   all_traces.push(genenames_trace);
 
   var gwas_ymax = d3.max(log10pvalues);
-  var gtex_ymax = getYmax(gtex_line_traces);
+  var gtex_ymax = getYmax(gtex_line_traces, secondary_line_traces);
   
   // Find a place for gene names text
 
@@ -692,7 +759,7 @@ function plot_gwas(data, genesdata) {
       anchor: 'x',
       side: 'right',
       showgrid: false,
-      title: 'GTEx eQTL -log10(p-value)'
+      title: 'Secondary datasets -log10(p-value)'
     },
     height: 700,
     width: 960,
