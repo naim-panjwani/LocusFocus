@@ -857,7 +857,13 @@ def index():
                 print('Obtaining p-values for uploaded secondary dataset(s)')
                 for i in np.arange(len(secondary_datasets)):
                     secondary_dataset = tables[i]
-                    pvalues = list(secondary_dataset[P])
+                    # remove duplicate SNPs
+                    idx = pd.Index(list(secondary_dataset[SNP]))
+                    secondary_dataset = secondary_dataset[~idx.duplicated()]
+                    # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
+                    snp_df = pd.DataFrame(SS_snp_list, columns=[SNP])
+                    secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP, how='left', sort=False).sort_values('index')
+                    pvalues = list(secondary_data[P])
                     PvaluesMat.append(pvalues)
 
             ####################################################################################################
@@ -903,24 +909,23 @@ def index():
             # if RscriptRun.returncode != 0:
             #     raise InvalidUsage(RscriptRun.stdout, status_code=410)
             # SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
-            # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
-            print('PvaluesMat.shape:')
-            print(PvaluesMat.shape)
-            print('len(gtex_tissues)')
-            print(len(gtex_tissues))
-            print('len(query_genes)')
-            print(len(query_genes))
-            print('')
+            # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']           
             SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] > 0:
                     SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
-            SSPvaluesMat = np.array(SSPvalues).reshape(len(gtex_tissues), len(query_genes))
+            SSPvaluesMatGTEx = np.empty(0)
+            SSPvaluesSecondary = []
+            if len(gtex_tissues)>0:
+                SSPvaluesMatGTEx = np.array(SSPvalues[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
+            if len(SSPvalues) > len(gtex_tissues) * len(query_genes):
+                SSPvaluesSecondary = SSPvalues[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
             SSPvalues_dict = {
                 'Genes': query_genes
                 ,'Tissues': gtex_tissues
                 ,'Secondary_dataset_titles': table_titles
-                ,'SSPvalues': SSPvaluesMat.tolist()
+                ,'SSPvalues': SSPvaluesMatGTEx.tolist() # GTEx pvalues
+                ,'SSPvalues_secondary': SSPvaluesSecondary
                 ,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
                 ,'Computation method': comp_used
             }

@@ -13,8 +13,8 @@ function plot_gwas(data, genesdata) {
   var SS_start = +data.SS_region[0];
   var SS_end = +data.SS_region[1];
 
-  var secondary_datasets = data.secondary_dataset_titles;
-  var secondary_dataset_chrom_colname = data.secondary_dataset_colnames[0];
+  var secondary_dataset_titles = data.secondary_dataset_titles;
+  // var secondary_dataset_chrom_colname = data.secondary_dataset_colnames[0];
   var secondary_dataset_position_colname = data.secondary_dataset_colnames[1];
   var secondary_dataset_snp_colname = data.secondary_dataset_colnames[2];
   var secondary_dataset_pval_colname = data.secondary_dataset_colnames[3];
@@ -261,7 +261,7 @@ function plot_gwas(data, genesdata) {
   for(var i = 0; i < secondary_dataset_titles.length; i++) {
     secondary_positions[secondary_dataset_titles[i]] = [];
     secondary_log10_pvalues[secondary_dataset_titles[i]] = [];
-    secondary_snps[secondary_dataset_titles] = [];
+    secondary_snps[secondary_dataset_titles[i]] = [];
     data[secondary_dataset_titles[i]].forEach(marker => {
       Object.keys(marker).forEach(k => {
         if(k === secondary_dataset_position_colname) {
@@ -454,7 +454,7 @@ function plot_gwas(data, genesdata) {
       y: secondary_line_traces[secondary_dataset_titles[i]][1],
       name: secondary_dataset_titles[i],
       mode: 'lines',
-      xaxis: 'x1'
+      xaxis: 'x1',
       yaxis: 'y2'
     };
     all_traces.push(secondary_trace);
@@ -495,7 +495,7 @@ function plot_gwas(data, genesdata) {
   all_traces.push(genenames_trace);
 
   var gwas_ymax = d3.max(log10pvalues);
-  var gtex_ymax = getYmax(gtex_line_traces);
+  var gtex_ymax = getYmax(gtex_line_traces, secondary_line_traces);
   
   // Find a place for gene names text
 
