@@ -133,3 +133,4 @@ data/uk_biobank/
 data/mQTL_eQTM_SNPs_SAKNORM_For_CoLoc*.txt
 data/Note.txt
 *test*
+data/slc9a3_gwas_mqtl.html
