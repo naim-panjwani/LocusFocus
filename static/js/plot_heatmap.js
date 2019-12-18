@@ -13,7 +13,7 @@ function copy(aObject) {
     return bObject;
 }
 
-function plot_heatmap(genes, tissues, SSPvalues) {
+function plot_heatmap(genes, tissues, SSPvalues, image_width=1080, image_height=1080) {
     // remember that these are -log10P-values
     // want the different negative p-value statuses to have white/black/grey colors
     // can't really do it that way b/c of the different cases that may occur
@@ -117,7 +117,10 @@ function plot_heatmap(genes, tissues, SSPvalues) {
             t: 50,
             b: 125,
             l: 300
-        }
+        },
+        autosize: false,
+        width: image_width,
+        height: image_height
     }
 
     // Tried to add the SSPvalue numbers, but does not place correctly (they all go into the middle of the plot)
@@ -146,3 +149,5 @@ function plot_heatmap(genes, tissues, SSPvalues) {
 
     Plotly.newPlot('heatmap', data, layout);
 }
+
+

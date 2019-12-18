@@ -2,22 +2,24 @@ var theTable = d3.select("#variants-table");
 var secondaryTable = d3.select("#secondary-table")
 
 function buildTable(genes, tissues, SSPvalues, transpose = false) {
-    // console.log(data);
+    
+    var thead = d3.select('#variants-table').select("thead");
     var tbody = d3.select("#variants-table").select("tbody");
 
-    // // Clear table:
-    // if ( $.fn.dataTable.isDataTable( '#variants-table' ) ) {
-    //     $('#variants-table').DataTable().destroy();
-    // }
-    // tbody.text("")
+    // Clear table:
+    if ( $.fn.dataTable.isDataTable( '#variants-table' ) ) {
+        var mytable = $('#variants-table').DataTable();
+        mytable.destroy();
+    }
+
+    thead.text("");
+    tbody.text("");
+    // thead.innerHTML = "";
+    // tbody.innerHTML = "";
 
     // Build column headers:
     if(transpose) {
-        // theTable.select('thead').select('tr')
-        //     .append('th')
-        //     .attr('class', 'th-sm')
-        //     .text('Tissue');
-        d3.select('#GeneOrTissue').text('Tissue');
+        thead.append('tr').append('th').attr('class','th-sm').text('Tissue')
         for(i=0; i<genes.length; i++) {
             theTable.select('thead').select('tr')
                 .append('th')
@@ -26,11 +28,7 @@ function buildTable(genes, tissues, SSPvalues, transpose = false) {
         }
     }
     else {
-        // theTable.select('thead').select('tr')
-        //     .append('th')
-        //     .attr('class', 'th-sm')
-        //     .text('Gene');
-        d3.select('#GeneOrTissue').text('Gene');
+        thead.append('tr').append('th').attr('class','th-sm').text('Gene')
         for(i=0; i<tissues.length; i++) {
             theTable.select('thead').select('tr')
                 .append('th')
@@ -77,14 +75,6 @@ function buildTable(genes, tissues, SSPvalues, transpose = false) {
                 }
             ]
         });
-        // $('.dataTables_length').addClass('bs-select');
-        // new $.fn.dataTable.Buttons( thedatatable, {
-        //     buttons: [
-        //         'copy', 'csv', 'excel', 'pdf'
-        //     ]
-        // });
-        // thedatatable.buttons().container()
-        //     .appendTo( $('.col-sm-6:eq(0)', thedatatable.table().container() ) );
     });
     
 }
