@@ -41,6 +41,35 @@
             <select id="selGene" onchange="optionChanged(this.value)"></select>
             <div id="plot_message"></div>
             <div id="plot"></div>
+            <div class="row">
+                <div class="col-md-3">
+                    <input class="form-control" id="colocPlotWidth" name="colocPlotWidth" type="text" placeholder="Width (e.g. 1080)">
+                </div>
+                <div class="col-md-3">
+                    <input class="form-control" id="colocPlotHeight" name="colocPlotHeight" type="text" placeholder="Height (e.g. 1080)">
+                </div>
+                <div class="col-md-3">
+                    <input class="form-control" id="eqtlWindow" name="eqtlWindow" type="text" placeholder="Lines window size (e.g. 300)" data-toggle="tooltip" title="This determines the window size for the minP line traces; use -1 for default">
+                </div>
+                <div class="col-md-3">
+                    <input class="form-control" id="pctOneChar" name="pctOneChar" type="text" placeholder="One character space (e.g. 0.020)" data-toggle="tooltip" title="This is the fraction occupied by one character for the gene names; change this if gene names are not appearing">
+                </div>
+            </div>
+            <br>
+            <div class="row">
+                <div class="col-md-3">
+                    <input class="form-control" id="colocPlotFontSize" name="colocPlotFontSize" type="text" placeholder="Global font size (e.g. 14)">
+                </div>
+                <div class="col-md-3">
+                    <input class="form-control" id="legendOffset" name="legendOffset" type="text" placeholder="Legend offset (e.g. 0.1)" data-toggle="tooltip" title="If the legend is overlapping the plot, you may want to increase the offset">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <input id="colocPlot-redraw-btn" type="submit" class="btn btn-default" value="Redraw">
+                </div>
+            </div>
+            <p>
             <div class="alert alert-dismissible alert-info">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
                 <strong>Tissues selected but not drawn are due to unavailable eQTL data, likely due to little or no expression in that tissue</strong>
@@ -62,6 +91,9 @@
                 <div class="col-md-3">
                     <!-- <label for="heatmapheight" id="heatmap-height">Height</label> -->
                     <input class="form-control" id="heatmapHeight" name="heatmapHeight" type="text" placeholder="Height (e.g. 1080)">
+                </div>
+                <div class="col-md-3">
+                    <input class="form-control" id="heatmapFontsize" name="heatmapFontsize" type="text" placeholder="Global font size (e.g. 14)">
                 </div>
             </div>
             <div class="row">
@@ -157,7 +189,7 @@
                     d3.select("#sessionid").text(sessionid);
                     var data = response;
                     var genesdata = genesResponse;
-                    populate_genes(genesdata, data)
+                    populate_genes(genesdata, data);
                     plot_gwas(data, genesdata);
                     if(SSResponse['Tissues'].length === 0) {
                         d3.selectAll('.gtex_heatmap_message').append("p").attr("class","text-warning").text(`No GTEx tissues were selected`)
@@ -227,20 +259,82 @@
     init();
 
     // Listen for redraw click events:
+    var coloc_plot_redraw_btn = d3.select('#colocPlot-redraw-btn');
+    coloc_plot_redraw_btn.on("click", function() {
+        d3.event.preventDefault();
+
+        // Get input values:
+        var coloc_plot_width = d3.select('#colocPlotWidth').property("value");
+        var coloc_plot_height = d3.select('#colocPlotHeight').property("value");
+        var eqtl_window_size = d3.select('#eqtlWindow').property("value");
+        var percent_occupied_by_one_char = d3.select('#pctOneChar').property('value');
+        var coloc_plot_fontsize = d3.select('#colocPlotFontSize').property('value');
+        var legendOffset = d3.select('#legendOffset').property('value');
+
+        if(!coloc_plot_width) {
+            coloc_plot_width = 1080;
+        }
+        if(!coloc_plot_height) {
+            coloc_plot_height = 1080;
+        }
+        if(!eqtl_window_size) {
+            eqtl_window_size = -1;
+        }
+        if(!percent_occupied_by_one_char) {
+            percent_occupied_by_one_char = 0.1;
+        }
+        if(!coloc_plot_fontsize) {
+            coloc_plot_fontsize = 14;
+        }
+        if(!legendOffset) {
+            legendOffset = 0.1;
+        }
+
+        // Clear current colocalization plot
+        d3.select('#plot').text("");
+
+        // Redraw colocalization plot with updated parameters
+        d3.json(thefile).then(response => {
+            d3.json(genesfile).then(genesResponse => {
+                var data = response;
+                var genesdata = genesResponse;
+                plot_gwas(data, genesdata, 
+                    eqtl_smoothing_window_size = +eqtl_window_size, 
+                    percent_occupied_by_one_char = +percent_occupied_by_one_char,
+                    inputHeight = +coloc_plot_height, 
+                    inputWidth = +coloc_plot_width, 
+                    font_size = +coloc_plot_fontsize, 
+                    legend_offset = +legendOffset);
+            });
+        });
+    });
+
+    // Listen for redraw click events:
     var heatmap_redraw_btn = d3.select('#heatmap-redraw-btn');
     heatmap_redraw_btn.on("click", function() {
         d3.event.preventDefault();
 
         // Get width and height
-        var widthinput = d3.select('#heatmapWidth').property("value");
-        var heightinput = d3.select('#heatmapHeight').property("value");
+        var widthinput = +d3.select('#heatmapWidth').property("value");
+        var heightinput = +d3.select('#heatmapHeight').property("value");
+        var heatmap_fontsize = +d3.select('#heatmapFontsize').property("value");
+
+        if(!widthinput) {
+            widthinput = 1080;
+        }
+        if(!heightinput) {
+            heightinput = 1080;
+        }
+        if(!heatmap_fontsize) {
+            heatmap_fontsize = 14;
+        }
 
         // Clear current heatmap
         d3.select('#heatmap').text("");
 
         // Redraw heatmap with updated width and height
         d3.json(SSPvalues_file).then(SSResponse => { 
-            plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues, widthinput, heightinput);
+            plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues, widthinput, heightinput, heatmap_fontsize);
         })
     });
 

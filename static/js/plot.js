@@ -1,5 +1,11 @@
-function plot_gwas(data, genesdata) {
-  
+function plot_gwas(data, genesdata, 
+  eqtl_smoothing_window_size = -1,
+  percent_occupied_by_one_char = 0.020,
+  inputHeight = 1080,
+  inputWidth = 1080,
+  font_size = 14,
+  legend_offset = 0.1) {
+
   var positions = data.positions;
   var pvalues = data.pvalues;
   var ld_values = data.ld_values;
@@ -37,10 +43,13 @@ function plot_gwas(data, genesdata) {
   var log10pvalue_range = d3.max(pvalues.map(p => -Math.log10(p))) - d3.min(pvalues.map(p => -Math.log10(p)));
   var extra_x_range = 0.05 * regionsize;
   var extra_y_range = 0.05 * log10pvalue_range;
-  var eqtl_smoothing_window_size = (regionsize/100000) * 15;
+  var eqtl_window_multiplier = 150;
+  if(eqtl_smoothing_window_size === -1) {
+    eqtl_smoothing_window_size = (regionsize/1000000) * eqtl_window_multiplier;
+  }
   // var percent_occupied_by_one_char_const = 0.011;
   // var percent_occupied_by_one_char = percent_occupied_by_one_char_const * (regionsize / 500000);
-  var percent_occupied_by_one_char = 0.020;
+  // var percent_occupied_by_one_char = 0.020;
   var font_height = 0.5;
   // console.log(eqtl_smoothing_window_size)
   // console.log(percent_occupied_by_one_char);
@@ -761,16 +770,18 @@ function plot_gwas(data, genesdata) {
       showgrid: false,
       title: 'Secondary datasets -log10(p-value)'
     },
-    height: 1080,
-    width: 1080,
+    height: inputHeight,
+    width: inputWidth,
     showlegend: true,
     legend: {
-      x: 1.1,
-      y: 1
+      x: 1 + legend_offset,
+      y: 1,
+      font: {size: font_size}
     },
     zeroline: true,
     hovermode: "closest",
-    shapes: rectangle_shapes
+    shapes: rectangle_shapes,
+    font: {size: font_size}
   };
 
 var img_svg = d3.select("#svg-try");

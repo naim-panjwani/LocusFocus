@@ -48,14 +48,14 @@
       <div class="col-md-12 jumbotron text-center">
         <h1>LocusFocus Web Application</h1>
         <p><h4>Prioritize Genes and Tissues from GWAS by Exploring Colocalization with eQTLs</h4></p>
-        <p><h5>Version release: 1.0 alpha</h5></p>
+        <p><h5>Version release: 1.0.1 alpha</h5></p>
       </div>
     </div>
     <div class="row">
       <div class="col-md-12 borderit">
         <a href="/previous_session" role="button" class="btn btn-primary btn-lg">Session ID</a>
         <a href="https://locusfocus.readthedocs.io" role="button" class="btn btn-primary btn-lg">Documentation</a>
-        <a href="/session_id/446b3ca3-7224-4396-9b2f-854c4fbf83ad" role="button" class="btn btn-primary btn-lg">Example Output</a>
+        <a href="/session_id/0d074aff-76f4-42ab-87ef-5e2fa34b04e8" role="button" class="btn btn-primary btn-lg">Example Output</a>
         <a href="mailto:naim.panjwani@sickkids.ca" role="button" class="btn btn-primary btn-lg">Contact Us</a>
       </div>
     </div>
@@ -78,6 +78,10 @@
                   <li>.txt or .tsv (required): tab-separated primary summary statistics (eg. GWAS)</li>
                   <li>.ld (optional): PLINK-generated LD matrix -- must have the same number of SNPs as primary file</li>
                   <li>.html (optional): Secondary datasets to test colocalization. Each data table must be preceded by an &lt;h3&gt; title tag describing the table</li>
+                  <ul>
+                    <li>Refer to the <a href="https://locusfocus.readthedocs.io/en/latest/quick_start.html#formatting-custom-secondary-datasets">documentation</a> on how to generate the HTML file.</li>
+                    <li>You may use the <a href="https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py">merge_and_convert_to_html.py</a> script</li>
+                  </ul>
                 </ul>
                 <strong>File size limit is 100 MB for all 3 files</strong>
               </div>
