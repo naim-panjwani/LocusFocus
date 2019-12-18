@@ -13,7 +13,7 @@ function copy(aObject) {
     return bObject;
 }
 
-function plot_heatmap(genes, tissues, SSPvalues, image_width=1080, image_height=1080, font_size=12) {
+function plot_heatmap(genes, tissues, SSPvalues, image_width=1080, image_height=720, font_size=12) {
     // remember that these are -log10P-values
     // want the different negative p-value statuses to have white/black/grey colors
     // can't really do it that way b/c of the different cases that may occur

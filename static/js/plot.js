@@ -1,7 +1,7 @@
 function plot_gwas(data, genesdata, 
   eqtl_smoothing_window_size = -1,
   percent_occupied_by_one_char = 0.020,
-  inputHeight = 1080,
+  inputHeight = 720,
   inputWidth = 1080,
   font_size = 14,
   legend_offset = 0.1) {
