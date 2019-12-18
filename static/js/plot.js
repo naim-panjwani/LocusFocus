@@ -761,8 +761,8 @@ function plot_gwas(data, genesdata) {
       showgrid: false,
       title: 'Secondary datasets -log10(p-value)'
     },
-    height: 700,
-    width: 960,
+    height: 1080,
+    width: 1080,
     showlegend: true,
     legend: {
       x: 1.1,
