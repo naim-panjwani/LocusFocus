@@ -63,7 +63,7 @@ def parseRegionText(regiontext):
     endbp = pos.split('-')[1].replace(',','')
     chromLengths = pd.read_csv(os.path.join(MYDIR, 'data/hg19_chrom_lengths.txt'), sep="\t", encoding='utf-8')
     chromLengths.set_index('sequence',inplace=True)
-    if chrom == 'X':
+    if chrom == 'X' or chrom == '23':
         chrom = 23
         maxChromLength = chromLengths.loc['chrX', 'length']
         try:
@@ -74,7 +74,10 @@ def parseRegionText(regiontext):
     else:
         try:
             chrom = int(chrom)
-            maxChromLength = chromLengths.loc['chr'+str(chrom), 'length']
+            if chrom == 23:
+                maxChromLength = chromLengths.loc['chrX', 'length']
+            else:
+                maxChromLength = chromLengths.loc['chr'+str(chrom), 'length']
             startbp = int(startbp)
             endbp = int(endbp)
         except:
@@ -808,6 +811,9 @@ def index():
             SS_snp_list = list(SS_gwas_data[snpcol])
             SS_snp_list = [asnp.split(';')[0] for asnp in SS_snp_list] # cleaning up the SNP names a bit
             SS_positions = list(SS_gwas_data[poscol])
+            if len(SS_positions) != len(set(SS_positions)):
+                dups = set([x for x in SS_positions if SS_positions.count(x) > 1])
+                raise InvalidUsage('Duplicate chromosome positions detected at: ' + str(dups))
             # Extra file written:
             gwas_df = pd.DataFrame({
                 'Position': SS_positions,
@@ -909,7 +915,7 @@ def index():
             # if RscriptRun.returncode != 0:
             #     raise InvalidUsage(RscriptRun.stdout, status_code=410)
             # SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
-            # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']           
+            # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
             SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] > 0:

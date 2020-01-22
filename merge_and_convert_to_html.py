@@ -181,6 +181,8 @@ if __name__=='__main__':
                 ,desired_cols[2]: SNP
                 ,desired_cols[3]: P
                 })
+        if chrom == 23:
+            df[CHROM] = np.repeat(chrom, df.shape[0])
         df = df.loc[ (df[CHROM]==chrom) & (df[BP]>=startbp) & (df[BP]<=endbp) ]
         h3tag = '<h3>'+file_descriptions[i]+'</h3>'
         df_html_str = df.to_html(index=False)
