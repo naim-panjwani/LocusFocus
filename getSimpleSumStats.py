@@ -154,14 +154,34 @@ def get_simple_sum_p(p_mat, ld_mat): # main function to use
     pretest, pss, n, comp_used = [], [], [], []
     
     for i in range(n_iter):  
+        print('p_gwas')
+        print(p_gwas)
+        print('')
         p_eqtl_i = np.asarray(p_eqtl[i,] if n_iter > 1 else p_eqtl)
+        print('p_eqtl_i')
+        print(p_eqtl_i)
+        print('')
         
         #remove nans        
         mask = np.isnan(p_gwas) | np.isnan(p_eqtl_i)
+        print('mask')
+        print(mask)
+        print('')
         eqtl_ = p_eqtl_i[~mask]
+        print('eqtl_')
+        print(eqtl_)
+        print('')
         gwas_ = p_gwas[~mask]
+        print('gwas_')
+        print(gwas_)
         ld_ = ld_mat[~mask,]
+        print('ld_')
+        print(ld_)
+        print('')
         ld_ = ld_[:,~mask]
+        print('ld_')
+        print(ld_)
+        print('')
 
         #count SNPs
         snp_count = sum(~mask)
