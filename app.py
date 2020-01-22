@@ -870,12 +870,6 @@ def index():
                     snp_df = pd.DataFrame(SS_snp_list, columns=[SNP])
                     secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP, how='left', sort=False).sort_values('index')
                     pvalues = list(secondary_data[P])
-                    print('Secondary data ' + str(i))
-                    print('pvalues')
-                    print(pvalues)
-                    print('len(pvalues)')
-                    print(len(pvalues))
-                    print('')
                     PvaluesMat.append(pvalues)
 
             ####################################################################################################
@@ -922,16 +916,6 @@ def index():
             #     raise InvalidUsage(RscriptRun.stdout, status_code=410)
             # SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
             # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
-            print('PvaluesMat')
-            print(PvaluesMat)
-            print('PvaluesMat.shape')
-            print(PvaluesMat.shape)
-            print('')
-            print('ld_mat')
-            print(ld_mat)
-            print('ld_mat.shape')
-            print(ld_mat.shape)
-            print('')
             SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] > 0:
