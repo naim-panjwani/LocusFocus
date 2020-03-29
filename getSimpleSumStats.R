@@ -180,7 +180,7 @@ for(i in 1:num_iterations) {
   
   if(snp_count < 1) {
     Pss <- c(Pss, -1) # no eQTL data
-    comp_used <- c(comp_used, NA)
+    comp_used <- c(comp_used, "na")
     next
   }
   
@@ -198,7 +198,7 @@ for(i in 1:num_iterations) {
         Pss <- c(Pss, P)
       }
     } else {
-      Pss <- c(Pss, -2) # not significant eQTL given the # of genes
+      Pss <- c(Pss, -2) # not significant eQTL as per set-based test
     }
   }
   , error = function(e) {Pss <- c(Pss, -3)} # could not compute a SS p-value (SNPs not dense enough?)
