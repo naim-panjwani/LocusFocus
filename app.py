@@ -17,7 +17,7 @@ from flask_uploads import UploadSet, configure_uploads, DATA
 
 from pymongo import MongoClient
 
-import getSimpleSumStats
+#import getSimpleSumStats
 
 genomicWindowLimit = 2000000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
@@ -916,6 +916,7 @@ def index():
             #     raise InvalidUsage(RscriptRun.stdout, status_code=410)
             # SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
             # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
+            
             SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] > 0:

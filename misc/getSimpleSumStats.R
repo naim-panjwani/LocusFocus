@@ -12,6 +12,10 @@ library(CompQuadForm, quietly=TRUE)
 # library(clusterGeneration, quietly=TRUE)
 library(data.table, quietly=TRUE)
 
+######
+# Parse arguments
+######
+
 p <- arg_parser("Calculate Simple Sum Statistic")
 p <- add_argument(p, "P_values_filename", help = paste0("Filename with GWAS and eQTL p-values - for a set of SNPs, each value tab-separated'\n'"
                                                         ,"with 1st line being the GWAS p-values'\n'"
@@ -19,162 +23,188 @@ p <- add_argument(p, "P_values_filename", help = paste0("Filename with GWAS and 
 p <- add_argument(p, "ld_matrix_filename", help = paste0("The LD matrix filename for the set of SNPs input;'\n'"
                                                          ,"the values per row must be tab-separated; no header"))
 argv <- parse_args(p)
-
-Pmat <- fread(argv$P_values_filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
-ldmat <- fread(argv$ld_matrix_filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
-#2ee9162a-aca8-4768-9b27-73a1fb0514bd
-#filename = 'testdata/Pvalues.txt'
-#Pmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
-#filename = 'testdata/ldmat.txt'
-#ldmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
-Pmat <- as.matrix(Pmat)
-P_gwas <- Pmat[1,]
-P_eqtl <- Pmat[2:nrow(Pmat),]
-ldmat <- as.matrix(ldmat)
+P_values_filename <- argv$P_values_filename
+ld_matrix_filename <- argv$ld_matrix_filename
 
 
-get_eqtl_evid<-function(P,cut,m){
-  if (cut==0){
-  covariate=-log10(P)
-  }else{
-    covariate=rep(1,m)
-    for (i in c(1:m)){
-      if (P[i]<cut){
-        covariate[i]=1
-      }else{
-        covariate[i]=0
-      }
-    }
+###############################################################################
+############ FUNCTIONS
+###############################################################################
+
+set_based_test <- function(summary_stats, ld, num_genes, alpha=0.05) {
+  Z <- qnorm(P_gwas/2)
+  Zsq <- Z^2
+  statistic <- sum(Zsq)
+  m <- length(Zsq)
+  eigenvalues <- eigen(ld)$values
+  pv <- abs(imhof(statistic, eigenvalues)$Qq)
+  if(pv < (alpha / num_genes)) {
+    return(TRUE)
+  } else {
+    return(FALSE)
   }
-  return(covariate)
-}
-  
-get_simplesumstats<-function(Zsq,eqtl_evid,m){
-  if (sum(eqtl_evid)==0){
-    SS<--mean(eqtl_evid)
-  }else if (sum(eqtl_evid)==m){
-    SS<-mean(eqtl_evid)
-  }else{
-    reg<-lm(Zsq~eqtl_evid)
-    SS<-summary(reg)$coefficients[2,1]
-  }
-  return(SS)
-}
-get_A<-function(eqtl_evid,m){
-  A=matrix(0,m,m)
-  a_diag<-rep(0,m)
-  for (j in 1:m){
-    if (sum(eqtl_evid)==0){
-      a_diag[j]<--1/m
-    }else if (sum(eqtl_evid)==m){
-      a_diag[j]<-1/m
-    }else{
-      Tbar<-mean(eqtl_evid)
-      a_diag[j]=(eqtl_evid[j]-Tbar)/(sum(eqtl_evid^2)-m*(Tbar^2))
-    }
-  }
-  diag(A)=a_diag
-  return(A)
-}
-
-get_eigenvalue<-function(eqtl_evid,ld.mat,m){
-  chol_Sigma=chol(ld.mat)
-  result=list()
-  matrix_A<-get_A(eqtl_evid,m)
-  matrix_mid<-chol_Sigma%*%matrix_A%*%t(chol_Sigma)
-  eigenvalues<-eigen(matrix_mid)$values
-  return(eigenvalues)
 }
 
 get_p<-function(m,eigen_value,teststats, meth='davies'){
-  l=length(eigen_value)
-  if(meth == 'davies'){
-    pv<-abs(davies(teststats,eigen_value,h=rep(1,l),delta=rep(0,l))$Qq)
+  # l=length(eigen_value)
+  # if(meth == 'davies'){
+  #   pv<-abs(davies(teststats,eigen_value,h=rep(1,l),delta=rep(0,l))$Qq)
+  # } else if(meth == 'imhof') {
+  #   pv<-abs(imhof(teststats,eigen_value,h=rep(1,l),delta=rep(0,l))$Qq)
+  # }
+  if(meth == 'davies') {
+    pv <- davies(teststats, eigen_value)$Qq
   } else if(meth == 'imhof') {
-    pv<-abs(imhof(teststats,eigen_value,h=rep(1,l),delta=rep(0,l))$Qq)
+    pv <- imhof(teststats, eigen_value)$Qq
   }
-  return(pv)
+  return(abs(pv))
 }
 
-get_simplesumP<-function(P_gwas,P_eqtl,ld.mat,cut,m, meth='davies'){
+get_a_diag<-function(eqtl_evid,m){
+  s <- sum(eqtl_evid)
+  
+  a_diag <- NULL
+  if(s == 0 | s == m) {
+    a_diag <- rep(1.0/m, m)
+  } else {
+    t_bar <- mean(eqtl_evid)
+    denom <- sum(eqtl_evid^2) - m*(t_bar^2)
+    
+    a_diag <- sapply(eqtl_evid, function(x) (x - t_bar)/denom )
+  }
+  
+  return(a_diag)
+}
+
+get_eigenvalues<-function(eqtl_evid,ld.mat,m){
+  chol_Sigma=chol(ld.mat)
+  a_diag <- get_a_diag(eqtl_evid,m)
+  
+  matrix_A <- matrix(0, nrow=m, ncol=m)
+  diag(matrix_A) <- a_diag
+  
+  matrix_mid <- chol_Sigma%*%matrix_A%*%t(chol_Sigma)
+  eigenvalues <- eigen(matrix_mid)$values
+  return(eigenvalues)
+}
+
+get_simple_sum_stats<-function(Zsq,eqtl_evid,m){
+  s <- sum(eqtl_evid)
+  if (s==0 | s==m){
+    return(mean(eqtl_evid))
+  }
+  
+  reg<-lm(Zsq~eqtl_evid)
+  SS<-summary(reg)$coefficients[2,1]
+  
+  return(SS)
+}
+
+##if cut = 0, eQTL evidence would be -log10 transform of eQTL p-value;
+##if cut < 0 (i.e. cut=0.05), eQTL evidence would be dichotomized eQTL p-value indicator by thresholds of eQTL p<cut.
+get_eqtl_evid<-function(P,cut){
+  if (cut==0){
+    covariate <- -log10(P)
+  }else{
+    covariate <- as.integer(P < cut)
+  }
+  return(covariate)
+}
+
+
+simple_sum_p <- function(P_gwas,P_eqtl,ld.mat,cut,m, meth='davies'){
   ##need to match the GWAS SNP with the eQTL SNP and get m
-  Z=qnorm(P_gwas/2)
-  Zsq=Z^2
+  Z <- qnorm(P_gwas/2)
+  Zsq <- Z^2
   ##get eqtl evidence
-  eqtl_evid=get_eqtl_evid(P_eqtl,cut,m)
+  eqtl_evid <- get_eqtl_evid(P_eqtl,cut)
   #get Simple Sum statistic
-  SS_stats<-get_simplesumstats(Zsq,eqtl_evid,m)
+  SS_stats <- get_simple_sum_stats(Zsq,eqtl_evid,m)
   ##get eigenvalues:
-  eig_values<-get_eigenvalue(eqtl_evid,ld.mat,m)
+  eig_values <- get_eigenvalues(eqtl_evid,ld.mat,m)
   ##get Simple Sum p-values
-  pv<-get_p(m,eig_values,SS_stats, meth=meth)
+  pv <- get_p(m,eig_values,SS_stats, meth=meth)
   return(pv)
 }
-
-# 
-# set.seed(1)
-# m=100
-# #generate LD matrix 
-# covariance=genPositiveDefMat("eigen",dim=m)$Sigma
-# var=diag(covariance);var
-# Sigma=solve(sqrt(diag(var)))%*%covariance%*%solve(sqrt(diag(var)))
-# #generate GWAS summary statistic
-# mu_Z=rep(0,m)
-# mu_T=rep(0,m)
-# Z_resp<-mvrnorm(n=1,mu_Z,Sigma)
-# Wald=Z_resp^2
-# #generate eQTL summary statistic
-# covar_T<-mvrnorm(n=1,mu_T,Sigma)
-# #transform eQTL evidence
-# #if cut=0, eQTL evidence would be -log10 transform of eQTL p-value;
-# #if cut <0 (i.e. cut=0.05),eQTL evidence would be dischotomized eQTL p-value indicator by thresholds of eQTL p<cut.
-# cut=0
-# P=2*pnorm(abs(covar_T),lower.tail = F)
-# #get_simplesumP(Z_resp,P,Sigma,0,m) -- modified by Naim 28-Apr to take GWAS P instead of Z_resp
-# ##should equal to 0.474327
-# 
-# P_gwas = 2*pnorm(-abs(Z_resp))
-# get_simplesumP(P_gwas,P,Sigma,0,m) # input P_gwas instead of Z_resp
-# 
 
 
 ############
 # MAIN
 ############
 
-Pss <- NULL
-num_iterations = 0
-if (is.null(nrow(P_eqtl)) & length(P_eqtl)>0) {
-  num_iterations=1
-} else if(!is.null(nrow(P_eqtl))) {
-  num_iterations = nrow(P_eqtl)
-} else {
-  stop("No eQTL P-values provided")
+# P-values returned can be negative and have the following meanings:
+  # -1: there was no eQTL data
+  # -2: fails the set_based_test(), so eQTL region is not significant after Bonferroni correction
+  # -3: could not compute the Simple Sum p-value; this is likely due to insufficient number of SNPs
+
+
+### Load data
+
+Pmat <- fread(P_values_filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
+ldmat <- fread(ld_matrix_filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
+#filename = 'testdata/Pvalues.txt'
+#Pmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
+#filename = 'testdata/ldmat.txt'
+#ldmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
+
+Pmat <- as.matrix(Pmat)
+if(nrow(Pmat) < 1) {
+  stop("No secondary dataset P-values provided")
 }
+P_gwas <- Pmat[1,]
+P_eqtl <- matrix(Pmat[2:nrow(Pmat),],nrow=nrow(Pmat)-1,ncol=ncol(Pmat))
+ldmat <- as.matrix(ldmat)
+
+num_iterations = nrow(P_eqtl)
+
+Pss <- NULL
+n <- NULL
+comp_used <- NULL
+
 for(i in 1:num_iterations) {
-  if (is.null(nrow(P_eqtl)) & length(P_eqtl)>0) {
-    tempmat <- cbind(P_gwas, P_eqtl)
-  } else {
-    tempmat <- cbind(P_gwas, P_eqtl[i,])
-  }
+  
+  tempmat <- cbind(P_gwas, P_eqtl[i,])
+  
+  # Remove NA rows
   NArows = which(is.na(tempmat[,1]) | is.na(tempmat[,2]))
   tempmat = tempmat[-NArows,]
-  P = -1
-  if(nrow(tempmat) != 0) {
-    m <- nrow(tempmat)
-    tryCatch(
-    {
-      P = get_simplesumP(P_gwas=as.numeric(tempmat[,1]), P_eqtl=as.numeric(tempmat[,2]), ld.mat=ldmat[-NArows, -NArows], cut=0, m=m, meth='davies')
-      if(P==0 | P<0){
-        P = get_simplesumP(P_gwas=as.numeric(tempmat[,1]), P_eqtl=as.numeric(tempmat[,2]), ld.mat=ldmat[-NArows, -NArows], cut=0, m=m, meth='imhof')
-      }
-    }
-    , error = function(e) {P = -2} # could not compute SS
-    )
-    Pss = c(Pss, P)
-  } else {
-    Pss = c(Pss, -1) # no eQTL data matching GWAS data
+  
+  P_gwas_i <- as.numeric(tempmat[,1])
+  P_eqtl_i <- as.numeric(tempmat[,2])
+  ld_mat_i <- ldmat[-NArows, -NArows]
+  
+  # Count SNPs
+  snp_count <- nrow(tempmat)
+  n <- c(n, snp_count)
+  
+  if(snp_count < 1) {
+    Pss <- c(Pss, -1) # no eQTL data
+    comp_used <- c(comp_used, NA)
+    next
   }
+  
+  # do pretest (set_based_test)
+  tryCatch(
+  {
+    if(set_based_test(P_eqtl_i, ld_mat_i, num_iterations)) {
+      P = simple_sum_p(P_gwas=P_gwas_i, P_eqtl=P_eqtl_i, ld.mat=ld_mat_i, cut=0, m=snp_count, meth='davies')
+      if(P==0 | P<0){
+        P = simple_sum_p(P_gwas=P_gwas_i, P_eqtl=P_eqtl_i, ld.mat=ld_mat_i, cut=0, m=snp_count, meth='imhof')
+        comp_used <- c(comp_used, 'imhof')
+        Pss <- c(Pss, P)
+      } else {
+        comp_used <- c(comp_used, 'davies')
+        Pss <- c(Pss, P)
+      }
+    } else {
+      Pss <- c(Pss, -2) # not significant eQTL given the # of genes
+    }
+  }
+  , error = function(e) {Pss <- c(Pss, -3)} # could not compute a SS p-value (SNPs not dense enough?)
+  )
 }
 
-write(Pss, stdout())
+sessionid <- gsub(".txt", "", gsub("Pvalues-","",P_values_filename))
+result <- data.frame(Pss=Pss, n=n, comp_used=comp_used)
+fileoutname <- paste0("SSPvalues-",sessionid,".txt")
+write.table(result, fileoutname, row.names=F, col.names = T, quote = F, sep="\t")
