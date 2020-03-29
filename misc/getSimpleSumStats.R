@@ -9,8 +9,7 @@ options(warn=-1)
 
 library(argparser, quietly=TRUE)
 library(CompQuadForm, quietly=TRUE)
-library(clusterGeneration, quietly=TRUE)
-library(psych, quietly=TRUE)
+# library(clusterGeneration, quietly=TRUE)
 library(data.table, quietly=TRUE)
 
 p <- arg_parser("Calculate Simple Sum Statistic")
@@ -24,9 +23,9 @@ argv <- parse_args(p)
 Pmat <- fread(argv$P_values_filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
 ldmat <- fread(argv$ld_matrix_filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
 #2ee9162a-aca8-4768-9b27-73a1fb0514bd
-#filename = '/Users/naim/Documents/BootCamp/homework/24-Final_project/GWAS-QTL-Explore/static/session_data/Pvalues-d6e89d1c-2e90-4138-913d-bb5827d95887.txt'
+#filename = 'testdata/Pvalues.txt'
 #Pmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
-#filename = '/Users/naim/Documents/BootCamp/homework/24-Final_project/GWAS-QTL-Explore/static/session_data/ldmat-d6e89d1c-2e90-4138-913d-bb5827d95887.txt'
+#filename = 'testdata/ldmat.txt'
 #ldmat <- fread(filename, header=F, stringsAsFactors=F, na.strings=c("NaN","nan","NA","-1"), sep="\t")
 Pmat <- as.matrix(Pmat)
 P_gwas <- Pmat[1,]
