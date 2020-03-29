@@ -909,15 +909,24 @@ def index():
             ####################################################################################################
             print('Calculating Simple Sum stats')
             t1 = datetime.now() # timer for Simple Sum calculation time
-            # Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
+            Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
             # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-            # RscriptRun = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-            # if RscriptRun.returncode != 0:
-            #     raise InvalidUsage(RscriptRun.stdout, status_code=410)
+            SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}.txt')
+                        
+            RscriptRun = subprocess.run(args=['Rscript', Rscript_code_path, Pvalues_filepath, ldmatrix_filepath, '--outfilename', SSresult_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+            if RscriptRun.returncode != 0:
+                raise InvalidUsage(RscriptRun.stdout, status_code=410)
+            SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
+
             # SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
             # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
             
-            SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
+            #SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
+            
+            SSPvalues = SSdf['Pss'].tolist()
+            num_SNP_used_for_SS = SSdf['n'].tolist()
+            comp_used = SSdf['comp_used'].tolist()
+            
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] > 0:
                     SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)

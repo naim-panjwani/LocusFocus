@@ -22,10 +22,11 @@ p <- add_argument(p, "P_values_filename", help = paste0("Filename with GWAS and 
                                                         ,"and each subsequent line is for eQTL p-values for each tissue/gene combination"))
 p <- add_argument(p, "ld_matrix_filename", help = paste0("The LD matrix filename for the set of SNPs input;'\n'"
                                                          ,"the values per row must be tab-separated; no header"))
+p <- add_argument(p, "--outfilename", default = 'SSPvalues.txt', help = "Output filename")
 argv <- parse_args(p)
 P_values_filename <- argv$P_values_filename
 ld_matrix_filename <- argv$ld_matrix_filename
-
+outfilename <- argv$outfilename
 
 ###############################################################################
 ############ FUNCTIONS
@@ -206,5 +207,4 @@ for(i in 1:num_iterations) {
 
 sessionid <- gsub(".txt", "", gsub("Pvalues-","",P_values_filename))
 result <- data.frame(Pss=Pss, n=n, comp_used=comp_used)
-fileoutname <- paste0("SSPvalues-",sessionid,".txt")
-write.table(result, fileoutname, row.names=F, col.names = T, quote = F, sep="\t")
+write.table(result, outfilename, row.names=F, col.names = T, quote = F, sep="\t")
