@@ -33,7 +33,7 @@ outfilename <- argv$outfilename
 ###############################################################################
 
 set_based_test <- function(summary_stats, ld, num_genes, alpha=0.05) {
-  Z <- qnorm(P_gwas/2)
+  Z <- qnorm(summary_stats/2)
   Zsq <- Z^2
   statistic <- sum(Zsq)
   m <- length(Zsq)
