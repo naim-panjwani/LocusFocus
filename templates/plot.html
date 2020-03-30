@@ -66,7 +66,7 @@
             </div>
             <div class="row">
                 <div class="col-md-3">
-                    <input id="colocPlot-redraw-btn" type="submit" class="btn btn-default" value="Redraw">
+                    <input id="colocPlot-redraw-btn" type="submit" class="btn btn-default" value="Update">
                 </div>
             </div>
             <p>
@@ -97,7 +97,7 @@
             </div>
             <div class="row">
                 <div class="col-md-3">
-                    <input id="heatmap-redraw-btn" type="submit" class="btn btn-default" value="Redraw">
+                    <input id="heatmap-redraw-btn" type="submit" class="btn btn-default" value="Update">
                 </div>
             </div>
             <p>
@@ -116,7 +116,7 @@
                 <div class="gtex_heatmap_message"></div>
 
                 <div class="row">
-                    <div class="col-md-12"><input id="transpose-button" type="submit" ame="transpose-button" class="btn btn-default" value="Transpose" onclick="transposeTable();"/></div>
+                    <div class="col-md-12"><input id="transpose-button" type="submit" name="transpose-button" class="btn btn-default" value="Transpose" onclick="transposeTable();"/></div>
                 </div>
 
                 <table id="variants-table" class="table table-striped table-bordered table-condensed table-sm sortable" cellspacing="0" width="90%">
@@ -167,6 +167,13 @@
         </div> <!-- col-md-12 closing div -->
     </div> <!-- row closing div -->
     <hr/>
+
+    <hr/>
+    <div class="row">
+        <div class="col-md-4">
+        <input id="download-btn" type="button" class="btn btn-default" value="Download Session Data" onclick="window.location.href = '/downloaddata/{{ sessionid }}';">
+        </div>
+    </div>
 
     </div> <!-- container closing div -->
 

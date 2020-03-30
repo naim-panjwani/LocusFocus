@@ -10,7 +10,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup as bs
 import secrets
 
-from flask import Flask, request, redirect, url_for, jsonify, render_template, flash
+from flask import Flask, request, redirect, url_for, jsonify, render_template, flash, send_file
 from werkzeug.utils import secure_filename
 from flask_sitemap import Sitemap
 from flask_uploads import UploadSet, configure_uploads, DATA
@@ -982,11 +982,27 @@ def index():
                 if num_nmiss_tissues != 0: f.write(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}\n')
                 if num_nmiss_tissues != 0: f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
                 f.write(f'Total time: {t2_total}\n')
+            
+            # Compress session data files for easy download:
+            print('Compressing data for downloading')
+            downloadfile = f'session_data/LocusFocus_session_data-{my_session_id}.tar.bz'
+            downloadfilepath = os.path.join(MYDIR, 'static', downloadfile)
+            files_to_compress = f'session_data/*{my_session_id}*'
+            files_to_compress_path = os.path.join(MYDIR, 'static', files_to_compress)
+            compressrun = subprocess.run(args=['tar', 'zcvf', downloadfilepath, files_to_compress_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            # if compressrun.returncode != 0:
+            #     raise InvalidUsage(compressrun.stdout.decode('utf-8'), status_code=410)
 
             return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
         return render_template("invalid_input.html")
     return render_template("index.html")
 
+
+@app.route('/downloaddata/<my_session_id>')
+def downloaddata(my_session_id):
+     downloadfile = f'session_data/LocusFocus_session_data-{my_session_id}.tar.bz'
+     downloadfilepath = os.path.join(MYDIR, 'static', downloadfile)
+     return send_file(downloadfilepath, as_attachment=True)
 
 
 app.config['SITEMAP_URL_SCHEME'] = 'https'
