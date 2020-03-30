@@ -985,7 +985,7 @@ def index():
             
             # Compress session data files for easy download:
             print('Compressing data for downloading')
-            downloadfile = f'session_data/LocusFocus_session_data-{my_session_id}.tar.bz'
+            downloadfile = f'session_data/LocusFocus_session_data-{my_session_id}.tar.gz'
             downloadfilepath = os.path.join(MYDIR, 'static', downloadfile)
             files_to_compress = f'session_data/*{my_session_id}*'
             files_to_compress_path = os.path.join(MYDIR, 'static', files_to_compress)
@@ -1000,7 +1000,7 @@ def index():
 
 @app.route('/downloaddata/<my_session_id>')
 def downloaddata(my_session_id):
-     downloadfile = f'session_data/LocusFocus_session_data-{my_session_id}.tar.bz'
+     downloadfile = f'session_data/LocusFocus_session_data-{my_session_id}.tar.gz'
      downloadfilepath = os.path.join(MYDIR, 'static', downloadfile)
      return send_file(downloadfilepath, as_attachment=True)
 
