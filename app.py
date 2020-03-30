@@ -10,14 +10,14 @@ from datetime import datetime
 from bs4 import BeautifulSoup as bs
 import secrets
 
-from flask import Flask, request, redirect, url_for, jsonify, render_template, flash
+from flask import Flask, request, redirect, url_for, jsonify, render_template, flash, send_file
 from werkzeug.utils import secure_filename
 from flask_sitemap import Sitemap
 from flask_uploads import UploadSet, configure_uploads, DATA
 
 from pymongo import MongoClient
 
-import getSimpleSumStats
+#import getSimpleSumStats
 
 genomicWindowLimit = 2000000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
@@ -909,14 +909,24 @@ def index():
             ####################################################################################################
             print('Calculating Simple Sum stats')
             t1 = datetime.now() # timer for Simple Sum calculation time
-            # Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
+            Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
             # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-            # RscriptRun = subprocess.run(args=[Rscript_path, Rscript_code_path, Pvalues_filepath, ldmatrix_filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-            # if RscriptRun.returncode != 0:
-            #     raise InvalidUsage(RscriptRun.stdout, status_code=410)
+            SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}.txt')
+                        
+            RscriptRun = subprocess.run(args=['Rscript', Rscript_code_path, Pvalues_filepath, ldmatrix_filepath, '--outfilename', SSresult_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+            if RscriptRun.returncode != 0:
+                raise InvalidUsage(RscriptRun.stdout, status_code=410)
+            SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
+
             # SSPvalues = RscriptRun.stdout.replace('\n',' ').split(' ')
             # SSPvalues = [float(SSP) for SSP in SSPvalues if SSP!='']
-            SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
+            
+            #SSPvalues, num_SNP_used_for_SS, comp_used = getSimpleSumStats.get_simple_sum_p(np.asarray(PvaluesMat), np.asarray(ld_mat))
+            
+            SSPvalues = SSdf['Pss'].tolist()
+            num_SNP_used_for_SS = SSdf['n'].tolist()
+            comp_used = SSdf['comp_used'].tolist()
+            
             for i in np.arange(len(SSPvalues)):
                 if SSPvalues[i] > 0:
                     SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
@@ -972,11 +982,27 @@ def index():
                 if num_nmiss_tissues != 0: f.write(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}\n')
                 if num_nmiss_tissues != 0: f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
                 f.write(f'Total time: {t2_total}\n')
+            
+            # Compress session data files for easy download:
+            print('Compressing data for downloading')
+            downloadfile = f'session_data/LocusFocus_session_data-{my_session_id}.tar.gz'
+            downloadfilepath = os.path.join(MYDIR, 'static', downloadfile)
+            files_to_compress = f'session_data/*{my_session_id}*'
+            files_to_compress_path = os.path.join(MYDIR, 'static', files_to_compress)
+            compressrun = subprocess.run(args=['tar', 'zcvf', downloadfilepath, files_to_compress_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            # if compressrun.returncode != 0:
+            #     raise InvalidUsage(compressrun.stdout.decode('utf-8'), status_code=410)
 
             return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
         return render_template("invalid_input.html")
     return render_template("index.html")
 
+
+@app.route('/downloaddata/<my_session_id>')
+def downloaddata(my_session_id):
+     downloadfile = f'session_data/LocusFocus_session_data-{my_session_id}.tar.gz'
+     downloadfilepath = os.path.join(MYDIR, 'static', downloadfile)
+     return send_file(downloadfilepath, as_attachment=True)
 
 
 app.config['SITEMAP_URL_SCHEME'] = 'https'
