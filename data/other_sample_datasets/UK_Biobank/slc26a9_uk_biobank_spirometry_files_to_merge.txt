@@ -1,0 +1,3 @@
+3062.assoc.mod.ROI.slc26a9.tsv	Forced vital capacity (FVC) - 3062	chr	pos	rsid	pval
+3063.assoc.mod.ROI.slc26a9.tsv	Forced expiratory volume in 1-second (FEV1) - 3063	chr	pos	rsid	pval
+3064.assoc.mod.ROI3.slc26a9.tsv	Peak expiratory flow (PEF) - 3064	chr	pos	rsid	pval
