@@ -13,7 +13,7 @@ Flask-Stormpath==0.4.8
 Flask-WTF==0.14.2
 gunicorn==19.9.0
 html5lib==1.0.1
-httplib2==0.12.0
+httplib2==0.18.0
 idna==2.6
 isort==4.3.4
 itsdangerous==0.24
