@@ -7,9 +7,13 @@
 
 options(warn=-1)
 
+# Check if required packages are installed:
+list.of.packages <- c("argparser", "CompQuadForm", "data.table")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)>0) install.packages(new.packages)
+
 library(argparser, quietly=TRUE)
 library(CompQuadForm, quietly=TRUE)
-# library(clusterGeneration, quietly=TRUE)
 library(data.table, quietly=TRUE)
 
 ######
@@ -27,6 +31,12 @@ argv <- parse_args(p)
 P_values_filename <- argv$P_values_filename
 ld_matrix_filename <- argv$ld_matrix_filename
 outfilename <- argv$outfilename
+
+# test
+# P_values_filename <- "data/test_data/Pvalues.txt"
+# ld_matrix_filename <- "data/test_data/ldmat.txt"
+# outfilename <- "data/test_data/SSPvalues.txt"
+
 
 ###############################################################################
 ############ FUNCTIONS
@@ -199,9 +209,13 @@ for(i in 1:num_iterations) {
       }
     } else {
       Pss <- c(Pss, -2) # not significant eQTL as per set-based test
+      comp_used <- c(comp_used, "na")
     }
   }
-  , error = function(e) {Pss <- c(Pss, -3)} # could not compute a SS p-value (SNPs not dense enough?)
+  , error = function(e) {
+      Pss <- c(Pss, -3)
+      comp_used <- c(comp_used, "na")
+    } # could not compute a SS p-value (SNPs not dense enough?)
   )
 }
 
