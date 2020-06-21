@@ -43,6 +43,8 @@ app.secret_key = secrets.mysecret
 files = UploadSet('files', DATA)
 configure_uploads(app, files)
 
+collapsed_genes_df_hg19 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
+collapsed_genes_df_hg38 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v26_hg38.gz'), compression='gzip', sep='\t', encoding='utf-8')
 
 collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
 ld_mat_diag_constant = 1e-6

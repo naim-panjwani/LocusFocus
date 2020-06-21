@@ -1,6 +1,9 @@
 # Ideas for this program obtained from:
 # https://github.com/broadinstitute/gtex-pipeline/blob/master/gene_model/collapse_annotation.py
 
+# The gene track output from this program IS NOT USED in LocusFocus; the collapsed version from GTEx is used instead
+# see collapse_gencode_genes_v2.py for more details
+
 import pandas as pd
 import numpy as np
 import os
