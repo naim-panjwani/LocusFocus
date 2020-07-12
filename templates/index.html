@@ -125,64 +125,38 @@
               </div>
             </p>
 
-          <div class="row">
-            <div class="col-md-4">
-              <input type="checkbox" id="markerCheckbox" name="markerCheckbox" checked="checked" onclick="markerFormatChange(this)"><label for="markerCheckbox" style="margin: 0px; padding: 10px;  height:72px"
-              data-toggle="tooltip" title='Click the "?" icon for more info'> Do not use variant ID column
-              <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#markerModal">?</button></label>
-              <div id="markerModal" class="modal fade" role="dialog">
-                <div class="modal-dialog modal-md modal-dialog-centered">
-                  <div class="modal-content">
-                    <div class="modal-header">
-                      <h5 class="modal-title"><em>Do not use variant ID column</em> option</h5>
-                      <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                      <p>rsid's are <b><i><u>not</u></i></b> the recommended format, but are accepted and will be mapped using dbSNP151 internally.
-                        If the rsid is multi-allelic, it will be ignored for colocalization analyses (but may be shown in plots and tables).
-                      </p>
-                      <p>All variants are converted to the chrom_pos_ref_alt_b37/38 format internally for accurate matching.</p>
-                      <p>If your variant ID's are formatted as
-                        chrom_pos_ref_alt_b37, chrom_pos_ref_alt_b38, chrom:pos_ref_alt, or chrom_pos_ref_alt, 
-                        then you may choose to use your variant ID column by leaving the box unchecked and entering the SNP column name below.</p>
-                      <p>If your file contains chromosome, position, reference and alternate columns, and would like to use them instead, 
-                        then select the <i>No marker ID</i> column option and provide the corresponding column names.</p>
-                      <p>We assume multi-allelic variants (e.g. rs2211330(T/A,C)) are broken down to biallelic records a (e.g. 1_205001063_T_C_b37 and 1_205001063_T_A_b37.</p>
-                    </div>
-                    <div class="modal-footer">
-                      <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!--
-              <select id="marker-format" name="marker-format" onchange="markerFormatChange(this.value)">
-                <option id="std-marker-format" value="std-marker-format" label="chrom_pos_ref_alt" selected="selected"></option>
-                <option id="rsid-format" value="rsid-format" label="rsid"></option>
-                <option id="no-marker" value="no-marker" label="No marker ID column"></option>
-              </select>
-              -->
-            </div>
-          </div>
+
+            
           <div class="row">
             <div class="col-md-3" id="snp"></div>
           </div>
           <div class="row">
+            <div class="col-md-6">
+              <input type="checkbox" id="markerCheckbox" name="markerCheckbox" onclick="inferVariant(this)"><label for="markerCheckbox" style="margin: 0px; padding: 10px;  height:42px"
+              data-toggle="tooltip" data-html="true" title="<p>If checked, the variant ID will be used to infer the chromosome, position, reference and alternate alleles using dbSNP151.</p>
+              <p>This option is <em>not</em> recommended due to multi-mapping of some rsid's and ambiguity for multi-allelic rsid variants.</p>""> Use marker ID column to infer variant position and alleles
+            </div>
+          </div>
+          <div class="row" id="variantInputs">
             <div class="col-md-3" id="chrom"></div>
             <div class="col-md-3" id="pos"></div>
             <div class="col-md-3" id="ref"></div>
             <div class="col-md-3" id="alt"></div>
           </div>
 
+
           <hr>
 
           <div class="row">
             <div class="col-md-3">
-              <label for="p-value" id="p_value" data-toggle="tooltip" title="Header text corresponding to the p-value column in your txt/tsv file (primary dataset)">P-value Column Name:</label>
-              <input class="form-control" id="pval-col" name="pval-col" type="text" onfocus="this.value=''" value="P"
-              data-toggle="tooltip" title="Enter the header text corresponding to the p-value column in your txt/tsv file (primary dataset)">
+              <input type="checkbox" id="coloc2check" name="coloc2check" onclick="addColoc2Inputs(this)"><label for="coloc2check" style="margin: 0px; padding: 10px;  height:42px"
+              data-toggle="tooltip" title='If you would also like to run and compare colocalization analysis with Coloc2 method, extra input fields are required.'> Add required inputs for Coloc2
             </div>
           </div>
+          <div class="row" id="statsDiv"></div>     
+          
+
+          <hr>
 
           <div class="row">
             <div class="col-md-3">

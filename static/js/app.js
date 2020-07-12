@@ -10,10 +10,13 @@ var coordinate = "hg19" // default
 var gtex_version = "v7"; // default
 var gtexurl = `/gtex/${gtex_version}/tissues_list`;
 var markerColDiv = d3.select('#snp');
+var variantInputsDiv = d3.select('#variantInputs');
 var chromColDiv = d3.select('#chrom');
 var posColDiv = d3.select("#pos");
 var refColDiv = d3.select("#ref");
 var altColDiv = d3.select("#alt");
+var statsDiv = d3.select("#statsDiv");
+
 
 var locText = d3.select("#locusText").text();
 d3.select("#locusText").text(`${locText} (max: ${genomicWindowLimit/1e6} Mbp):`);
@@ -49,6 +52,7 @@ function coordinateChange(newCoordinate) {
 
 // helper functions:
 function askChromInput(chromColDiv) {
+    chromColDiv.html("");
     chromColDiv.append("label")
         .attr('for', 'chrom')
         .attr('data-toggle', 'tooltip')
@@ -64,6 +68,7 @@ function askChromInput(chromColDiv) {
         .attr('title', "Enter the header text corresponding to the chromosome column in your txt/tsv file (primary dataset)");
 }
 function askPosInput(posColDiv) {
+    posColDiv.html("");
     posColDiv.append('label')
         .attr('for','position')
         .attr('data-toggle','tooltip')
@@ -79,6 +84,7 @@ function askPosInput(posColDiv) {
         .attr('title', "Enter the header text corresponding to the basepair coordinate position column in your txt/tsv file (primary dataset)");
 }
 function askRefInput(refColDiv) {
+    refColDiv.html("");
     refColDiv.append('label')
         .attr('for','ref')
         .attr('data-toggle','tooltip')
@@ -94,6 +100,7 @@ function askRefInput(refColDiv) {
         .attr('title', "Enter the header text corresponding to the reference allele column in your txt/tsv file (primary dataset)");
 }
 function askAltInput(altColDiv) {
+    altColDiv.html("");
     altColDiv.append('label')
         .attr('for','alt')
         .attr('data-toggle','tooltip')
@@ -109,42 +116,145 @@ function askAltInput(altColDiv) {
         .attr('title', "Enter the header text corresponding to the alternate allele column in your txt/tsv file (primary dataset)");
 }
 function askSNPInput(markerColDiv) {
+    markerColDiv.html("");
     markerColDiv.append('label')
         .attr('for','markerColname')
         .attr('data-html','true')
         .attr('data-toggle', 'tooltip')
-        .attr('title', "<p>Header text corresponding to the variant name column in your txt/tsv file (primary dataset).</p>")
-        .text("Marker Column Name:")
+        .attr('title', "<p>Header text corresponding to the variant name column in your txt/tsv file (primary dataset).</p><p>Accepted formats: rs7512462, 1_205899595_T_C_b37.</p>")
+        .text("Marker Column Name:");
     markerColDiv.append('input')
         .attr('class', 'form-control')
         .attr('name', 'snp-col')
         .attr('type', 'text')
         .attr('onfocus', "this.value='")
-        .attr('value', "ID")
+        .attr('value', "ID (optional)")
         .attr('data-toggle', 'tooltip')
         .attr('data-html',"true")
-        .attr('title', "<p>Enter the header text corresponding to the variant name column in your txt/tsv file (primary dataset).</p><p>Accepted formats: rs7512462, 1_205899595_T_C_b37</p>")
+        .attr('title', "<p>Enter the header text corresponding to the variant ID column in your txt/tsv file (primary dataset).</p><p>Accepted formats: rs7512462, 1_205899595_T_C_b37</p>");
+}
+function addVariantInputs() {
+    variantInputsDiv.html("");
+    var chromColDiv = variantInputsDiv.append('div').attr('class','col-md-3').attr('id','chrom');
+    var posColDiv = variantInputsDiv.append('div').attr('class','col-md-3').attr('id','pos');
+    var refColDiv = variantInputsDiv.append('div').attr('class','col-md-3').attr('id','ref');
+    var altColDiv = variantInputsDiv.append('div').attr('class','col-md-3').attr('id','alt');
+    askChromInput(chromColDiv);
+    askPosInput(posColDiv);
+    askRefInput(refColDiv);
+    askAltInput(altColDiv);
 }
 
 
-function markerFormatChange(noSNPID) {
-    // clear no-marker input fields:
-    markerColDiv.html("");
-    chromColDiv.html("");
-    posColDiv.html("");
-    refColDiv.html("");
-    altColDiv.html("");
+function askBetaInput(betaColDiv) {
+    betaColDiv.html("");
+    betaColDiv.append('label')
+        .attr('for', 'betaColname')
+        .attr('data-html', 'true')
+        .attr('data-toggle', 'tooltip')
+        .attr('title', "Enter the header text corresponding to the beta column in your txt/tsv file (primary dataset)")
+        .text("Beta Column Name:");
+    betaColDiv.append('input')
+        .attr('class', 'form-control')
+        .attr('name', 'beta-col')
+        .attr('type','text')
+        .attr('onfocus', "this.value=''")
+        .attr('value', "beta")
+        .attr('data-toggle', 'tooltip')
+        .attr('data-html','true')
+        .attr('title', 'Enter the header text corresponding to the beta column in your txt/tsv file (primary dataset)');
+}
+function askStdErrInput(stderrColDiv) {
+    stderrColDiv.html("");
+    stderrColDiv.append("label")
+        .attr('for', 'stderrColname')
+        .attr('data-html','true')
+        .attr('data-toggle', 'tooltip')
+        .attr('title','Enter the header text corresponding to the standard error column in your txt/tsv file (primary dataset)')
+        .text('Standard Error Column Name:');
+    stderrColDiv.append('input')
+        .attr('class','form-control')
+        .attr('name','stderr-col')
+        .attr('type','text')
+        .attr('onfocus',"this.value=''")
+        .attr('value', "SE")
+        .attr('data-toggle','tooltip')
+        .attr('data-html','true')
+        .attr('title','Enter the header text corresponding to the standard error column in your txt/tsv file (primary dataset)');
+}
+function askNumSamplesInput(numSamplesColDiv) {
+    numSamplesColDiv.html("");
+    numSamplesColDiv.append("label")
+        .attr('for', 'numSamplesColname')
+        .attr('data-html','true')
+        .attr('data-toggle', 'tooltip')
+        .attr('title','Enter the header text corresponding to the number of samples column in your txt/tsv file (primary dataset)')
+        .text('Number of Samples Column Name:');
+    numSamplesColDiv.append('input')
+        .attr('class','form-control')
+        .attr('name','numsamples-col')
+        .attr('type','text')
+        .attr('onfocus',"this.value=''")
+        .attr('value', "N")
+        .attr('data-toggle','tooltip')
+        .attr('data-html','true')
+        .attr('title','Enter the header text corresponding to the number of samples column in your txt/tsv file (primary dataset)');
+}
+function askPvalueInput(pvalueColDiv) {
+    pvalueColDiv.html("");
+    pvalueColDiv.append("label")
+        .attr('for', 'p-value')
+        .attr('data-html','true')
+        .attr('data-toggle', 'tooltip')
+        .attr('title','Header text corresponding to the p-value column in your txt/tsv file (primary dataset)')
+        .text('P-value Column Name:');
+    pvalueColDiv.append('input')
+        .attr('class','form-control')
+        .attr('name','pval-col')
+        .attr('type','text')
+        .attr('onfocus',"this.value=''")
+        .attr('value', "P")
+        .attr('data-toggle','tooltip')
+        .attr('data-html','true')
+        .attr('title','Enter the header text corresponding to the p-value column in your txt/tsv file (primary dataset)');
+}
+function askColocInputs() {
+    statsDiv.html("");
+    var betaColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','beta');
+    var stderrColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','stderr');
+    var numSamplesColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','numSamples');
+    var pvalueColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','p_value');
+    askBetaInput(betaColDiv);
+    askStdErrInput(stderrColDiv);
+    askNumSamplesInput(numSamplesColDiv);
+    askPvalueInput(pvalueColDiv);
+}
 
-    if(noSNPID.checked) {
-        askChromInput(chromColDiv);
-        askPosInput(posColDiv);
-        askRefInput(refColDiv);
-        askAltInput(altColDiv);
+function inferVariant(snpbox) {
+    if(snpbox.checked) {
+        variantInputsDiv.html("");
     }
     else {
-        askSNPInput(markerColDiv);
+        addVariantInputs();
     }
+    // re-initialize popover and tooltip
+    $(function () {
+        $('[data-toggle="popover"]').popover()
+    });
+    $(document).ready(function(){
+        $('[data-toggle="tooltip"]').tooltip();
+    });
+}
 
+function addColoc2Inputs(colocinput) {
+    if(colocinput.checked) {
+        askColocInputs();
+    }
+    else {
+        statsDiv.html("");
+        var pvalueColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','p_value');
+        askPvalueInput(pvalueColDiv);
+    }
     // re-initialize popover and tooltip
     $(function () {
         $('[data-toggle="popover"]').popover()
@@ -157,25 +267,21 @@ function markerFormatChange(noSNPID) {
 
 
 
-
-
 function init() {
     String.prototype.replaceAll = function(search, replacement) {
         var target = this;
         return target.split(search).join(replacement);
     };
     
-    noSNPID = d3.select("#markerCheckbox");
-    if(noSNPID.property("checked")) {
-        askChromInput(chromColDiv);
-        askPosInput(posColDiv);
-        askRefInput(refColDiv);
-        askAltInput(altColDiv);
-    }
-    else {
-        askSNPInput(markerColDiv);
-    }
+    askSNPInput(markerColDiv);
+    askChromInput(chromColDiv);
+    askPosInput(posColDiv);
+    askRefInput(refColDiv);
+    askAltInput(altColDiv);
 
+    statsDiv.html("");
+    var pvalueColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','p_value');
+    askPvalueInput(pvalueColDiv);
     
     // Build LD population selections depending on coordinate build chosen:
     var lddiv = d3.select("#LD-populations");
