@@ -1,5 +1,6 @@
 Known bugs:
 - chrX plots do not show correctly
+- SS coordinate checking not working - should also check if it's a subregion of full coordinate/locus region
 
 to do:
 - remove related individuals prior to calculating LD from the 1000 Genomes

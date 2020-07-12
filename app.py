@@ -1086,29 +1086,49 @@ def index():
             inferVariant = request.form.get('markerCheckbox')
             chromcol, poscol, refcol, altcol = ('','','','')
             snpcol = ''
+            columnnames = []
             if inferVariant:
+                print('User would like variant locations inferred')
                 snpcol = verifycol(formname = request.form['snp-col'], defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='Variant ID column not found')
                 columnnames = [ snpcol ]
             else:
-                chromcol = verifycol(formname = request.form['chrom-col'], defaultname = default_chromname, filecolnames = gwas_data.columns, error_message_='Chromosome column not found')
-                poscol = verifycol(formname = request.form['pos-col'], defaultname = default_posname, filecolnames = gwas_data.columns, error_message_='Basepair position column not found')
-                refcol = verifycol(formname = request.form['ref-col'], defaultname = default_refname, filecolnames = gwas_data.columns, error_message_='Reference allele column not found')
-                altcol = verifycol(formname = request.form['alt-col'], defaultname = default_altname, filecolnames = gwas_data.columns, error_message_='Alternate allele column not found')
+                chromcol = verifycol(formname = request.form['chrom-col'], defaultname = default_chromname, filecolnames = gwas_data.columns, error_message_=f"Chromosome column ({request.form['chrom-col']}) not found")
+                poscol = verifycol(formname = request.form['pos-col'], defaultname = default_posname, filecolnames = gwas_data.columns, error_message_=f"Basepair position column ({request.form['pos-col']}) not found")
+                refcol = verifycol(formname = request.form['ref-col'], defaultname = default_refname, filecolnames = gwas_data.columns, error_message_=f"Reference allele column ({request.form['ref-col']}) not found")
+                altcol = verifycol(formname = request.form['alt-col'], defaultname = default_altname, filecolnames = gwas_data.columns, error_message_=f"Alternate allele column ({request.form['alt-col']}) not found")
                 snpcol = request.form['snp-col'] # optional input in this case
                 if snpcol != '':
                     snpcol = verifycol(formname = snpcol, defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='Variant ID column not found')
                     columnnames = [ chromcol, poscol, snpcol, refcol, altcol ]
                 else:
                     columnnames = [ chromcol, poscol, refcol, altcol ]
+                    print('No SNP ID column provided')
+                # Check whether data types are ok:
+                if not all(isinstance(x, int) for x in Xto23(list(gwas_data[chromcol]))):
+                    raise InvalidUsage(f'Chromosome column ({chromcol}) contains unrecognizable values')
+                if not all(isinstance(x, int) for x in list(gwas_data[poscol])):
+                    raise InvalidUsage(f'Position column ({poscol}) has non-integer entries')
             pcol = verifycol(formname = request.form['pval-col'], defaultname = default_pname, filecolnames = gwas_data.columns, error_message_='P-value column not found')
             columnnames.append(pcol)
+            if not all(isinstance(x, float) for x in list(gwas_data[pcol])):
+                raise InvalidUsage(f'P-value column ({pcol}) has non-numeric entries')
             runcoloc2 = request.form.get('coloc2check')
             if runcoloc2:
+                print('User would like COLOC2 results')
                 betacol = verifycol(formname = request.form['beta-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Beta column not found')
                 stderrcol = verifycol(formname = request.form['stderr-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Stderr column not found')
                 numsamplescol = verifycol(formname = request.form['numsamples-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Number of samples column not found')
                 columnnames.extend([ betacol, stderrcol, numsamplescol ])
+                if not all(isinstance(x, float) for x in list(gwas_data[betacol])):
+                    raise InvalidUsage(f'Beta column ({betacol}) has non-numeric entries')
+                if not all(isinstance(x, float) for x in list(gwas_data[stderrcol])):
+                    raise InvalidUsage(f'Standard error column ({stderrcol}) has non-numeric entries')
+                if not all(isinstance(x, int) for x in list(gwas_data[numsamplescol])):
+                    raise InvalidUsage(f'Number of samples column ({numsamplescol}) has non-integer entries')
 
+            # Further check column names provided:
+            if len(set(columnnames)) != len(columnnames):
+                raise InvalidUsage(f'Duplicate column names provided: {columnnames}')
             gwas_data = gwas_data[ columnnames ]
             if snpcol == '':
                 gwas_data = addVariantID(gwas_data, chromcol, poscol, refcol, altcol)
@@ -1203,13 +1223,11 @@ def index():
                 t1 = datetime.now() # timer started for loading user-defined LD matrix
                 ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
                 gwas_data_numRows = gwas_data.shape[0]
-                if ld_mat.shape[0] != gwas_data_numRows:
-                    raise InvalidUsage('LD matrix provided does not match GWAS number of SNPs dimension', status_code=410)
                 ld_mat = ld_mat.loc[ gwas_indices_kept, gwas_indices_kept ]
                 r2 = list(ld_mat.iloc[:, lead_snp_position_index])
                 ld_mat = np.matrix(ld_mat)
                 if not ((ld_mat.shape[0] == ld_mat.shape[1]) and (ld_mat.shape[0] == gwas_data.shape[0])):
-                    raise InvalidUsage('GWAS and LD matrix input have different dimensions')
+                    raise InvalidUsage('GWAS and LD matrix input have different dimensions', status_code=410)
                 user_ld_load_time = datetime.now() - t1
             
             data = {}
@@ -1347,7 +1365,8 @@ def index():
             
             ####################################################################################################
             # 3. Determine the genes to query
-            query_genes = list(genes_to_draw['name'])
+            #query_genes = list(genes_to_draw['name'])
+            query_genes = gtex_genes
             # 4. Query and extract the eQTL p-values for all tissues & genes from GTEx
             t1 = datetime.now() # timer set to check how long data extraction from Mongo takes
             if len(gtex_tissues)>0:
