@@ -79,7 +79,7 @@ function askPosInput(posColDiv) {
         .attr('name', 'pos-col')
         .attr('type','text')
         .attr('onfocus', 'this.value=""')
-        .attr('value','BP')
+        .attr('value','POS')
         .attr('data-toggle', 'tooltip')
         .attr('title', "Enter the header text corresponding to the basepair coordinate position column in your txt/tsv file (primary dataset)");
 }
@@ -127,8 +127,9 @@ function askSNPInput(markerColDiv) {
         .attr('class', 'form-control')
         .attr('name', 'snp-col')
         .attr('type', 'text')
-        .attr('onfocus', "this.value='")
-        .attr('value', "ID (optional)")
+        //.attr('onfocus', 'this.value=""')
+        //.attr('value', "ID (optional)")
+        .attr('placeholder',"ID (optional)")
         .attr('data-toggle', 'tooltip')
         .attr('data-html',"true")
         .attr('title', "<p>Enter the header text corresponding to the variant ID column in your txt/tsv file (primary dataset).</p><p>Accepted formats: rs7512462, 1_205899595_T_C_b37</p>");
@@ -159,7 +160,7 @@ function askBetaInput(betaColDiv) {
         .attr('name', 'beta-col')
         .attr('type','text')
         .attr('onfocus', "this.value=''")
-        .attr('value', "beta")
+        .attr('value', "BETA")
         .attr('data-toggle', 'tooltip')
         .attr('data-html','true')
         .attr('title', 'Enter the header text corresponding to the beta column in your txt/tsv file (primary dataset)');

@@ -26,9 +26,9 @@ def parseRegionText(regiontext, build):
     if build not in ['hg19', 'hg38']:
         raise InvalidUsage(f'Unrecognized build: {build}', status_code=410)
     regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
-    if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23')):
+    if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
        raise InvalidUsage('Invalid coordinate format. e.g. 1:205,000,000-206,000,000', status_code=410)
-    chrom = regiontext.split(':')[0].lower().replace('chr','')
+    chrom = regiontext.split(':')[0].lower().replace('chr','').upper()
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
@@ -63,7 +63,6 @@ def parseRegionText(regiontext, build):
         raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit/10**6} Mbp', status_code=410)
     else:
         return chrom, startbp, endbp
-
 
 
 def subsetLocus(build, summaryStats, regiontext, columnnames):
@@ -155,7 +154,7 @@ def fetchSNV(chrom, bp, ref, build):
     return variantid
 
 
-def mapAndCleanSNPs(variantlist, chrom, startbp, endbp, build):
+def mapAndCleanSNPs(variantlist, regiontxt, build):
     """
     Input: Variant names in any of these formats: rsid, chrom_pos_ref_alt, chrom:pos_ref_alt, chrom:pos_ref_alt_b37/b38 
     Output: chrom_pos_ref_alt_b37/b38 variant ID format.
@@ -164,9 +163,8 @@ def mapAndCleanSNPs(variantlist, chrom, startbp, endbp, build):
     """
     
     # Ensure valid region:
-    regiontxt = str(chrom) + ":" + str(startbp) + "-" + str(endbp)
     chrom, startbp, endbp = parseRegionText(regiontxt, build)
-    chrom = str(chrom).replace('chr','').replace('23',"X")
+    chrom = str(chrom).replace('23',"X")
 
     # Load dbSNP151 SNP names from region indicated
     dbsnp_filepath = ''
@@ -257,9 +255,76 @@ def mapAndCleanSNPs(variantlist, chrom, startbp, endbp, build):
             raise InvalidUsage(f'Variant format not recognized: {variant}', status_code=410)
     return stdvariantlist
 
+def decomposeVariant(variant_list):
+    """
+    Parameters
+    ----------
+    variantid_list : list
+        list of str standardized variants in chr_pos_ref_alt_build format
+        
+    Returns
+    -------
+    A pandas.dataframe with chromosome, pos, reference and alternate alleles columns
+    """
+    chromlist = [x.split('_')[0] if len(x.split('_'))==5 else x for x in variant_list]
+    chromlist = [int(x) for x in chromlist if x!="X"]
+    poslist = [int(x.split('_')[1]) if len(x.split('_'))==5 else x for x in variant_list]
+    reflist = [x.split('_')[2] if len(x.split('_'))==5 else x for x in variant_list]
+    altlist = [x.split('_')[3] if len(x.split('_'))==5 else x for x in variant_list]
+    df = pd.DataFrame({
+        default_chromname: chromlist
+        ,default_posname: poslist
+        ,default_refname: reflist
+        ,default_altname: altlist
+        })
+    return df
+
+def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build):
+    """
+    
+    Parameters
+    ----------
+    gwas_data : pandas.DataFrame
+        Has a minimum of chromosome, position, reference and alternate allele columns.
+    chromcol : str
+        chromosome column name in gwas_data
+    poscol : str
+        position column name in gwas_data
+    refcol : str
+        reference allele column name in gwas_data
+    altcol : str
+        alternate allele column name in gwas_data
+
+    Returns
+    -------
+    pandas.dataframe with list of standardized variant ID's in chrom_pos_ref_alt_build format added to gwas_data
+
+    """
+    varlist = []
+    buildstr = 'b37'
+    if build == 'hg38':
+        buildstr = 'b38'
+    chromlist = list(gwas_data[chromcol])
+    poslist = list(gwas_data[poscol])
+    reflist = list(gwas_data[refcol])
+    altlist = list(gwas_data[altcol])
+    for i in np.arange(gwas_data.shape[0]):
+        chrom = chromlist[i]
+        pos = poslist[i]
+        ref = reflist[i]
+        alt = altlist[i]
+        varlist.append('_'.join([chrom,pos,ref,alt,buildstr]))
+    gwas_data[default_snpname] = varlist
+    return gwas_data
 
 #### Testing functions above
 ## Some global variables:
+default_chromname = "#CHROM"
+default_posname = "POS"
+default_snpname = "ID"
+default_refname = "REF"
+default_altname = "ALT"
+
 MYDIR = os.getcwd()
 coordinates = 'hg38'
 gwasdata = pd.read_csv(os.path.join(os.getcwd(), 'data', 'sample_datasets', 'MI_GWAS_2019_1_205500-206000kbp_hg38.tsv'), sep='\t', encoding='utf-8')
@@ -273,11 +338,22 @@ variantlist.extend(['X_115000731','rs62599779', 'X_115012777_CAA_C', 'rs78225128
                     'X_115012777_C_CA,CAA,CAAA','X_115012777_C_CAA', 'X_115013906_C_T_b38', 
                     'X_115013906_C_T_b38', 'rs17095917'])
 chrom, startbp, endbp = parseRegionText(regiontext, coordinates)
-mapAndCleanSNPs(variantlist, chrom, startbp, endbp, 'hg38')
+mapAndCleanSNPs(variantlist, regiontext, coordinates)
 regiontext = 'X:114000000-116000000'
 chrom, startbp, endbp = parseRegionText(regiontext, coordinates)
-mapAndCleanSNPs(variantlist, chrom, startbp, endbp, 'hg38')
+mapAndCleanSNPs(variantlist, regiontext, coordinates)
 
+regiontext = '1:205000000-206000000'
+variantlist = list(gwasdata['SNP'])
+stdvarlist = mapAndCleanSNPs(variantlist, regiontext, coordinates)
+if all(x=='.' for x in stdvarlist):
+    print(f'None of the variants provided could be mapped to {regiontext}!')
+vardf = decomposeVariant(stdvarlist)
+
+gwasdata.drop(['chr','variant_pos','ref','alt'], axis=1, inplace=True)
+gwasdata2 = pd.concat([vardf, gwasdata], axis=1)
+
+gwasdata3 = addVariantID(gwasdata2, default_chromname, default_posname, default_refname, default_altname)
 
 ## Test subsetLocus function
 columnnames = ['chr', 'variant_pos', 'SNP', 'ref', 'alt', 'P']

@@ -34,11 +34,14 @@ APP_STATIC = os.path.join(MYDIR, 'static')
 
 default_region = "1:205500000-206000000"
 default_chromname = "#CHROM"
-default_posname = "BP"
+default_posname = "POS"
 default_snpname = "ID"
 default_refname = "REF"
 default_altname = "ALT"
 default_pname = "P"
+default_betaname = "BETA"
+default_stderrname = "SE"
+default_nname = "N"
 
 # Default column names for secondary datasets:
 CHROM = 'CHROM'
@@ -71,7 +74,7 @@ client = MongoClient(conn)
 db = client.GTEx_V7 # For now
 
 available_gtex_versions = ["V7", "V8"]
-valid_populations = ["EUR", "AFR","EAS", "SAS", "AMR"]
+valid_populations = ["EUR", "AFR","EAS", "SAS", "AMR", "ASN"]
 
 ####################################
 # Helper functions
@@ -80,9 +83,9 @@ def parseRegionText(regiontext, build):
     if build not in ['hg19', 'hg38']:
         raise InvalidUsage(f'Unrecognized build: {build}', status_code=410)
     regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
-    if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23')):
+    if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
        raise InvalidUsage('Invalid coordinate format. e.g. 1:205,000,000-206,000,000', status_code=410)
-    chrom = regiontext.split(':')[0].lower().replace('chr','')
+    chrom = regiontext.split(':')[0].lower().replace('chr','').upper()
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
@@ -272,7 +275,7 @@ def fetchSNV(chrom, bp, ref, build):
     return variantid
 
 
-def mapAndCleanSNPs(variantlist, chrom, startbp, endbp, build):
+def mapAndCleanSNPs(variantlist, regiontxt, build):
     """
     Input: Variant names in any of these formats: rsid, chrom_pos_ref_alt, chrom:pos_ref_alt, chrom:pos_ref_alt_b37/b38 
     Output: chrom_pos_ref_alt_b37/b38 variant ID format.
@@ -281,9 +284,8 @@ def mapAndCleanSNPs(variantlist, chrom, startbp, endbp, build):
     """
     
     # Ensure valid region:
-    regiontxt = str(chrom) + ":" + str(startbp) + "-" + str(endbp)
     chrom, startbp, endbp = parseRegionText(regiontxt, build)
-    chrom = str(chrom).replace('chr','').replace('23',"X")
+    chrom = str(chrom).replace('23',"X")
 
     # Load dbSNP151 SNP names from region indicated
     dbsnp_filepath = ''
@@ -375,10 +377,74 @@ def mapAndCleanSNPs(variantlist, chrom, startbp, endbp, build):
     return stdvariantlist
 
 
-def subsetLocus(build, summaryStats, regiontext, columnnames):
+def decomposeVariant(variant_list):
+    """
+    Parameters
+    ----------
+    variantid_list : list
+        list of str standardized variants in chr_pos_ref_alt_build format
+        
+    Returns
+    -------
+    A pandas.dataframe with chromosome, pos, reference and alternate alleles columns
+    """
+    chromlist = [x.split('_')[0] if len(x.split('_'))==5 else x for x in variant_list]
+    chromlist = [int(x) for x in chromlist if x!="X"]
+    poslist = [int(x.split('_')[1]) if len(x.split('_'))==5 else x for x in variant_list]
+    reflist = [x.split('_')[2] if len(x.split('_'))==5 else x for x in variant_list]
+    altlist = [x.split('_')[3] if len(x.split('_'))==5 else x for x in variant_list]
+    df = pd.DataFrame({
+        default_chromname: chromlist
+        ,default_posname: poslist
+        ,default_refname: reflist
+        ,default_altname: altlist
+        })
+    return df
+
+
+def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build):
+    """
+    
+    Parameters
+    ----------
+    gwas_data : pandas.DataFrame
+        Has a minimum of chromosome, position, reference and alternate allele columns.
+    chromcol : str
+        chromosome column name in gwas_data
+    poscol : str
+        position column name in gwas_data
+    refcol : str
+        reference allele column name in gwas_data
+    altcol : str
+        alternate allele column name in gwas_data
+
+    Returns
+    -------
+    pandas.dataframe with list of standardized variant ID's in chrom_pos_ref_alt_build format added to gwas_data
+
+    """
+    varlist = []
+    buildstr = 'b37'
+    if build == 'hg38':
+        buildstr = 'b38'
+    chromlist = list(gwas_data[chromcol])
+    poslist = list(gwas_data[poscol])
+    reflist = list(gwas_data[refcol])
+    altlist = list(gwas_data[altcol])
+    for i in np.arange(gwas_data.shape[0]):
+        chrom = chromlist[i]
+        pos = poslist[i]
+        ref = reflist[i]
+        alt = altlist[i]
+        varlist.append('_'.join([chrom,pos,ref,alt,buildstr]))
+    gwas_data[default_snpname] = varlist
+    return gwas_data
+
+
+
+def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
     # regiontext format example: "1:205500000-206000000"
     if regiontext == "": regiontext = default_region
-    chromcol, poscol, snpcol, pcol = columnnames
     print('Parsing region text')
     chrom, startbp, endbp = parseRegionText(regiontext, build)
     print(chrom,startbp,endbp)
@@ -401,9 +467,8 @@ def subsetLocus(build, summaryStats, regiontext, columnnames):
     return summaryStats, gwas_indices_kept
 
 
-def getLeadSNPindex(leadsnpname, summaryStats, columnnames):
+def getLeadSNPindex(leadsnpname, summaryStats, snpcol, pcol):
     lead_snp = leadsnpname
-    chromcol, poscol, snpcol, pcol = columnnames
     snp_list = list(summaryStats.loc[:,snpcol])
     snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
     if lead_snp=='': lead_snp = list(summaryStats.loc[ summaryStats.loc[:,pcol] == min(summaryStats.loc[:,pcol]) ].loc[:,snpcol])[0].split(';')[0]
@@ -918,10 +983,10 @@ def regionCheck(build, regiontext):
         message['response'] = f'Unrecognized build: {build}'
         return jsonify(message)
     regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
-    if not re.search("^\d+:\d+-\d+$", regiontext):
+    if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
         message['response'] = 'Invalid coordinate format. e.g. 1:205,000,000-206,000,000'
         return jsonify(message)
-    chrom = regiontext.split(':')[0].lower().replace('chr','')
+    chrom = regiontext.split(':')[0].lower().replace('chr','').upper()
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
@@ -1006,9 +1071,11 @@ def index():
             my_session_id = uuid.uuid4()
             coordinate = request.form['coordinate']
             gtex_version = "V7"
+            collapsed_genes_df = collapsed_genes_df_hg19
             if coordinate.lower() == "hg38":
                 gtex_version = "V8"
                 collapsed_genes_df = collapsed_genes_df_hg38
+
             print(f'Session ID: {my_session_id}')
             print(f'Coordinate: {coordinate}')
             print(f'GTEx version: {gtex_version}')
@@ -1016,22 +1083,36 @@ def index():
             t1 = datetime.now() # timing started for GWAS loading/subsetting/cleaning
             gwas_data = pd.read_csv(gwas_filepath, sep="\t", encoding='utf-8')
             
-            noSNPcol = request.form.get('markerCheckbox')
+            inferVariant = request.form.get('markerCheckbox')
             chromcol, poscol, refcol, altcol = ('','','','')
             snpcol = ''
-            if noSNPcol:
+            if inferVariant:
+                snpcol = verifycol(formname = request.form['snp-col'], defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='Variant ID column not found')
+                columnnames = [ snpcol ]
+            else:
                 chromcol = verifycol(formname = request.form['chrom-col'], defaultname = default_chromname, filecolnames = gwas_data.columns, error_message_='Chromosome column not found')
                 poscol = verifycol(formname = request.form['pos-col'], defaultname = default_posname, filecolnames = gwas_data.columns, error_message_='Basepair position column not found')
                 refcol = verifycol(formname = request.form['ref-col'], defaultname = default_refname, filecolnames = gwas_data.columns, error_message_='Reference allele column not found')
-                altcol = verifycol(formname = request.form['ref-col'], defaultname = default_altname, filecolnames = gwas_data.columns, error_message_='Alternate allele column not found')
-                # build SNP ID list:
-                snp_list = buildSNPlist(gwas_data, chromcol, poscol, refcol, altcol, coordinate)
-            else:
-                snpcol = verifycol(formname = request.form['snp-col'], defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='SNP ID column not found')
-            
+                altcol = verifycol(formname = request.form['alt-col'], defaultname = default_altname, filecolnames = gwas_data.columns, error_message_='Alternate allele column not found')
+                snpcol = request.form['snp-col'] # optional input in this case
+                if snpcol != '':
+                    snpcol = verifycol(formname = snpcol, defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='Variant ID column not found')
+                    columnnames = [ chromcol, poscol, snpcol, refcol, altcol ]
+                else:
+                    columnnames = [ chromcol, poscol, refcol, altcol ]
             pcol = verifycol(formname = request.form['pval-col'], defaultname = default_pname, filecolnames = gwas_data.columns, error_message_='P-value column not found')
-            columnnames = [ chromcol, poscol, snpcol, pcol ]
-            gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
+            columnnames.append(pcol)
+            runcoloc2 = request.form.get('coloc2check')
+            if runcoloc2:
+                betacol = verifycol(formname = request.form['beta-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Beta column not found')
+                stderrcol = verifycol(formname = request.form['stderr-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Stderr column not found')
+                numsamplescol = verifycol(formname = request.form['numsamples-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Number of samples column not found')
+                columnnames.extend([ betacol, stderrcol, numsamplescol ])
+
+            gwas_data = gwas_data[ columnnames ]
+            if snpcol == '':
+                gwas_data = addVariantID(gwas_data, chromcol, poscol, refcol, altcol)
+                snpcol = default_snpname
 
             # LD:
             pops = request.form['LD-populations']
@@ -1064,18 +1145,34 @@ def index():
                     raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
 
             # Ensure custom LD matrix and GWAS files are sorted for accurate matching:
-            if ldmat_filepath != '' and not isSorted(list(gwas_data[poscol])):
+            if ldmat_filepath != '' and poscol != '' and not isSorted(list(gwas_data[poscol])):
                 raise InvalidUsage('GWAS data input is not sorted and may not match with the LD matrix', status_code=410)
-            
+
+            regionstr = request.form['locus']
+            if regionstr == "": regionstr = default_region
+            leadsnpname = request.form['leadsnp']
+
+            #######################################################
+            # Standardizing variant ID's to chrom_pos_ref_alt_build format
+            #######################################################
+            if inferVariant:
+                # standardize variant id's:
+                variant_list = mapAndCleanSNPs(list(gwas_data[snpcol]), regionstr, coordinate)
+                if all(x=='.' for x in variant_list):
+                    raise InvalidUsage(f'None of the variants provided could be mapped to {regiontext}!', status_code=410)
+                # get the chrom, pos, ref, alt info from the standardized variant_list
+                vardf = decomposeVariant(variant_list)
+                gwas_data = pd.concat([vardf, gwas_data], axis=1)
+                chromcol = default_chromname
+                poscol = default_posname
+                refcol = default_refname
+                altcol = default_altname
             
             #######################################################
             # Subsetting GWAS file
             #######################################################
-            regionstr = request.form['locus']
-            if regionstr == "": regionstr = default_region
-            leadsnpname = request.form['leadsnp']
-            gwas_data, gwas_indices_kept = subsetLocus(build = coordinate, summaryStats = gwas_data, regiontext = regionstr, columnnames = columnnames)
-            lead_snp_position_index = getLeadSNPindex(leadsnpname = leadsnpname, summaryStats=gwas_data, columnnames=columnnames)
+            gwas_data, gwas_indices_kept = subsetLocus(coordinate, gwas_data, regionstr, chromcol, poscol, pcol)
+            lead_snp_position_index = getLeadSNPindex(leadsnpname, gwas_data, snpcol, pcol)
             lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
             positions = list(gwas_data[poscol])
             snp_list = list(gwas_data[snpcol])
