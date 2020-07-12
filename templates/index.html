@@ -250,12 +250,12 @@
 
           <div class="col-md-6">
             <label for="set-based-P" id="set-based-P-label" data-toggle="tooltip" data-html="true"
-            title="<p>For the Simple Sum method, a set-based Bonferroni p-value threshold is used for the set of secondary datasets tested with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
-            <p>Enter a value to override the default threshold.</p>">Set-based p-value threshold</label>
-            <input class="form-control" id="setbasedP" name="setbasedP" type="text" placeholder="default: 0.05 / (number of tissues &times; number of genes)"
+            title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
+            <p>Enter a value if you would like to override the default threshold.</p>">Stage one set-based p-value threshold</label>
+            <input class="form-control" id="setbasedP" name="setbasedP" type="text" placeholder="default: 0.05 / (number of tissues &times; number of genes + additional secondary datasets uploaded)"
             data-toggle="tooltip" data-html="true"
-            title="<p>For the Simple Sum method, a set-based Bonferroni p-value threshold is used for the set of secondary datasets tested with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
-            <p>Enter a value to override the default threshold.</p>">
+            title="<p>For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold is used for the set of secondary datasets with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
+            <p>Enter a value if you would like to override the default threshold.</p>">
           </div>
           <!--
               <label for="gencodeId" id="gencode-id">Enter Gene Name or Gencode ID:</label>
