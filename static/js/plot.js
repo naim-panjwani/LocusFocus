@@ -18,6 +18,7 @@ function plot_gwas(data, genesdata,
   var gtex_tissues = data.gtex_tissues;
   var SS_start = +data.SS_region[0];
   var SS_end = +data.SS_region[1];
+  var build = data.coordinate;
 
   var secondary_dataset_titles = data.secondary_dataset_titles;
   // var secondary_dataset_chrom_colname = data.secondary_dataset_colnames[0];
@@ -756,7 +757,7 @@ function plot_gwas(data, genesdata,
     xaxis: {
       range: [startbp - extra_x_range, endbp + extra_x_range],
       zeroline: false,
-      title: { text: `Chromosome ${chrom} (hg19)` }
+      title: { text: `Chromosome ${chrom} (${build})` }
     },
     yaxis: {
       range: [0 - gene_area_height, gwas_ymax + extra_y_range],

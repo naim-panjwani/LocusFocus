@@ -125,6 +125,9 @@ data/test_chr3_foxp1_afglobal.TSV
 data/GTEx_Analysis_2016-01-15_v7_WholeGenomeSeq_635Ind_PASS_AB02_GQ20_HETX_MISS15_PLINKQC.lookup_table.txt.gz
 start_webservice.sh
 data/GTEx_v7_eQTL/
+data/GTEx_v8_eQTL
+data/1000Genomes_GRCh38/
+data/dbSNP151/
 *gtf
 .Rhistory
 data/MI_GWAS_Summary_Stats_PLoS_Genet.tsv.gz
@@ -134,3 +137,4 @@ data/mQTL_eQTM_SNPs_SAKNORM_For_CoLoc*.txt
 data/Note.txt
 *test*
 data/slc9a3_gwas_mqtl.html
+data/*lookup_table.txt.gz

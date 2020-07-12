@@ -46,9 +46,9 @@
   <div class="container">
     <div class="row">
       <div class="col-md-12 jumbotron text-center">
-        <h1>LocusFocus Web Application</h1>
-        <p><h4>Prioritize Genes and Tissues from GWAS by Exploring Colocalization with eQTLs</h4></p>
-        <p><h5>Version release: 1.1.0 alpha</h5></p>
+        <h1>LocusFocus</h1>
+        <p><h4>Colocalization Testing Across Your Datasets</h4></p>
+        <p><h5>Version release: 1.2.0 alpha</h5></p>
       </div>
     </div>
     <div class="row">
@@ -83,11 +83,29 @@
     <form method=post enctype=multipart/form-data>
       <div class="row">
         <div class="col-md-12 borderit">
+          <div class="col-md-4">
+              <h5 data-toggle="tooltip" data-html="true" 
+              title="<p>Select the human coordinate system your files are stored in.</p>
+              <p>
+                <ul>
+                  <li>hg19 is GRCh37</li>
+                  <li>hg38 is GRCh38</li>
+                </ul>
+              </p>">Select coordinate system</h5>
+            <select id="coordinate" name="coordinate" onchange="coordinateChange(this.value)">
+              <option id="hg19" value="hg19" label="hg19" selected="selected"></option>
+              <option id="hg38" value="hg38" label="hg38"></option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12 borderit">
           <h5>Select files to upload</h5>
             <dl>
               <p>
                 <input type="file" name="files[]" multiple="true" autocomplete="off" required
-                data-toggle="tooltip" title="tsv/txt: GWAS; .ld: LD matrix; .html: set of secondary colocalizing datasets">
+                data-toggle="tooltip" title="Up to 3 files may be uploaded as described below (press and hold the Ctrl key to select multiple files).">
               </p>
             </dl>
             <p>
@@ -108,31 +126,79 @@
             </p>
 
           <div class="row">
-            <div class="col-md-3">
-              <label for="chrom" id="chrom">Chromosome Column Name:</label>
-              <input class="form-control" id="chrom-col" name="chrom-col" type="text" placeholder="#CHROM">
-            </div>
-            <div class="col-md-3">
-              <label for="position" id="position">Position Column Name:</label>
-              <input class="form-control" id="pos-col" name="pos-col" type="text" placeholder="BP">
-            </div>
-            <div class="col-md-3">
-              <label for="rsName" id="rsid">Marker Column Name:</label>
-              <input class="form-control" id="snp-col" name="snp-col" type="text" placeholder="SNP">
-            </div>
-            <div class="col-md-3">
-              <label for="p-value" id="p_value">P-value Column Name:</label>
-              <input class="form-control" id="pval-col" name="pval-col" type="text" placeholder="P">
+            <div class="col-md-4">
+              <input type="checkbox" id="markerCheckbox" name="markerCheckbox" checked="checked" onclick="markerFormatChange(this)"><label for="markerCheckbox" style="margin: 0px; padding: 10px;  height:72px"
+              data-toggle="tooltip" title='Click the "?" icon for more info'> Do not use variant ID column
+              <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#markerModal">?</button></label>
+              <div id="markerModal" class="modal fade" role="dialog">
+                <div class="modal-dialog modal-md modal-dialog-centered">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title"><em>Do not use variant ID column</em> option</h5>
+                      <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                      <p>rsid's are <b><i><u>not</u></i></b> the recommended format, but are accepted and will be mapped using dbSNP151 internally.
+                        If the rsid is multi-allelic, it will be ignored for colocalization analyses (but may be shown in plots and tables).
+                      </p>
+                      <p>All variants are converted to the chrom_pos_ref_alt_b37/38 format internally for accurate matching.</p>
+                      <p>If your variant ID's are formatted as
+                        chrom_pos_ref_alt_b37, chrom_pos_ref_alt_b38, chrom:pos_ref_alt, or chrom_pos_ref_alt, 
+                        then you may choose to use your variant ID column by leaving the box unchecked and entering the SNP column name below.</p>
+                      <p>If your file contains chromosome, position, reference and alternate columns, and would like to use them instead, 
+                        then select the <i>No marker ID</i> column option and provide the corresponding column names.</p>
+                      <p>We assume multi-allelic variants (e.g. rs2211330(T/A,C)) are broken down to biallelic records a (e.g. 1_205001063_T_C_b37 and 1_205001063_T_A_b37.</p>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!--
+              <select id="marker-format" name="marker-format" onchange="markerFormatChange(this.value)">
+                <option id="std-marker-format" value="std-marker-format" label="chrom_pos_ref_alt" selected="selected"></option>
+                <option id="rsid-format" value="rsid-format" label="rsid"></option>
+                <option id="no-marker" value="no-marker" label="No marker ID column"></option>
+              </select>
+              -->
             </div>
           </div>
           <div class="row">
+            <div class="col-md-3" id="snp"></div>
+          </div>
+          <div class="row">
+            <div class="col-md-3" id="chrom"></div>
+            <div class="col-md-3" id="pos"></div>
+            <div class="col-md-3" id="ref"></div>
+            <div class="col-md-3" id="alt"></div>
+          </div>
+
+          <hr>
+
+          <div class="row">
             <div class="col-md-3">
-              <label for="region" id="locusText">HG19 Coordinates</label>
-              <input class="form-control" id="locus" name="locus" type="text" placeholder="1:205500000-206000000">
+              <label for="p-value" id="p_value" data-toggle="tooltip" title="Header text corresponding to the p-value column in your txt/tsv file (primary dataset)">P-value Column Name:</label>
+              <input class="form-control" id="pval-col" name="pval-col" type="text" onfocus="this.value=''" value="P"
+              data-toggle="tooltip" title="Enter the header text corresponding to the p-value column in your txt/tsv file (primary dataset)">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-3">
+              <label for="region" id="locusText" data-html="true" data-toggle="tooltip" title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
+              <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">Coordinates:</label>
+              <input class="form-control" id="locus" name="locus" type="text" onfocus="this.value=''" value="1:205,500,000-206,000,000" onchange=checkLocusInput(this.value)
+              data-html="true" data-toggle="tooltip" title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
+              <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">
+              <div class="input-error" id="locusErrorDiv"></div>
             </div>
             <div class="col-md-3">
-              <label for="lead-snp" id="lead_snp">Lead Marker Name:</label>
-              <input class="form-control" id="leadsnp" name="leadsnp" type="text" placeholder="default: top marker">
+              <label for="lead-snp" id="lead_snp" data-html="true" data-toggle="tooltip" title="<p>If you would like to use a marker different from the top marker in your file, enter the marker name here.</p>
+              <p>Please note that if the marker is not in the 1000 Genomes biallelic SNP set (matched by chromosome and position only), then the next best marker will be chosen automatically.</p>">Lead Marker Name:</label>
+              <input class="form-control" id="leadsnp" name="leadsnp" type="text" placeholder="default: top marker"
+              data-html="true" data-toggle="tooltip" title="<p>If you would like to use a marker different from the top marker in your file, enter the marker name here.</p>
+              <p>Please note that if the marker is not in the 1000 Genomes biallelic SNP set, then the next best marker will be chosen automatically.</p>">
             </div>
           </div>
         </div>
@@ -143,29 +209,34 @@
           <h5>Select Simple Sum Colocalization Region</h5>
           <h6><i>Leave blank for default (+/- 0.1Mbp from the lead SNP)</i></h6>
           <div class="col-md-3">
-            <label for="region" id="SSText">HG19 Coordinates</label>
-            <input class="form-control" id="SSlocus" name="SSlocus" type="text" placeholder="chr:start-end">
+            <label for="region" id="SSText" data-html="true" data-toggle="tooltip" title="<p>By convention, colocalization methods default to testing colocalization +/- 0.1 Mbp of the top variant in the primary (e.g. GWAS) dataset.</p>
+            <p>You can override this behaviour by entering the subregion to test colocalization on.</p>">Coordinates:</label>
+            <input class="form-control" id="SSlocus" name="SSlocus" type="text" placeholder="chr:start-end"
+            data-html="true" data-toggle="tooltip" title="<p>By convention, colocalization methods default to testing colocalization +/- 0.1 Mbp of the top variant in the primary (e.g. GWAS) dataset.</p>
+            <p>You can override this behaviour by entering the subregion to test colocalization on.</p>">
           </div>
         </div>
       </div>
         
       <div class="row">
         <div class="col-md-12 borderit">
-          <h5>Select Populations for LD</h5>
+          <div class="col-md-4">
+            <h5 data-toggle="tooltip" data-html="true" 
+            title="<p>For the most accurate results, the LD (r<sup>2</sup>) matrix for your primary (e.g. GWAS) dataset is recommended to be uploaded as a .ld square matrix file. 
+              If the .ld file is unavailable, you may choose one of the publicly-available 1000 Genomes population datasets.</p>
+            <p>
+            <ul>
+              <li>EUR: European</li>
+              <li>NFE: Non-Finnish European</li>
+              <li>AFR: African</li>
+              <li>EAS: East Asian</li>
+              <li>SAS: South Asian</li>
+              <li>AMR: Ad Mixed American</li>
+            </ul></p>">Select Populations for LD</h5>
+          </div>
           <div class="col-md-6">
             <select id="LD-populations" name="LD-populations">
-              <option id="AFR" value="AFR" label="1000 Genomes 2012 AFR"></option>
-              <option id="AMR" value="AMR" label="1000 Genomes 2012 AMR"></option>
-              <!-- <option id="EAS" value="EAS" label="(EAS) East Asian"></option> -->
-              <option id="EUR" value="EUR" label="1000 Genomes 2012 EUR" selected="selected"></option>
-              <option id="ASN" value="ASN" label="1000 Genomes 2012 ASN"></option>
             </select>
-            <p>
-            <div class="alert alert-dismissible alert-info">
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <strong>Ignored if a valid .ld file is uploaded</strong>
-            </div>
-            </p>
           </div>
           <!--
           <select id="ld-type" name="ld-type">
@@ -178,15 +249,44 @@
 
       <div class="row">
         <div class="col-md-12 borderit">
-          <h5>Select GTEx Tissues to Render</h5>
-          <h6><i>Please allow sufficient time for analysis if selecting many tissues. Analyses may take up to 30 minutes when selecting all tissues in a gene-rich region</i></h6>
-          <div class="col-md-6">
-            <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple"></select>
+          <div class="col-md-4">            
+            <h5 data-toggle="tooltip" data-html="true" 
+            title="<p>For convenience, we are making available eQTL datasets from the GTEx project for use as secondary datasets.</p>
+            <p>LocusFocus, however, can perform more custom colocalization analyses utilizing other secondary (e.g. eQTL, mQTL, other phenotypes) datasets provided by the user.</p>
+            <p>Custom secondary datasets may be uploaded after conversion to HTML format as described above or in the documentation.</p>">Select GTEx eQTL Data to Render</h5>
+          </div>  
+          <div class="col-md-12">
+            <h6><i>Please allow sufficient time for analysis if selecting many tissues and genes.<br>Analyses may take >30 minutes when selecting many tissue-gene pairs.</i></h6>
           </div>
           <div class="col-md-6">
+            <div id="tissue-select" data-toggle="tooltip" title="Select the tissues you would like to test colocalization with.">Select GTEx (V7) Tissues</div>
+            <select id="GTEx-tissues" name="GTEx-tissues" multiple="multiple">
+            </select>
+          </div>
+          
+          <hr>
+          
+          <div class="col-md-6">
+            <div id="genes-select" data-toggle="tooltip" title="Select the genes in the region you would like to test colocalization with.">Select Genes (enter coordinates above to populate)</div>
+            <select id="region-genes" name="region-genes" multiple="multiple">
+            </select>
+          </div>
+          
+          <hr>
+
+          <div class="col-md-6">
+            <label for="set-based-P" id="set-based-P-label" data-toggle="tooltip" data-html="true"
+            title="<p>For the Simple Sum method, a set-based Bonferroni p-value threshold is used for the set of secondary datasets tested with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
+            <p>Enter a value to override the default threshold.</p>">Set-based p-value threshold</label>
+            <input class="form-control" id="setbasedP" name="setbasedP" type="text" placeholder="default: 0.05 / (number of tissues &times; number of genes)"
+            data-toggle="tooltip" data-html="true"
+            title="<p>For the Simple Sum method, a set-based Bonferroni p-value threshold is used for the set of secondary datasets tested with alpha 0.05 (0.05 divided by the number of secondary datasets)</p>
+            <p>Enter a value to override the default threshold.</p>">
+          </div>
+          <!--
               <label for="gencodeId" id="gencode-id">Enter Gene Name or Gencode ID:</label>
               <input class="form-control" id="gencodeID" name="gencodeID" type="text" placeholder="e.g. SLC26A9">
-          </div>
+          -->
         </div>
       </div> <!-- row closing div -->
 
@@ -209,14 +309,10 @@
 </div> <!-- container closing div -->
 
   <!-- JS -->
-  <script>
-  $(function () {
-    $('[data-toggle="popover"]').popover()
-  })
-  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
   
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>
   <!-- Bootstrap tooltips -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/tooltip.min.js') }}"></script>

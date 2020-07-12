@@ -8,6 +8,8 @@ import uuid
 import subprocess
 from datetime import datetime
 from bs4 import BeautifulSoup as bs
+import re
+import pysam
 import secrets
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash, send_file
@@ -25,19 +27,34 @@ fileSizeLimit = 100 * 1024 * 1024 # in Bytes
 
 MYDIR = os.path.dirname(__file__)
 APP_STATIC = os.path.join(MYDIR, 'static')
+
+##################
+# Default settings
+##################
+
+default_region = "1:205500000-206000000"
+default_chromname = "#CHROM"
+default_posname = "BP"
+default_snpname = "ID"
+default_refname = "REF"
+default_altname = "ALT"
+default_pname = "P"
+
 # Default column names for secondary datasets:
 CHROM = 'CHROM'
 BP = 'BP'
 SNP = 'SNP'
 P = 'P'
 
+################
+################
 
 app = Flask(__name__)
 ext = Sitemap(app=app)
 app.config['UPLOAD_FOLDER'] = os.path.join(MYDIR, 'static/upload/')
 app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
-ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld'])
+ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld', 'html'])
 app.config['UPLOADED_FILES_ALLOW'] = ALLOWED_EXTENSIONS
 app.secret_key = secrets.mysecret
 files = UploadSet('files', DATA)
@@ -46,26 +63,32 @@ configure_uploads(app, files)
 collapsed_genes_df_hg19 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
 collapsed_genes_df_hg38 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v26_hg38.gz'), compression='gzip', sep='\t', encoding='utf-8')
 
-collapsed_genes_df = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencode_v19_hg19.gz'), compression='gzip', sep='\t', encoding='utf-8')
+collapsed_genes_df = collapsed_genes_df_hg19 # For now
 ld_mat_diag_constant = 1e-6
 
 conn = "mongodb://localhost:27017"
 client = MongoClient(conn)
-db = client.GTEx_V7
+db = client.GTEx_V7 # For now
 
+available_gtex_versions = ["V7", "V8"]
+valid_populations = ["EUR", "AFR","EAS", "SAS", "AMR"]
 
 ####################################
 # Helper functions
 ####################################
-def parseRegionText(regiontext):
-    regiontext = regiontext.strip().replace(' ','')
-    chrom = regiontext.split(':')[0].replace('chr','').replace('Chr','')
+def parseRegionText(regiontext, build):
+    if build not in ['hg19', 'hg38']:
+        raise InvalidUsage(f'Unrecognized build: {build}', status_code=410)
+    regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
+    if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23')):
+       raise InvalidUsage('Invalid coordinate format. e.g. 1:205,000,000-206,000,000', status_code=410)
+    chrom = regiontext.split(':')[0].lower().replace('chr','')
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
-    chromLengths = pd.read_csv(os.path.join(MYDIR, 'data/hg19_chrom_lengths.txt'), sep="\t", encoding='utf-8')
+    chromLengths = pd.read_csv(os.path.join(MYDIR, 'data', build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
     chromLengths.set_index('sequence',inplace=True)
-    if chrom == 'X' or chrom == '23':
+    if chrom in ['X','x'] or chrom == '23':
         chrom = 23
         maxChromLength = chromLengths.loc['chrX', 'length']
         try:
@@ -90,6 +113,8 @@ def parseRegionText(regiontext):
         raise InvalidUsage('Starting chromosome basepair position is greater than ending basepair position', status_code=410)
     elif startbp > maxChromLength or endbp > maxChromLength:
         raise InvalidUsage('Start or end coordinates are out of range', status_code=410)
+    elif (endbp - startbp) > genomicWindowLimit:
+        raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit/10**6} Mbp', status_code=410)
     else:
         return chrom, startbp, endbp
 
@@ -115,9 +140,13 @@ def writeMat(aMat, filename):
             f.write("%s\n" % str(aMat[row,-1]))
 
 
-def genenames(genename):
+def genenames(genename, build):
     # Given either ENSG gene name or HUGO gene name, returns both HUGO and ENSG names
     ensg_gene = genename
+    if build.lower() in ["hg19","grch37"]:
+        collapsed_genes_df = collapsed_genes_df_hg19
+    elif build.lower() in ["hg38", "grch38"]:
+        collapsed_genes_df = collapsed_genes_df_hg38
     if genename in list(collapsed_genes_df['name']):
         ensg_gene = collapsed_genes_df['ENSG_name'][list(collapsed_genes_df['name']).index(genename)]
     if genename in list(collapsed_genes_df['ENSG_name']):
@@ -156,82 +185,336 @@ def isSorted(l):
 def Xto23(l):
     newl = []
     for x in l:
-        if str(x) == "X":
+        if str(str(x).strip().lower().replace('chr','').upper()) == "X":
             newl.append(23)
-        elif str(x) in [str(x) for x in list(np.arange(1,24))]:
-            newl.append(int(x))
+        elif str(str(x).strip().lower().replace('chr','')) in [str(i) for i in list(np.arange(1,24))]:
+            newl.append(int(str(x).strip().lower().replace('chr','')))
         else:
             raise InvalidUsage('Chromosome unrecognized', status_code=410)
     return newl
 
+def verifycol(formname, defaultname, filecolnames, error_message_):
+    """
+    Checks if the user-entered column name (formname)
+    (or the default column name if no column name was entered - defaultname)
+    can be found in the dataset column names (ie. filecolnames list).
+    If not, the error_message_ is output and program halted with 410 status
+    """
+    theformname = formname
+    if formname=='': theformname=str(defaultname)
+    if theformname not in filecolnames:
+        raise InvalidUsage(error_message_, status_code=410)
+    return theformname
+
+
+def buildSNPlist(df, chromcol, poscol, refcol, altcol, build):
+    snplist = []
+    if build.lower() in ["hg38","grch38"]:
+        build = 'b38'
+    else:
+        build = 'b37'
+    for i in np.arange(df.shape[0]):
+        chrom = list(df[chromcol])[i]
+        pos = list(df[poscol])[i]
+        ref = list(df[refcol])[i]
+        alt = list(df[altcol])[i]
+        try:
+            snplist.append(str(chrom)+"_"+str(pos)+"_"+str(ref)+"_"+str(alt)+"_"+str(build))
+        except:
+            raise InvalidUsage(f'Could not convert marker at row {str(i)}')
+    return snplist
+
+
+def fetchSNV(chrom, bp, ref, build):
+    variantid = '.'
+    
+    if ref is None or ref=='.':
+        ref=''
+    
+    # Ensure valid region:
+    try:
+        regiontxt = str(chrom) + ":" + str(bp) + "-" + str(int(bp)+1)
+    except:
+        raise InvalidUsage(f'Invalid input for str(chrom):str(bp)')
+    chrom, startbp, endbp = parseRegionText(regiontxt, build)
+    chrom = str(chrom).replace('chr','').replace('23',"X")
+    
+    # Load dbSNP151 SNP names from region indicated
+    dbsnp_filepath = ''
+    if build.lower() in ["hg38", "grch38"]:
+        suffix = 'b38'
+        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
+    else:
+        suffix = 'b37'
+        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
+
+    # Load variant info from dbSNP151
+    tbx = pysam.TabixFile(dbsnp_filepath)
+    varlist = []
+    for row in tbx.fetch(str(chrom), bp-1, bp):
+        rowlist = str(row).split('\t')
+        chromi = rowlist[0].replace('chr','')
+        posi = rowlist[1]
+        idi = rowlist[2]
+        refi = rowlist[3]
+        alti = rowlist[4]
+        varstr = '_'.join([chromi, posi, refi, alti, suffix])
+        varlist.append(varstr)
+
+    # Check if there is a match to an SNV with the provided info
+    if len(varlist) == 1:
+        variantid = varstr
+    elif len(varlist) > 1 and ref != '':
+        for v in varlist:
+            if v.split('_')[2] == ref:
+                variantid = v
+                break
+    return variantid
+
+
+def mapAndCleanSNPs(variantlist, chrom, startbp, endbp, build):
+    """
+    Input: Variant names in any of these formats: rsid, chrom_pos_ref_alt, chrom:pos_ref_alt, chrom:pos_ref_alt_b37/b38 
+    Output: chrom_pos_ref_alt_b37/b38 variant ID format.
+    In the case of multi-allelic variants (e.g. rs2211330(T/A,C)), formats such as 1_205001063_T_A,C_b37 are accepted
+    If variant ID format is chr:pos, and the chr:pos has a unique biallelic SNV, then it will be assigned that variant
+    """
+    
+    # Ensure valid region:
+    regiontxt = str(chrom) + ":" + str(startbp) + "-" + str(endbp)
+    chrom, startbp, endbp = parseRegionText(regiontxt, build)
+    chrom = str(chrom).replace('chr','').replace('23',"X")
+
+    # Load dbSNP151 SNP names from region indicated
+    dbsnp_filepath = ''
+    if build.lower() in ["hg38", "grch38"]:
+        suffix = 'b38'
+        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
+    else:
+        suffix = 'b37'
+        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
+    
+    
+    # Load dbSNP file
+    #delayeddf = delayed(pd.read_csv)(dbsnp_filepath,skiprows=getNumHeaderLines(dbsnp_filepath),sep='\t')
+    #dbsnp = dd.from_delayed(delayeddf)
+    tbx = pysam.TabixFile(dbsnp_filepath)
+    print('Compiling list of known variants in the region from dbSNP151')
+    chromcol = []
+    poscol = []
+    idcol = []
+    refcol = []
+    altcol = []
+    variantid = [] # in chr_pos_ref_alt_build format
+    rsids = dict({}) # a multi-allelic variant rsid (key) can be represented in several variantid formats (values)
+    for row in tbx.fetch(str(chrom), startbp, endbp):
+        rowlist = str(row).split('\t')
+        chromi = rowlist[0].replace('chr','')
+        posi = rowlist[1]
+        idi = rowlist[2]
+        refi = rowlist[3]
+        alti = rowlist[4]
+        varstr = '_'.join([chromi, posi, refi, alti, suffix])
+        chromcol.append(chromi)
+        poscol.append(posi)
+        idcol.append(idi)
+        refcol.append(refi)
+        altcol.append(alti)
+        variantid.append(varstr)
+        rsids[idi] = [varstr]
+        altalleles = alti.split(',') # could have more than one alt allele (multi-allelic)
+        if len(altalleles)>1:
+            varstr = '_'.join([chromi, posi, refi, altalleles[0], suffix])
+            rsids[idi].append(varstr)
+            for i in np.arange(len(altalleles)-1):
+                varstr = '_'.join([chromi, posi, refi, altalleles[i+1], suffix])
+                rsids[idi].append(varstr)
+    
+    print('Cleaning and mapping list of variants')
+    variantlist = [asnp.split(';')[0].replace(':','_').replace('.','') for asnp in variantlist] # cleaning up the SNP names a bit
+    stdvariantlist = []
+    for variant in variantlist:
+        variantstr = variant.replace('chr','')
+        if variantstr.startswith('rs'):
+            try:
+                stdvariantlist.append(rsids[variantstr][0])
+            except:
+                stdvariantlist.append('.')
+        elif re.search("^\d+_\d+_[A,T,G,C]+_[A,T,C,G]+,*", variantstr.replace('X','23')):
+            strlist = variantstr.split('_')
+            strlist = list(filter(None, strlist)) # remove empty strings
+            try:
+                achr, astart, aend = parseRegionText(strlist[0]+":"+strlist[1]+"-"+str(int(strlist[1])+1), build)
+                if str(achr).replace('23','X') == str(chrom) and astart >= startbp and astart <= endbp:
+                    variantstr = variantstr.replace("_"+str(suffix),"") + "_"+str(suffix)
+                    if len(variantstr.split('_')) == 5:
+                        stdvariantlist.append(variantstr)
+                    else:
+                        raise InvalidUsage(f'Variant format not recognizable: {variant}', status_code=410)
+                else:
+                    stdvariantlist.append('.')
+            except:
+                raise InvalidUsage(f'Problem with variant {variant}')
+        elif re.search("^\d+_\d+_*[A,T,G,C]*", variantstr.replace('X','23')):
+            strlist = variantstr.split('_')
+            strlist = list(filter(None, strlist)) # remove empty strings
+            try:
+                achr, astart, aend = parseRegionText(strlist[0]+":"+strlist[1]+"-"+str(int(strlist[1])+1), build)
+                if str(achr).replace('23','X') == str(chrom) and astart >= startbp and astart <= endbp:
+                    if len(strlist)==3:
+                        aref=strlist[2]
+                    else:
+                        aref=''
+                    stdvariantlist.append(fetchSNV(achr, astart, aref, build))
+                else:
+                    stdvariantlist.append('.')
+            except:
+                raise InvalidUsage(f'Problem with variant {variant}')
+        else:
+            raise InvalidUsage(f'Variant format not recognized: {variant}', status_code=410)
+    return stdvariantlist
+
+
+def subsetLocus(build, summaryStats, regiontext, columnnames):
+    # regiontext format example: "1:205500000-206000000"
+    if regiontext == "": regiontext = default_region
+    chromcol, poscol, snpcol, pcol = columnnames
+    print('Parsing region text')
+    chrom, startbp, endbp = parseRegionText(regiontext, build)
+    print(chrom,startbp,endbp)
+    print('Subsetting GWAS data to entered region')            
+    bool1 = [x == chrom for x in Xto23(list(summaryStats[chromcol]))]
+    bool2 = [x>=startbp and x<=endbp for x in list(summaryStats[poscol])]
+    bool3 = [not x for x in list(summaryStats.isnull().any(axis=1))]
+    gwas_indices_kept = [ (x and y) and z for x,y,z in zip(bool1,bool2,bool3)]
+    summaryStats = summaryStats.loc[ gwas_indices_kept ].copy()
+    summaryStats.sort_values(by=[ poscol ], inplace=True)
+    chromcolnum = list(summaryStats.columns).index(chromcol)
+    summaryStats.reset_index(drop=True, inplace=True)
+    summaryStats.iloc[:,chromcolnum] = Xto23(list(summaryStats[chromcol]))
+    if summaryStats.shape[0] == 0:
+        raise InvalidUsage('No data found for entered region', status_code=410)
+    # Check for invalid p=0 rows:
+    zero_p = [x for x in list(summaryStats[pcol]) if x==0]
+    if len(zero_p)>0:
+        raise InvalidUsage('P-values of zero detected; please replace with a non-zero p-value')
+    return summaryStats, gwas_indices_kept
+
+
+def getLeadSNPindex(leadsnpname, summaryStats, columnnames):
+    lead_snp = leadsnpname
+    chromcol, poscol, snpcol, pcol = columnnames
+    snp_list = list(summaryStats.loc[:,snpcol])
+    snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+    if lead_snp=='': lead_snp = list(summaryStats.loc[ summaryStats.loc[:,pcol] == min(summaryStats.loc[:,pcol]) ].loc[:,snpcol])[0].split(';')[0]
+    if lead_snp not in snp_list:
+        raise InvalidUsage('Lead SNP not found', status_code=410)
+    lead_snp_position_index = list(summaryStats.loc[:,snpcol]).index(lead_snp)
+    return lead_snp_position_index
 
 ####################################
-# LD Calculation from 1KG using PLINK
+# LD Calculation from 1KG using PLINK (on-the-fly)
 ####################################
 
-def plink_ldmat(pop, chrom, snp_positions, outfilename):
-    # positions must be in hg19 coordinates
+def resolve_plink_filepath(build, pop, chrom):
+    """
+    Returns the file path of the binary plink file
+    """
     if chrom == 'X': chrom = 23
     try:
         chrom = int(chrom)
     except:
-        raise InvalidUsage("Invalid chromosome", status_code=410)
+        raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
     if chrom not in np.arange(1,24):
-        raise InvalidUsage("Invalid chromosome", status_code=410)
+        raise InvalidUsage(f"Invalid chromosome {str(chrom)}", status_code=410)
+    if pop not in valid_populations:
+        raise InvalidUsage(f"{str(pop)} is not a recognized population", status_code=410)
     plink_filepath = ""
-    if chrom == 23:
-        plink_filepath = os.path.join(MYDIR, "data", pop, "chrX")
+    if build.lower() in ["hg19","grch37"]:
+        if chrom == 23:
+            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh37", pop, "chrX")
+        else:
+            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh37", pop, f"chr{chrom}")
+    elif build.lower() in ["hg38","grch38"]:
+        if chrom == 23:
+            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh38", "chrX")
+        else:
+            plink_filepath = os.path.join(MYDIR, "data", "1000Genomes_GRCh38", f"chr{chrom}")
     else:
-        plink_filepath = os.path.join(MYDIR, "data", pop, f"chr{chrom}")
+        raise InvalidUsage(f'{str(build)} is not a recognized genome build')
+    return plink_filepath
+
+def plink_ldmat(build, pop, chrom, snp_positions, outfilename):
+    plink_filepath = resolve_plink_filepath(build, pop, chrom)
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
     #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-    if os.name == 'nt':
-        plinkrun = subprocess.run(args=[
-            "./plink.exe", '--bfile', plink_filepath
-            , "--chr", str(chrom)
-            , "--extract", outfilename + "_snps.txt"
-            , "--from-bp", str(min(snp_positions))
-            , "--to-bp", str(max(snp_positions))
-            , "--r2", "square"
-            , "--make-bed"
-            , "--threads", "1"
-            , "--out", outfilename
-            ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    else:    
-        plinkrun = subprocess.run(args=[
-            "./plink", '--bfile', plink_filepath
-            , "--chr", str(chrom)
-            , "--extract", outfilename + "_snps.txt"
-            , "--from-bp", str(min(snp_positions))
-            , "--to-bp", str(max(snp_positions))
-            , "--r2", "square"
-            , "--make-bed"
-            , "--threads", "1"
-            , "--out", outfilename
-            ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if build.lower() in ["hg19","grch37"]:
+        if os.name == 'nt':
+            plinkrun = subprocess.run(args=[
+                "./plink.exe", '--bfile', plink_filepath
+                , "--chr", str(chrom)
+                , "--extract", outfilename + "_snps.txt"
+                , "--from-bp", str(min(snp_positions))
+                , "--to-bp", str(max(snp_positions))
+                , "--r2", "square"
+                , "--make-bed"
+                , "--threads", "1"
+                , "--out", outfilename
+                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        else:    
+            plinkrun = subprocess.run(args=[
+                "./plink", '--bfile', plink_filepath
+                , "--chr", str(chrom)
+                , "--extract", outfilename + "_snps.txt"
+                , "--from-bp", str(min(snp_positions))
+                , "--to-bp", str(max(snp_positions))
+                , "--r2", "square"
+                , "--make-bed"
+                , "--threads", "1"
+                , "--out", outfilename
+                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    elif build.lower() in ["hg38","grch38"]:
+        popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', str(pop)+'.txt')
+        if os.name == 'nt':
+            plinkrun = subprocess.run(args=[
+                "./plink.exe", '--bfile', plink_filepath
+                , "--keep", popfile # this is the difference in running GRCh38
+                , "--chr", str(chrom)
+                , "--extract", outfilename + "_snps.txt"
+                , "--from-bp", str(min(snp_positions))
+                , "--to-bp", str(max(snp_positions))
+                , "--r2", "square"
+                , "--make-bed"
+                , "--threads", "1"
+                , "--out", outfilename
+                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        else:    
+            plinkrun = subprocess.run(args=[
+                "./plink", '--bfile', plink_filepath
+                , "--keep", popfile # this is the difference in running GRCh38
+                , "--chr", str(chrom)
+                , "--extract", outfilename + "_snps.txt"
+                , "--from-bp", str(min(snp_positions))
+                , "--to-bp", str(max(snp_positions))
+                , "--r2", "square"
+                , "--make-bed"
+                , "--threads", "1"
+                , "--out", outfilename
+                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)            
+    else:
+        raise InvalidUsage(f'{str(build)} is not a recognized genome build')
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_snps = list(pd.read_csv(outfilename + ".bim", sep="\t", header=None).iloc[:,1])
     ldmat = np.matrix(pd.read_csv(outfilename + ".ld", sep="\t", header=None))
     return ld_snps, ldmat
 
-def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, snp_pvalues, outfilename):
+def plink_ld_pairwise(build, lead_snp_position, pop, chrom, snp_positions, snp_pvalues, outfilename):
     # positions must be in hg19 coordinates
     # returns NaN for SNPs not in 1KG LD file; preserves order of input snp_positions
-    if chrom == 'X': chrom = 23
-    try:
-        chrom = int(chrom)
-    except:
-        raise InvalidUsage("Invalid chromosome", status_code=410)
-    if chrom not in np.arange(1,24):
-        raise InvalidUsage("Invalid chromosome", status_code=410)
-    plink_filepath = ""
-    if chrom == 23:
-        plink_filepath = os.path.join(MYDIR, "data", pop, "chrX")
-    else:
-        plink_filepath = os.path.join(MYDIR, "data", pop, f"chr{chrom}")
+    plink_filepath = resolve_plink_filepath(build, pop, chrom)
     # make snps file to extract:
     snps = [f"chr{str(int(chrom))}:{str(int(position))}" for position in snp_positions]
     writeList(snps, outfilename + "_snps.txt")
@@ -255,38 +538,77 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, snp_pvalues,
     print('Lead SNP in use: ' + lead_snp)
 
     #plink_path = subprocess.run(args=["which","plink"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
-    if os.name == 'nt':
-        plinkrun = subprocess.run(args=[
-            "./plink.exe", '--bfile', plink_filepath
-            , "--chr", str(chrom)
-            , "--extract", outfilename + "_snps.txt"
-            , "--from-bp", str(min(snp_positions))
-            , "--to-bp", str(max(snp_positions))
-            , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
-            , "--r2"
-            , "--ld-window-r2", "0"
-            , "--ld-window", "999999"
-            , "--ld-window-kb", "200000"
-            , "--make-bed"
-            , "--threads", "1"
-            , "--out", outfilename
-            ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if build.lower() in ["hg19","grch37"]:
+        if os.name == 'nt':
+            plinkrun = subprocess.run(args=[
+                "./plink.exe", '--bfile', plink_filepath
+                , "--chr", str(chrom)
+                , "--extract", outfilename + "_snps.txt"
+                , "--from-bp", str(min(snp_positions))
+                , "--to-bp", str(max(snp_positions))
+                , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
+                , "--r2"
+                , "--ld-window-r2", "0"
+                , "--ld-window", "999999"
+                , "--ld-window-kb", "200000"
+                , "--make-bed"
+                , "--threads", "1"
+                , "--out", outfilename
+                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        else:
+            plinkrun = subprocess.run(args=[
+                "./plink", '--bfile', plink_filepath
+                , "--chr", str(chrom)
+                , "--extract", outfilename + "_snps.txt"
+                , "--from-bp", str(min(snp_positions))
+                , "--to-bp", str(max(snp_positions))
+                , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
+                , "--r2"
+                , "--ld-window-r2", "0"
+                , "--ld-window", "999999"
+                , "--ld-window-kb", "200000"
+                , "--make-bed"
+                , "--threads", "1"
+                , "--out", outfilename
+                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    elif build.lower() in ["hg38","grch38"]:
+        popfile = os.path.join(MYDIR, 'data', '1000Genomes_GRCh38', str(pop)+'.txt')
+        if os.name == 'nt':
+            plinkrun = subprocess.run(args=[
+                "./plink.exe", '--bfile', plink_filepath
+                , "--keep", popfile # this is the difference in running GRCh38
+                , "--chr", str(chrom)
+                , "--extract", outfilename + "_snps.txt"
+                , "--from-bp", str(min(snp_positions))
+                , "--to-bp", str(max(snp_positions))
+                , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
+                , "--r2"
+                , "--ld-window-r2", "0"
+                , "--ld-window", "999999"
+                , "--ld-window-kb", "200000"
+                , "--make-bed"
+                , "--threads", "1"
+                , "--out", outfilename
+                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        else:
+            plinkrun = subprocess.run(args=[
+                "./plink", '--bfile', plink_filepath
+                , "--keep", popfile # this is the difference in running GRCh38
+                , "--chr", str(chrom)
+                , "--extract", outfilename + "_snps.txt"
+                , "--from-bp", str(min(snp_positions))
+                , "--to-bp", str(max(snp_positions))
+                , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
+                , "--r2"
+                , "--ld-window-r2", "0"
+                , "--ld-window", "999999"
+                , "--ld-window-kb", "200000"
+                , "--make-bed"
+                , "--threads", "1"
+                , "--out", outfilename
+                ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     else:
-        plinkrun = subprocess.run(args=[
-            "./plink", '--bfile', plink_filepath
-            , "--chr", str(chrom)
-            , "--extract", outfilename + "_snps.txt"
-            , "--from-bp", str(min(snp_positions))
-            , "--to-bp", str(max(snp_positions))
-            , "--ld-snp", f"chr{str(int(chrom))}:{str(int(lead_snp_position))}"
-            , "--r2"
-            , "--ld-window-r2", "0"
-            , "--ld-window", "999999"
-            , "--ld-window-kb", "200000"
-            , "--make-bed"
-            , "--threads", "1"
-            , "--out", outfilename
-            ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        raise InvalidUsage(f'{str(build)} is not a recognized genome build')
     if plinkrun.returncode != 0:
         raise InvalidUsage(plinkrun.stdout.decode('utf-8'), status_code=410)
     ld_results = pd.read_csv(outfilename + ".ld", delim_whitespace=True)
@@ -302,7 +624,14 @@ def plink_ld_pairwise(lead_snp_position, pop, chrom, snp_positions, snp_pvalues,
 ####################################
 
 # This is the main function to extract the data for a tissue and gene_id:
-def get_gtex_v7(tissue, gene_id):
+def get_gtex(version, tissue, gene_id):
+    if version.upper() == "V8":
+        db = client.GTEx_V8
+        collapsed_genes_df = collapsed_genes_df_hg38
+    elif version.upper() == "V7":
+        db = client.GTEx_V7
+        collapsed_genes_df = collapsed_genes_df_hg19
+    
     tissue = tissue.replace(' ','_')
     #gene_id = gene_id.upper()
     ensg_name = ""
@@ -361,24 +690,35 @@ def get_gtex_v7(tissue, gene_id):
     x = pd.merge(results_df, variants_df, on='variant_id')
     #t2=datetime.now()
     #print(f'Merging time: {t2-t1}')
-    x.rename(columns={'rs_id_dbSNP147_GRCh37p13': 'rs_id'}, inplace=True)
+    if version.upper() == "V7":
+        x.rename(columns={'rs_id_dbSNP147_GRCh37p13': 'rs_id'}, inplace=True)
+    elif version.upper() == "V8":
+        x.rename(columns={'rs_id_dbSNP151_GRCh38p7': 'rs_id'}, inplace=True)
     return x
 
 # Function to merge the GTEx data with a particular snp_list
-def get_gtex_data(tissue, gene, snp_list, raiseErrors = False):
+def get_gtex_data(version, tissue, gene, snp_list, raiseErrors = False):
+    build = "hg19"
+    if version.upper() == "V8":
+        build = "hg38"
     gtex_data = []
     rsids = True
     rsid_snps = [ x for x in snp_list if x.startswith('rs') ]
     b37_snps = [ x for x in snp_list if x.endswith('_b37') ]
+    b38_snps = [ x for x in snp_list if x.endswith('_b38') ]
     if len(rsid_snps) > 0:
         rsids = True
-    elif len(b37_snps) > 0:
+    elif len(b37_snps) or len(b38_snps) > 0:
         rsids = False
     else:
-        raise InvalidUsage('Variant naming format not supported; ensure all are rs ID\'s or formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37')
-    hugo_gene, ensg_gene = genenames(gene)
+        raise InvalidUsage('Variant naming format not supported; ensure all are rs ID\'s are formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37')
+    hugo_gene, ensg_gene = genenames(gene, build)
     print(f'Gathering eQTL data for {hugo_gene} ({ensg_gene}) in {tissue}')
-    response_df = get_gtex_v7(tissue, gene)
+    response_df = pd.DataFrame({})
+    if version.upper() == "V7":
+        response_df = get_gtex("V7", tissue, gene)
+    elif version.upper() == "V8":
+        response_df = get_gtex("V8", tissue, gene)
     if 'error' not in response_df.columns:
         eqtl = response_df
         if rsids:
@@ -452,30 +792,51 @@ def get1KGPopulations():
     populations = pd.read_csv(os.path.join(MYDIR, 'data/populations.tsv'), sep='\t')
     return jsonify(populations.to_dict(orient='list'))
 
-@app.route("/genenames")
-def getGeneNames():
+@app.route("/genenames/<build>")
+def getGeneNames(build):
+    if build.lower() == "hg38":
+        collapsed_genes_df = collapsed_genes_df_hg38
+    elif build.lower() == "hg19":
+        collapsed_genes_df = collapsed_genes_df_hg19
     return jsonify(list(collapsed_genes_df['name']))
 
-@app.route("/gtex_v7/tissues_list")
-def list_tissues():
+@app.route("/genenames/<build>/<chrom>/<startbp>/<endbp>")
+def getGenesInRange(build, chrom, startbp, endbp):
+    collapsed_genes_df = collapsed_genes_df_hg19
+    if build.lower() == "hg38":
+        collapsed_genes_df = collapsed_genes_df_hg38
+    regiontext = str(chrom) + ":" + startbp + "-" + endbp
+    chrom, startbp, endbp = parseRegionText(regiontext, build)
+    genes_to_draw = collapsed_genes_df.loc[ (collapsed_genes_df['chrom'] == ('chr' + str(chrom).replace('23','X'))) &
+                                                    ( ((collapsed_genes_df['txStart'] >= startbp) & (collapsed_genes_df['txStart'] <= endbp)) | 
+                                                      ((collapsed_genes_df['txEnd'] >= startbp  ) & (collapsed_genes_df['txEnd'] <= endbp  )) | 
+                                                      ((collapsed_genes_df['txStart'] <= startbp) & (collapsed_genes_df['txEnd'] >= endbp  )) )]
+    return jsonify(list(genes_to_draw['name']))
+
+@app.route("/gtex/<version>/tissues_list")
+def list_tissues(version):
+    if version.upper() == "V8":
+        db = client.GTEx_V8
+    elif version.upper() == "V7":
+        db = client.GTEx_V7
     tissues = list(db.list_collection_names())
     tissues.remove('variant_table')
     return jsonify(tissues)
 
-@app.route("/gtex_v7/<tissue>/<gene_id>")
-def get_gtex(tissue, gene_id):
-    x = get_gtex_v7(tissue, gene_id)
+@app.route("/gtex/<version>/<tissue>/<gene_id>")
+def get_gtex_route(version, tissue, gene_id):
+    x = get_gtex(version, tissue, gene_id)
     x = x.fillna(-1)
     return jsonify(x.to_dict(orient='records'))
 
-@app.route("/gtex_v7/<tissue>/<gene_id>/<variant>")
-def get_gtex_variant(tissue, gene_id, variant):
-    x = get_gtex_v7(tissue, gene_id)
+@app.route("/gtex/<version>/<tissue>/<gene_id>/<variant>")
+def get_gtex_variant(version, tissue, gene_id, variant):
+    x = get_gtex(version, tissue, gene_id)
     response_df = x
     result = []
     if variant.startswith("rs"):
         result = response_df.loc[ response_df['rs_id'] == variant ]
-    elif variant.endswith("_b37"):
+    elif variant.endswith("_b37") or variant.endswith("_b38"):
         result = response_df.loc[ response_df['variant_id'] == variant ]
     else:
         raise InvalidUsage(f'variant name {variant} not found', status_code=410)
@@ -532,10 +893,13 @@ def update_colocalizing_gene(session_id, newgene):
     data = json.load(open(sessionfilepath, 'r'))
     gtex_tissues = data['gtex_tissues']
     snp_list = data['snps']
+    gtex_version = data['gtex_version']
+    if gtex_version.upper() not in available_gtex_versions:
+        gtex_version = "V7"
     # gtex_data = {}
     for tissue in tqdm(gtex_tissues):
         data[tissue] = pd.DataFrame({})
-        eqtl_df = get_gtex_data(tissue, newgene, snp_list)
+        eqtl_df = get_gtex_data(gtex_version, tissue, newgene, snp_list)
         #eqtl_filepath = os.path.join(APP_STATIC, f'session_data/eqtl_df-{tissue}-{newgene}-{session_id}.txt')
         # if os.path.isfile(eqtl_filepath):
         if len(eqtl_df) > 0:
@@ -545,6 +909,58 @@ def update_colocalizing_gene(session_id, newgene):
     # json.dump(data, open(sessionfilepath, 'w'))
 
     return jsonify(data)
+
+
+@app.route("/regionCheck/<build>/<regiontext>")
+def regionCheck(build, regiontext):
+    message = dict({'response': "OK"})
+    if build not in ['hg19', 'hg38']:
+        message['response'] = f'Unrecognized build: {build}'
+        return jsonify(message)
+    regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
+    if not re.search("^\d+:\d+-\d+$", regiontext):
+        message['response'] = 'Invalid coordinate format. e.g. 1:205,000,000-206,000,000'
+        return jsonify(message)
+    chrom = regiontext.split(':')[0].lower().replace('chr','')
+    pos = regiontext.split(':')[1]
+    startbp = pos.split('-')[0].replace(',','')
+    endbp = pos.split('-')[1].replace(',','')
+    chromLengths = pd.read_csv(os.path.join(MYDIR, 'data', build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
+    chromLengths.set_index('sequence',inplace=True)
+    if chrom == 'X' or chrom == '23':
+        chrom = 23
+        maxChromLength = chromLengths.loc['chrX', 'length']
+        try:
+            startbp = int(startbp)
+            endbp = int(endbp)
+        except:
+            message['response'] = "Invalid coordinate input"
+            return jsonify(message)
+    else:
+        try:
+            chrom = int(chrom)
+            if chrom == 23:
+                maxChromLength = chromLengths.loc['chrX', 'length']
+            else:
+                maxChromLength = chromLengths.loc['chr'+str(chrom), 'length']
+            startbp = int(startbp)
+            endbp = int(endbp)
+        except:
+            message['response'] = "Invalid coordinate input"
+            return jsonify(message)
+    if chrom < 1 or chrom > 23:
+        message['response'] = 'Chromosome input must be between 1 and 23'
+    elif startbp > endbp:
+        message['response'] = 'Starting chromosome basepair position is greater than ending basepair position'
+    elif startbp > maxChromLength or endbp > maxChromLength:
+        message['response'] = 'Start or end coordinates are out of range'
+    elif (endbp - startbp) > genomicWindowLimit:
+        message['response'] = f'Entered region size is larger than {genomicWindowLimit/10**6} Mbp'
+        return jsonify(message)
+    else:
+        return jsonify(message)
+    return jsonify(message)
+
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -585,85 +1001,88 @@ def index():
             upload_time = datetime.now() - t1
 
             #######################################################
-            # Checking form input parameters and subsetting GWAS file
+            # Checking form input parameters
             #######################################################
             my_session_id = uuid.uuid4()
+            coordinate = request.form['coordinate']
+            gtex_version = "V7"
+            if coordinate.lower() == "hg38":
+                gtex_version = "V8"
+                collapsed_genes_df = collapsed_genes_df_hg38
             print(f'Session ID: {my_session_id}')
+            print(f'Coordinate: {coordinate}')
+            print(f'GTEx version: {gtex_version}')
             print('Loading file')
             t1 = datetime.now() # timing started for GWAS loading/subsetting/cleaning
             gwas_data = pd.read_csv(gwas_filepath, sep="\t", encoding='utf-8')
-            chromcol = request.form['chrom-col']
-            if chromcol=='': chromcol='#CHROM'
-            if chromcol not in gwas_data.columns:
-                raise InvalidUsage('Chromosome column not found', status_code=410)
-            poscol = request.form['pos-col']
-            if poscol=='': poscol='BP'
-            if poscol not in gwas_data.columns:
-                raise InvalidUsage('Basepair position column not found', status_code=410)
-            snpcol = request.form['snp-col']
-            if snpcol=='': snpcol='SNP'
-            if snpcol not in gwas_data.columns:
-                raise InvalidUsage('SNP column not found', status_code=410)
-            pcol = request.form['pval-col']
-            if pcol=='': pcol='P'
-            if pcol not in gwas_data.columns:
-                raise InvalidUsage('Basepair position column not found', status_code=410)
-            regiontext = request.form['locus']
-            print('regiontext',regiontext)
-            if regiontext == "": regiontext = "1:205500000-206000000"
-            print('Parsing region text')
-            chrom, startbp, endbp = parseRegionText(regiontext)
-            if (endbp - startbp) > genomicWindowLimit:
-                raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit} bp', status_code=410)
-            print(chrom,startbp,endbp)
-            print('Subsetting GWAS data to entered region')            
-            gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
-            gwas_data_numRows = gwas_data.shape[0]
-            bool1 = [x == chrom for x in Xto23(list(gwas_data[chromcol]))]
-            bool2 = [x>=startbp and x<=endbp for x in list(gwas_data[poscol])]
-            bool3 = [not x for x in list(gwas_data.isnull().any(axis=1))]
-            gwas_indices_kept = [ (x and y) and z for x,y,z in zip(bool1,bool2,bool3)]
-            gwas_data = gwas_data.loc[ gwas_indices_kept ]
-            if gwas_data.shape[0] == 0:
-                raise InvalidUsage('No data found for entered region', status_code=410)
-            if ldmat_filepath != '' and not isSorted(list(gwas_data[poscol])):
-                raise InvalidUsage('GWAS data input is not sorted', status_code=410)
-            else:
-                gwas_data.sort_values(by=[ poscol ], inplace=True)
-            # Check for invalid p=0 rows:
-            zero_p = [x for x in list(gwas_data[pcol]) if x==0]
-            if len(zero_p)>0:
-                raise InvalidUsage('P-values of zero detected; please replace with a non-zero p-value')
-            lead_snp = request.form['leadsnp']
-            snp_list = list(gwas_data[snpcol])
-            snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
-            if lead_snp=='': lead_snp = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][snpcol])[0].split(';')[0]
-            if lead_snp not in snp_list:
-                raise InvalidUsage('Lead SNP not found', status_code=410)
-            lead_snp_position_index = list(gwas_data[snpcol]).index(lead_snp)
-#            lead_snp_position = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0]
-            lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
-            positions = list(gwas_data[poscol])
-            pvals = list(gwas_data[pcol])
             
+            noSNPcol = request.form.get('markerCheckbox')
+            chromcol, poscol, refcol, altcol = ('','','','')
+            snpcol = ''
+            if noSNPcol:
+                chromcol = verifycol(formname = request.form['chrom-col'], defaultname = default_chromname, filecolnames = gwas_data.columns, error_message_='Chromosome column not found')
+                poscol = verifycol(formname = request.form['pos-col'], defaultname = default_posname, filecolnames = gwas_data.columns, error_message_='Basepair position column not found')
+                refcol = verifycol(formname = request.form['ref-col'], defaultname = default_refname, filecolnames = gwas_data.columns, error_message_='Reference allele column not found')
+                altcol = verifycol(formname = request.form['ref-col'], defaultname = default_altname, filecolnames = gwas_data.columns, error_message_='Alternate allele column not found')
+                # build SNP ID list:
+                snp_list = buildSNPlist(gwas_data, chromcol, poscol, refcol, altcol, coordinate)
+            else:
+                snpcol = verifycol(formname = request.form['snp-col'], defaultname = default_snpname, filecolnames = gwas_data.columns, error_message_='SNP ID column not found')
+            
+            pcol = verifycol(formname = request.form['pval-col'], defaultname = default_pname, filecolnames = gwas_data.columns, error_message_='P-value column not found')
+            columnnames = [ chromcol, poscol, snpcol, pcol ]
+            gwas_data = gwas_data[[ chromcol, poscol, snpcol, pcol ]]
+
             # LD:
             pops = request.form['LD-populations']
             if len(pops) == 0: pops = 'EUR'
             print('Populations:', pops)
             
-            # GTEx tissues and gene:
+            # GTEx tissues and genes:
             gtex_tissues = request.form.getlist('GTEx-tissues')
             print('GTEx tissues:',gtex_tissues)
-            #if len(gtex_tissues) == 0: raise InvalidUsage('Select at least one GTEx tissue', status_code=410)
-            gene = request.form['gencodeID']
-            if gene=='': 
-                gene='ENSG00000174502.14'
-            elif not (str(gene).startswith('ENSG')):
-                try:
-                    gene = str(list(collapsed_genes_df.loc[ collapsed_genes_df['name'] == str(gene) ]['ENSG_name'])[0])
-                except:
-                    raise InvalidUsage('Gene name not recognized', status_code=410)
+            gtex_genes = request.form.getlist('region-genes')
+            if len(gtex_tissues) > 0 and len(gtex_genes) == 0:
+                raise InvalidUsage('Please select one or more genes to complement your GTEx tissue(s) selection')
+            elif len(gtex_genes) > 0 and len(gtex_tissues) == 0:
+                raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection')
+            # old code remnant:
+            if gtex_version=="V7": gene='ENSG00000174502.14'
+            if gtex_version=="V8": gene='ENSG00000174502.18'
 
+
+            # Set-based P override:            
+            setbasedP = request.form['setbasedP']
+            if setbasedP=='':
+                setbasedP = 'default'
+            else:
+                try:
+                    setbasedP = float(setbasedP)
+                    if setbasedP < 0 or setbasedP > 1:
+                        raise InvalidUsage('Set-based p-value threshold given is not between 0 and 1')
+                except:
+                    raise InvalidUsage('Invalid value provided for the set-based p-value threshold. Value must be numeric between 0 and 1.')
+
+            # Ensure custom LD matrix and GWAS files are sorted for accurate matching:
+            if ldmat_filepath != '' and not isSorted(list(gwas_data[poscol])):
+                raise InvalidUsage('GWAS data input is not sorted and may not match with the LD matrix', status_code=410)
+            
+            
+            #######################################################
+            # Subsetting GWAS file
+            #######################################################
+            regionstr = request.form['locus']
+            if regionstr == "": regionstr = default_region
+            leadsnpname = request.form['leadsnp']
+            gwas_data, gwas_indices_kept = subsetLocus(build = coordinate, summaryStats = gwas_data, regiontext = regionstr, columnnames = columnnames)
+            lead_snp_position_index = getLeadSNPindex(leadsnpname = leadsnpname, summaryStats=gwas_data, columnnames=columnnames)
+            lead_snp_position = gwas_data.iloc[lead_snp_position_index,:][poscol]
+            positions = list(gwas_data[poscol])
+            snp_list = list(gwas_data[snpcol])
+            snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
+            lead_snp = snp_list[ lead_snp_position_index ]
+            pvals = list(gwas_data[pcol])
+            chrom, startbp, endbp = parseRegionText(regionstr, coordinate)
 
             gwas_load_time = datetime.now() - t1
 
@@ -673,7 +1092,7 @@ def index():
                 t1 = datetime.now() # timing started for pairwise LD
                 print('Calculating pairwise LD using PLINK')
                 #ld_df = queryLD(lead_snp, snp_list, pops, ld_type)
-                ld_df, new_lead_snp_position = plink_ld_pairwise(lead_snp_position, pops, chrom, positions, pvals, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
+                ld_df, new_lead_snp_position = plink_ld_pairwise(coordinate, lead_snp_position, pops, chrom, positions, pvals, os.path.join(MYDIR, "static", "session_data", f"ld-{my_session_id}"))
                 if new_lead_snp_position != lead_snp_position:
                     lead_snp_position_index = list(gwas_data[poscol]).index(new_lead_snp_position)
                     lead_snp = snp_list[ lead_snp_position_index ]
@@ -686,6 +1105,7 @@ def index():
                 print('---------------------------------')
                 t1 = datetime.now() # timer started for loading user-defined LD matrix
                 ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
+                gwas_data_numRows = gwas_data.shape[0]
                 if ld_mat.shape[0] != gwas_data_numRows:
                     raise InvalidUsage('LD matrix provided does not match GWAS number of SNPs dimension', status_code=410)
                 ld_mat = ld_mat.loc[ gwas_indices_kept, gwas_indices_kept ]
@@ -706,7 +1126,10 @@ def index():
             data['endbp'] = endbp
             data['ld_populations'] = pops
             data['gtex_tissues'] = gtex_tissues
-            data['gene'] = genenames(gene)[0]
+            data['gene'] = genenames(gene, coordinate)[0]
+            data['coordinate'] = coordinate
+            data['gtex_version'] = gtex_version
+            data['set_based_p'] = setbasedP
             SSlocustext = request.form['SSlocus']
             # SSlocus defined below
             
@@ -740,7 +1163,7 @@ def index():
             if len(gtex_tissues)>0:
                 print('Gathering GTEx data')
                 for tissue in tqdm(gtex_tissues):
-                    eqtl_df = get_gtex_data(tissue, gene, snp_list, raiseErrors=True) # for the full region (not just the SS region)
+                    eqtl_df = get_gtex_data(gtex_version, tissue, gene, snp_list, raiseErrors=True) # for the full region (not just the SS region)
                     if len(eqtl_df) > 0:
                         eqtl_df.fillna(-1, inplace=True)
                     gtex_data[tissue] = eqtl_df.to_dict(orient='records')
@@ -775,7 +1198,7 @@ def index():
             ####################################################################################################
             # 1. Determine the region to calculate the Simple Sum (SS):
             if SSlocustext != '':
-                SSchrom, SS_start, SS_end = parseRegionText(SSlocustext)
+                SSchrom, SS_start, SS_end = parseRegionText(SSlocustext, coordinate)
             else:
                 SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
                 SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
@@ -834,7 +1257,7 @@ def index():
                 print('Obtaining eQTL p-values for selected tissues and surrounding genes')
                 for tissue in gtex_tissues:
                     for agene in query_genes:
-                        gtex_eqtl_df = get_gtex_data(tissue, agene, SS_snp_list)
+                        gtex_eqtl_df = get_gtex_data(gtex_version, tissue, agene, SS_snp_list)
 #                        print('len(gtex_eqtl_df) '+ str(len(gtex_eqtl_df)))
 #                        print('gtex_eqtl_df.shape ' + str(gtex_eqtl_df.shape))
 #                        print('len(SS_snp_list) ' + str(len(SS_snp_list)))
@@ -885,7 +1308,7 @@ def index():
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
                 ld_mat = ld_mat[SS_indices ][:,SS_indices]
             else:
-                ld_mat_snps, ld_mat = plink_ldmat(pops, chrom, SS_positions, plink_outfilepath)
+                ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chrom, SS_positions, plink_outfilepath)
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
             np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)
             ldmat_time = datetime.now() - t1

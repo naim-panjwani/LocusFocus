@@ -2,8 +2,8 @@
 # Script to obtain the simple sum P-values for a given set of GWAS p-values, and eQTL p-values for each tissue/gene pair
 # Inputs: P_values_filename (GWAS p-values - for a set of SNPs - tab-separated, and all in one line)
 #         ld_matrix_filename (the LD matrix filename for the set of SNPs input; the values per row must be tab-separated)
-# Ouput: Returns the simple sum P-value
-# Example: getSimpleSumStat.R P_values_filename ld_matrix_filename
+# Ouput: Returns a data.frame with the Simple Sum P-values, number of SNPs used and computation method (imhof or davies) used
+# Example: getSimpleSumStats.R P_values_filename ld_matrix_filename
 
 options(warn=-1)
 
