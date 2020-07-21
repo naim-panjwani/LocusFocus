@@ -26,10 +26,16 @@ p <- add_argument(p, "P_values_filename", help = paste0("Filename with GWAS and 
                                                         ,"and each subsequent line is for eQTL p-values for each tissue/gene combination"))
 p <- add_argument(p, "ld_matrix_filename", help = paste0("The LD matrix filename for the set of SNPs input;'\n'"
                                                          ,"the values per row must be tab-separated; no header"))
+p <- add_argument(p, "--set_based_p", default=NULL, help = paste0("For the Simple Sum method, a first-stage set-based Bonferroni p-value threshold'\n'",
+                                                                  "is used for the set of secondary datasets with alpha 0.05'\n'",
+                                                                  "(0.05 divided by the number of secondary datasets).'\n'",
+                                                                  "Entering a value will override the default threshold."))
 p <- add_argument(p, "--outfilename", default = 'SSPvalues.txt', help = "Output filename")
 argv <- parse_args(p)
 P_values_filename <- argv$P_values_filename
 ld_matrix_filename <- argv$ld_matrix_filename
+set_based_p <- argv$set_based_p
+if(as.character(set_based_p) == 'default') set_based_p <- NULL
 outfilename <- argv$outfilename
 
 # test
@@ -49,10 +55,22 @@ set_based_test <- function(summary_stats, ld, num_genes, alpha=0.05) {
   m <- length(Zsq)
   eigenvalues <- eigen(ld)$values
   pv <- abs(imhof(statistic, eigenvalues)$Qq)
-  if(pv < (alpha / num_genes)) {
-    return(TRUE)
-  } else {
-    return(FALSE)
+  if(is.null(set_based_p)) {
+    if(pv < (alpha / num_genes)) {
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+  }
+  else if(!is.na(as.numeric(set_based_p))) {
+    if(pv < as.numeric(set_based_p)) {
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+  }
+  else {
+    stop(paste0("Provided set-based p-value (", set_based_p,") is invalid."))
   }
 }
 

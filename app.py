@@ -1454,7 +1454,7 @@ def index():
             # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
             SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}.txt')
                         
-            RscriptRun = subprocess.run(args=['Rscript', Rscript_code_path, Pvalues_filepath, ldmatrix_filepath, '--outfilename', SSresult_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+            RscriptRun = subprocess.run(args=['Rscript', Rscript_code_path, Pvalues_filepath, ldmatrix_filepath, '--set_based_p', str(setbasedP), '--outfilename', SSresult_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
             if RscriptRun.returncode != 0:
                 raise InvalidUsage(RscriptRun.stdout, status_code=410)
             SSdf = pd.read_csv(SSresult_path, sep='\t', encoding='utf-8')
