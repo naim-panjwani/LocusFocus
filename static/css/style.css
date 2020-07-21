@@ -33,6 +33,17 @@ h5 {
   font-weight: bold;
 }
 
+.input-error {
+  color: red;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.tooltip-inner {
+  text-align: left;
+}
+
+
 /* Sticky Footer rules (https://getbootstrap.com/examples/sticky-footer/) */
 #footer {
   position: absolute;

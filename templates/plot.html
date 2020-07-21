@@ -103,8 +103,13 @@
             <p>
             <div class="alert alert-dismissible alert-info">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
-                <strong>Gray cells (with negative -log10 Simple Sum p-values) correspond to gene-tissue pairs with no Simple Sum (SS) P-value.<br>
-                    The exact reason for the absence of a SS P-value can be gleaned in the table below </strong>
+                <p><strong>Gray cells (with negative -log10 Simple Sum p-values) correspond to gene-tissue pairs with no Simple Sum (SS) P-value.<br>
+                    The exact reason for the absence of a SS P-value can be gleaned in the table below </strong></p>
+                <p><strong>Please note that we leave up to the user to determine the threshold of significance among the datasets that passed the first-stage significance test.
+                    For example, if a user selected 3 tissues and 4 genes for testing, and 3 other secondary datasets (a total of 3 &times; 4 + 3 = 15 tests) and among these,
+                    6 datasets were tested for colocalization, then one would conservatively choose to consider a Bonferroni-corrected p-value threshold of 
+                    0.05 / 6 = 8.3 &times; 10<sup>-3</sup>. Thus, Simple Sum colocalization tests above this threshold would be considered as significant.</strong>
+                </p>
             </div>
         </div>
     </div>
@@ -131,8 +136,13 @@
             <div class="alert alert-dismissible alert-info">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
                 <p><strong>-1 values correspond to gene-tissue pairs with no eQTL data (likely due to little or no expression)</strong></p>
-                <p><strong>-2 values correspond to gene-tissue pairs with no significant eQTLs after Bonferroni correction</strong></p>
+                <p><strong>-2 values correspond to gene-tissue pairs that did not pass the Bonferroni-corrected first stage testing for signficance among the secondary datasets chosen</strong></p>
                 <p><strong>-3 values correspond to gene-tissue pairs where the Simple Sum P-value computation failed, likely due to insufficient SNPs</strong></p>
+                <p><strong>Please note that we leave up to the user to determine the threshold of significance among the datasets that passed the first-stage significance test.
+                    For example, if a user selected 3 tissues and 4 genes for testing, and 3 other secondary datasets (a total of 3 &times; 4 + 3 = 15 tests) and among these,
+                    6 datasets were tested for colocalization, then one would conservatively choose to consider a Bonferroni-corrected p-value threshold of 
+                    0.05 / 6 = 8.3 &times; 10<sup>-3</sup>. Thus, Simple Sum colocalization tests above this threshold would be considered as significant.</strong>
+                </p>
             </div>
         </div> <!-- col-md-12 closing div -->
     </div> <!-- row closing div -->
@@ -161,8 +171,13 @@
             <div class="alert alert-dismissible alert-info">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
                 <p><strong>-1 values correspond to gene-tissue pairs with no eQTL data (likely due to little or no expression)</strong></p>
-                <p><strong>-2 values correspond to gene-tissue pairs with no significant eQTLs after Bonferroni correction</strong></p>
+                <p><strong>-2 values correspond to gene-tissue pairs that did not pass the Bonferroni-corrected first stage testing for signficance among the secondary datasets chosen</strong></p>
                 <p><strong>-3 values correspond to gene-tissue pairs where the Simple Sum P-value computation failed, likely due to insufficient SNPs</strong></p>
+                <p><strong>Please note that we leave up to the user to determine the threshold of significance among the datasets that passed the first-stage significance test.
+                    For example, if a user selected 3 tissues and 4 genes for testing, and 3 other secondary datasets (a total of 3 &times; 4 + 3 = 15 tests) and among these,
+                    6 datasets were tested for colocalization, then one would conservatively choose to consider a Bonferroni-corrected p-value threshold of 
+                    0.05 / 6 = 8.3 &times; 10<sup>-3</sup>. Thus, Simple Sum colocalization tests above this threshold would be considered as significant.</strong>
+                </p>
             </div>
         </div> <!-- col-md-12 closing div -->
     </div> <!-- row closing div -->
