@@ -48,7 +48,7 @@
       <div class="col-md-12 jumbotron text-center">
         <h1>LocusFocus</h1>
         <p><h4>Colocalization Testing Across Datasets</h4></p>
-        <p><h5>Version release: 1.2.0 alpha</h5></p>
+        <p><h5>Version release: 1.3.0 alpha</h5></p>
       </div>
     </div>
     <div class="row">
@@ -146,15 +146,16 @@
 
 
           <hr>
-<!--
+
           <div class="row">
             <div class="col-md-3">
               <input type="checkbox" id="coloc2check" name="coloc2check" onclick="addColoc2Inputs(this)"><label for="coloc2check" style="margin: 0px; padding: 10px;  height:42px"
               data-toggle="tooltip" title='If you would also like to run and compare colocalization analysis with Coloc2 method, extra input fields are required.'> Add required inputs for Coloc2
             </div>
           </div>
--->
-          <div class="row" id="statsDiv"></div>     
+
+          <div class="row" id="statsDiv"></div>
+          <div class="row" id="statsDiv2"></div>
           
 
           <hr>
@@ -162,8 +163,8 @@
           <div class="row">
             <div class="col-md-3">
               <label for="region" id="locusText" data-html="true" data-toggle="tooltip" title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
-              <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">Coordinates:</label>
-              <input class="form-control" id="locus" name="locus" type="text" placeholder="1:205,500,000-206,000,000" onchange=checkLocusInput(this.value)
+              <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">Coordinates </label>
+              <input class="form-control" id="locus" name="locus" type="text" value="1:205,500,000-206,000,000" onchange=checkLocusInput(this.value)
               data-html="true" data-toggle="tooltip" title="<p>Enter the region you would like to visualize on the colocalization plot.</p>
               <p>Your input format will be checked for correctness and genes in the region will be populated when selecting GTEx genes below.</p>">
               <div class="input-error" id="locusErrorDiv"></div>

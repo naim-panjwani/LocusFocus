@@ -42,12 +42,17 @@ default_pname = "P"
 default_betaname = "BETA"
 default_stderrname = "SE"
 default_nname = "N"
+default_mafname = "MAF"
 
 # Default column names for secondary datasets:
 CHROM = 'CHROM'
 BP = 'BP'
 SNP = 'SNP'
 P = 'P'
+
+coloc2colnames = ['CHR','POS','SNPID','A2','A1','BETA','SE','PVAL','MAF', 'N']
+coloc2eqtlcolnames = coloc2colnames + ['ProbeID']
+coloc2gwascolnames = coloc2colnames + ['type']
 
 ################
 ################
@@ -84,7 +89,7 @@ def parseRegionText(regiontext, build):
         raise InvalidUsage(f'Unrecognized build: {build}', status_code=410)
     regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
     if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
-       raise InvalidUsage('Invalid coordinate format. e.g. 1:205,000,000-206,000,000', status_code=410)
+       raise InvalidUsage(f'Invalid coordinate format. {regiontext} e.g. 1:205,000,000-206,000,000', status_code=410)
     chrom = regiontext.split(':')[0].lower().replace('chr','').upper()
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
@@ -98,7 +103,7 @@ def parseRegionText(regiontext, build):
             startbp = int(startbp)
             endbp = int(endbp)
         except:
-            raise InvalidUsage("Invalid coordinates input", status_code=410)
+            raise InvalidUsage(f"Invalid coordinates input: {regiontext}", status_code=410)
     else:
         try:
             chrom = int(chrom)
@@ -109,7 +114,7 @@ def parseRegionText(regiontext, build):
             startbp = int(startbp)
             endbp = int(endbp)
         except:
-            raise InvalidUsage("Invalid coordinates input", status_code=410)
+            raise InvalidUsage(f"Invalid coordinates input {regiontext}", status_code=410)
     if chrom < 1 or chrom > 23:
         raise InvalidUsage('Chromosome input must be between 1 and 23', status_code=410)
     elif startbp > endbp:
@@ -928,7 +933,7 @@ def prev_session():
         # print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
         if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath)):
             raise InvalidUsage(f'Could not locate session {my_session_id}')
-        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
+        return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
     return render_template('session_form.html')
 
 @app.route("/session_id/<old_session_id>")
@@ -948,7 +953,7 @@ def prev_session_input(old_session_id):
     print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
     if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath)):
         raise InvalidUsage(f'Could not locate session {my_session_id}')
-    return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
+    return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
     
 
 @app.route("/update/<session_id>/<newgene>")
@@ -1048,6 +1053,15 @@ def index():
     ldmat_time = np.nan
     ldmat_subsetting_time = np.nan
     SS_time = np.nan
+
+    # coloc2-specific secondary dataset columns:
+    BETA = 'BETA'
+    SE = 'SE'
+    ALT = 'A1'
+    REF = 'A2'
+    MAF = 'MAF'
+    ProbeID = 'ProbeID'
+    N = 'N'
     
     #######################################################
     # Uploading files
@@ -1117,14 +1131,32 @@ def index():
                 print('User would like COLOC2 results')
                 betacol = verifycol(formname = request.form['beta-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Beta column not found')
                 stderrcol = verifycol(formname = request.form['stderr-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Stderr column not found')
-                numsamplescol = verifycol(formname = request.form['numsamples-col'], defaultname = default_betaname, filecolnames = gwas_data.columns, error_message_='Number of samples column not found')
-                columnnames.extend([ betacol, stderrcol, numsamplescol ])
+                numsamplescol = verifycol(formname = request.form['numsamples-col'], defaultname = default_nname, filecolnames = gwas_data.columns, error_message_='Number of samples column not found')
+                mafcol = verifycol(formname = request.form['maf-col'], defaultname = default_mafname, filecolnames = gwas_data.columns, error_message_='MAF column not found')
+                columnnames.extend([ betacol, stderrcol, numsamplescol, mafcol ])
+                studytype = request.form['studytype']
+                studytypedf = pd.DataFrame({'type': np.repeat(studytype,gwas_data.shape[0]).tolist()})
+                if 'type' not in gwas_data.columns:
+                    gwas_data = pd.concat([gwas_data, studytypedf], axis=1)
+                columnnames.append('type')
+                if studytype == 'cc': 
+                    coloc2gwascolnames.append('Ncases')
+                    numcases = request.form['numcases']
+                    if not str(numcases).isdigit(): raise InvalidUsage('Number of cases entered must be an integer', status_code=410)
+                    numcasesdf = pd.DataFrame({'Ncases': np.repeat(int(numcases), gwas_data.shape[0]).tolist()})
+                    if 'Ncases' not in gwas_data.columns:
+                        gwas_data = pd.concat([gwas_data, numcasesdf], axis=1)
+                    columnnames.append('Ncases')
                 if not all(isinstance(x, float) for x in list(gwas_data[betacol])):
                     raise InvalidUsage(f'Beta column ({betacol}) has non-numeric entries')
                 if not all(isinstance(x, float) for x in list(gwas_data[stderrcol])):
                     raise InvalidUsage(f'Standard error column ({stderrcol}) has non-numeric entries')
                 if not all(isinstance(x, int) for x in list(gwas_data[numsamplescol])):
                     raise InvalidUsage(f'Number of samples column ({numsamplescol}) has non-integer entries')
+                if not all(isinstance(x, float) for x in list(gwas_data[mafcol])):
+                    raise InvalidUsage(f'MAF column ({mafcol}) has non-numeric entries')
+                
+
 
             # Further check column names provided:
             if len(set(columnnames)) != len(columnnames):
@@ -1148,8 +1180,10 @@ def index():
             elif len(gtex_genes) > 0 and len(gtex_tissues) == 0:
                 raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection')
             # old code remnant:
-            if gtex_version=="V7": gene='ENSG00000174502.14'
-            if gtex_version=="V8": gene='ENSG00000174502.18'
+            # if gtex_version=="V7": gene='ENSG00000174502.14'
+            # if gtex_version=="V8": gene='ENSG00000174502.18'
+            gene = gtex_genes[0]
+
 
 
             # Set-based P override:            
@@ -1268,7 +1302,10 @@ def index():
                     table = tables[i]
                     secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
             data['secondary_dataset_titles'] = table_titles
-            data['secondary_dataset_colnames'] = [CHROM, BP, SNP, P]
+            if runcoloc2:
+                data['secondary_dataset_colnames'] = ['CHR', 'POS', 'SNPID', 'PVAL', BETA, SE, 'N', ALT, REF, MAF, ProbeID]
+            else:
+                data['secondary_dataset_colnames'] = [CHROM, BP, SNP, P]
             data.update(secondary_datasets)
 
             ####################################################################################################
@@ -1343,13 +1380,30 @@ def index():
             SS_chrom_bool = [x for x in gwas_chrom_col.isin(chromList) if x == True]
             SS_indices = SS_chrom_bool & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end)
             SS_gwas_data = gwas_data.loc[ SS_indices ]
+            if runcoloc2:
+                coloc2_gwasdf = SS_gwas_data.rename(columns={
+                    chromcol: 'CHR'
+                    ,poscol: 'POS'
+                    ,snpcol: 'SNPID'
+                    ,pcol: 'PVAL'
+                    ,refcol: REF
+                    ,altcol: ALT
+                    ,betacol: BETA
+                    ,stderrcol: SE
+                    ,mafcol: MAF
+                    ,numsamplescol: numsamplescol
+                })
+                coloc2_gwasdf = coloc2_gwasdf.reindex(columns=coloc2gwascolnames)
             #print(gwas_data.shape)
             #print(SS_gwas_data.shape)
             #print(SS_gwas_data)
             if SS_gwas_data.shape[0] == 0: InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
             PvaluesMat = [list(SS_gwas_data[pcol])]
             SS_snp_list = list(SS_gwas_data[snpcol])
-            SS_snp_list = [asnp.split(';')[0] for asnp in SS_snp_list] # cleaning up the SNP names a bit
+            # SS_snp_list = [asnp.split(';')[0] for asnp in SS_snp_list] # cleaning up the SNP names a bit
+            if SSlocustext == '':
+                SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
+            SS_snp_list = mapAndCleanSNPs(SS_snp_list, SSlocustext, coordinate)
             SS_positions = list(SS_gwas_data[poscol])
             if len(SS_positions) != len(set(SS_positions)):
                 dups = set([x for x in SS_positions if SS_positions.count(x) > 1])
@@ -1367,6 +1421,7 @@ def index():
             # 3. Determine the genes to query
             #query_genes = list(genes_to_draw['name'])
             query_genes = gtex_genes
+            coloc2eqtl_df = pd.DataFrame({})
             # 4. Query and extract the eQTL p-values for all tissues & genes from GTEx
             t1 = datetime.now() # timer set to check how long data extraction from Mongo takes
             if len(gtex_tissues)>0:
@@ -1380,6 +1435,26 @@ def index():
                         if len(gtex_eqtl_df) > 0:
                             #gtex_eqtl_df.fillna(-1, inplace=True)
                             pvalues = list(gtex_eqtl_df['pval'])
+                            if runcoloc2:
+                                tempdf = gtex_eqtl_df.rename(columns={
+                                    'rs_id': 'SNPID'
+                                    ,'pval': 'PVAL'
+                                    ,'beta': BETA
+                                    ,'se': SE
+                                    ,'sample_maf': MAF
+                                    ,'chr': 'CHR'
+                                    ,'variant_pos': 'POS'
+                                    ,'ref': REF
+                                    ,'alt': ALT
+                                })
+                                numsamples = round(tempdf['ma_count'][0] / tempdf[MAF][0])
+                                numsampleslist = np.repeat(numsamples, tempdf.shape[0]).tolist()
+                                tempdf = pd.concat([tempdf,pd.Series(numsampleslist,name='N')],axis=1)
+                                probeid = str(tissue) + ':' + str(agene)
+                                probeidlist = np.repeat(probeid, tempdf.shape[0]).tolist()
+                                tempdf = pd.concat([tempdf, pd.Series(probeidlist,name='ProbeID')],axis=1)
+                                tempdf = tempdf.reindex(columns = coloc2eqtlcolnames)
+                                coloc2eqtl_df = pd.concat([coloc2eqtl_df, tempdf], axis=0)
                         else:
                             pvalues = np.repeat(np.nan, len(SS_snp_list))
                         PvaluesMat.append(pvalues)
@@ -1401,17 +1476,30 @@ def index():
             # 4.2 Extract user's secondary datasets' p-values
             ####################################################################################################
             if len(secondary_datasets)>0:
-                print('Obtaining p-values for uploaded secondary dataset(s)')
-                for i in np.arange(len(secondary_datasets)):
-                    secondary_dataset = tables[i]
-                    # remove duplicate SNPs
-                    idx = pd.Index(list(secondary_dataset[SNP]))
-                    secondary_dataset = secondary_dataset[~idx.duplicated()]
-                    # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
-                    snp_df = pd.DataFrame(SS_snp_list, columns=[SNP])
-                    secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP, how='left', sort=False).sort_values('index')
-                    pvalues = list(secondary_data[P])
-                    PvaluesMat.append(pvalues)
+                if runcoloc2:
+                    print('Saving uploaded secondary datasets for coloc2 run')
+                    for i in np.arange(len(secondary_datasets)):
+                        secondary_dataset = tables[i]
+                        secondary_dataset.set_index('SNPID', inplace=True)
+                        secondary_dataset = secondary_dataset[~secondary_dataset.index.duplicated()]
+                        # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
+                        snp_df = pd.DataFrame(SS_snp_list, columns=['SNPID'])
+                        secondary_data = snp_df.reset_index().merge(secondary_dataset, left_on=SNP, right_on='SNPID', how='left', sort=False).sort_values('index')
+                        pvalues = list(secondary_dataset['PVAL'])
+                        PvaluesMat.append(pvalues)
+                        coloc2eqtl_df = pd.concat([coloc2eqtl_df, secondary_data.reindex(columns = coloc2eqtlcolnames)], axis=0)
+                else:
+                    print('Obtaining p-values for uploaded secondary dataset(s)')
+                    for i in np.arange(len(secondary_datasets)):
+                        secondary_dataset = tables[i]
+                        # remove duplicate SNPs
+                        idx = pd.Index(list(secondary_dataset[SNP]))
+                        secondary_dataset = secondary_dataset[~idx.duplicated()]
+                        # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
+                        snp_df = pd.DataFrame(SS_snp_list, columns=[SNP])
+                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP, how='left', sort=False).sort_values('index')
+                        pvalues = list(secondary_data[P])
+                        PvaluesMat.append(pvalues)
 
             ####################################################################################################
             print('Extracting LD matrix')
@@ -1493,6 +1581,36 @@ def index():
             SS_time = datetime.now() - t1
             t2_total = datetime.now() - t1_total
 
+            ####################################################################################################
+            if runcoloc2:
+                print('Calculating COLOC2 stats')
+                coloc2gwasfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2gwas_df-{my_session_id}.txt')
+                coloc2_gwasdf.dropna().to_csv(coloc2gwasfilepath, index=False, encoding='utf-8', sep="\t")
+                coloc2eqtlfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2eqtl_df-{my_session_id}.txt')
+                coloc2eqtl_df.dropna().to_csv(coloc2eqtlfilepath, index=False, encoding='utf-8', sep="\t")
+                Rscript_code_path = os.path.join(MYDIR, 'coloc2', 'run_coloc2.R')
+                coloc2result_path = os.path.join(MYDIR, 'static', f'session_data/coloc2result_df-{my_session_id}.txt')
+                coloc2RscriptRun = subprocess.run(args=['Rscript', Rscript_code_path, coloc2gwasfilepath, coloc2eqtlfilepath, '--outfilename', coloc2result_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+                if coloc2RscriptRun.returncode != 0:
+                    raise InvalidUsage(coloc2RscriptRun.stdout, status_code=410)
+                coloc2df = pd.read_csv(coloc2result_path, sep='\t', encoding='utf-8').fillna(-1)
+                # save as json:
+                coloc2_dict = {
+                    'ProbeID': coloc2df['ProbeID'].tolist()
+                    ,'PPH4abf': coloc2df['PPH4abf'].tolist()
+                }
+            else:
+                coloc2_dict = {
+                    'ProbeID': []
+                    ,'PPH4abf': []
+                }
+            coloc2_file = f'session_data/coloc2result-{my_session_id}.json'
+            coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
+            json.dump(coloc2_dict, open(coloc2_filepath,'w'))
+
+            ####################################################################################################
+            
+
             timing_file = f'session_data/times-{my_session_id}.txt'
             timing_file_path = os.path.join(MYDIR, 'static', timing_file)
             with open(timing_file_path, 'w') as f:
@@ -1534,7 +1652,7 @@ def index():
             # if compressrun.returncode != 0:
             #     raise InvalidUsage(compressrun.stdout.decode('utf-8'), status_code=410)
 
-            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, sessionid = my_session_id)
+            return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
         return render_template("invalid_input.html")
     return render_template("index.html")
 
