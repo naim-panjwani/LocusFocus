@@ -19,6 +19,14 @@ dependencies:
   - beautifulsoup4=4.9.1=py37_0
   - binutils_impl_linux-64=2.34=h53a641e_7
   - binutils_linux-64=2.34=hc952b39_20
+  - bioconductor-biocgenerics=0.32.0=r36_0
+  - bioconductor-genomeinfodb=1.22.0=r36_0
+  - bioconductor-genomeinfodbdata=1.2.2=r36_0
+  - bioconductor-genomicranges=1.38.0=r36h516909a_0
+  - bioconductor-iranges=2.20.0=r36h516909a_0
+  - bioconductor-s4vectors=0.24.0=r36h516909a_0
+  - bioconductor-xvector=0.26.0=r36h516909a_0
+  - bioconductor-zlibbioc=1.32.0=r36h516909a_0
   - blas=2.17=openblas
   - bleach=3.1.5=py_0
   - bokeh=2.1.1=py37_0
@@ -226,6 +234,7 @@ dependencies:
   - r-globals=0.12.5=r36h6115d3f_1
   - r-glue=1.4.1=r36hcdcec82_0
   - r-haven=2.3.1=r36hde08347_0
+  - r-here=0.1=r36h6115d3f_0
   - r-highr=0.8=r36h6115d3f_0
   - r-hms=0.5.3=r36h6115d3f_1
   - r-htmltools=0.5.0=r36h0357c0b_0

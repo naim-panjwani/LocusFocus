@@ -63,7 +63,6 @@ function askChromInput(chromColDiv) {
         .attr('class', 'form-control')
         .attr('name', 'chrom-col')
         .attr('type', 'text')
-        .attr('onfocus', 'this.value=""')
         .attr('value', '#CHROM')
         .attr('data-toggle', 'tooltip')
         .attr('title', "Enter the header text corresponding to the chromosome column in your txt/tsv file (primary dataset)");
@@ -79,7 +78,6 @@ function askPosInput(posColDiv) {
         .attr('class', 'form-control')
         .attr('name', 'pos-col')
         .attr('type','text')
-        .attr('onfocus', 'this.value=""')
         .attr('value','POS')
         .attr('data-toggle', 'tooltip')
         .attr('title', "Enter the header text corresponding to the basepair coordinate position column in your txt/tsv file (primary dataset)");
@@ -95,7 +93,6 @@ function askRefInput(refColDiv) {
         .attr('class', 'form-control')
         .attr('name', 'ref-col')
         .attr('type','text')
-        .attr('onfocus', 'this.value=""')
         .attr('value','REF')
         .attr('data-toggle', 'tooltip')
         .attr('title', "Enter the header text corresponding to the reference allele column in your txt/tsv file (primary dataset)");
@@ -111,7 +108,6 @@ function askAltInput(altColDiv) {
         .attr('class', 'form-control')
         .attr('name', 'alt-col')
         .attr('type','text')
-        .attr('onfocus', 'this.value=""')
         .attr('value','ALT')
         .attr('data-toggle', 'tooltip')
         .attr('title', "Enter the header text corresponding to the alternate allele column in your txt/tsv file (primary dataset)");
@@ -128,9 +124,7 @@ function askSNPInput(markerColDiv) {
         .attr('class', 'form-control')
         .attr('name', 'snp-col')
         .attr('type', 'text')
-        //.attr('onfocus', 'this.value=""')
-        //.attr('value', "ID")
-        .attr('placeholder',"ID")
+        .attr('value', "ID")
         .attr('data-toggle', 'tooltip')
         .attr('data-html',"true")
         .attr('title', "<p>Enter the header text corresponding to the variant ID column in your txt/tsv file (primary dataset).</p><p>Accepted formats: rs7512462, 1_205899595_T_C_b37</p>");
@@ -160,7 +154,6 @@ function askBetaInput(betaColDiv) {
         .attr('class', 'form-control')
         .attr('name', 'beta-col')
         .attr('type','text')
-        .attr('onfocus', "this.value=''")
         .attr('value', "BETA")
         .attr('data-toggle', 'tooltip')
         .attr('data-html','true')
@@ -178,7 +171,6 @@ function askStdErrInput(stderrColDiv) {
         .attr('class','form-control')
         .attr('name','stderr-col')
         .attr('type','text')
-        .attr('onfocus',"this.value=''")
         .attr('value', "SE")
         .attr('data-toggle','tooltip')
         .attr('data-html','true')
@@ -214,7 +206,6 @@ function askPvalueInput(pvalueColDiv) {
         .attr('class','form-control')
         .attr('name','pval-col')
         .attr('type','text')
-        .attr('onfocus',"this.value=''")
         .attr('value', "P")
         .attr('data-toggle','tooltip')
         .attr('data-html','true')
@@ -232,7 +223,6 @@ function askMafInput(mafColDiv) {
         .attr('class','form-control')
         .attr('name','maf-col')
         .attr('type','text')
-        .attr('onfocus',"this.value=''")
         .attr('value', "MAF")
         .attr('data-toggle','tooltip')
         .attr('data-html','true')
@@ -456,7 +446,9 @@ function init() {
         $('[data-toggle="popover"]').popover()
     });
     $(document).ready(function(){
-        $('[data-toggle="tooltip"]').tooltip();
+        $('[data-toggle="tooltip"]').tooltip({
+            delay: { "show": 500, "hide": 100 }
+        });
     });
     
 }
