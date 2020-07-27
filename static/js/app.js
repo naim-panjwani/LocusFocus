@@ -1,6 +1,6 @@
-const startingChr = 1;
-const startingPos = 205500000;
-const endingPos = 206000000;
+const startingChr = "1";
+const startingPos = "205,500,000";
+const endingPos = "206,000,000";
 const genomicWindowLimit = 2e6;
 var submitButton = d3.select("#submit-btn");
 var errorDiv = d3.select("#error-messages");
@@ -16,11 +16,12 @@ var posColDiv = d3.select("#pos");
 var refColDiv = d3.select("#ref");
 var altColDiv = d3.select("#alt");
 var statsDiv = d3.select("#statsDiv");
+var statsDiv2 = d3.select("#statsDiv2");
 
 
 var locText = d3.select("#locusText").text();
 d3.select("#locusText").text(`${locText} (max: ${genomicWindowLimit/1e6} Mbp):`);
-d3.select("#locus").attr('placeholder', `${startingChr}:${startingPos}-${endingPos}`);
+d3.select("#locus").attr('value', `${startingChr}:${startingPos}-${endingPos}`);
 
 // FUNCTIONS
 
@@ -128,8 +129,8 @@ function askSNPInput(markerColDiv) {
         .attr('name', 'snp-col')
         .attr('type', 'text')
         //.attr('onfocus', 'this.value=""')
-        //.attr('value', "ID (optional)")
-        .attr('placeholder',"ID (optional)")
+        //.attr('value', "ID")
+        .attr('placeholder',"ID")
         .attr('data-toggle', 'tooltip')
         .attr('data-html',"true")
         .attr('title', "<p>Enter the header text corresponding to the variant ID column in your txt/tsv file (primary dataset).</p><p>Accepted formats: rs7512462, 1_205899595_T_C_b37</p>");
@@ -183,19 +184,19 @@ function askStdErrInput(stderrColDiv) {
         .attr('data-html','true')
         .attr('title','Enter the header text corresponding to the standard error column in your txt/tsv file (primary dataset)');
 }
-function askNumSamplesInput(numSamplesColDiv) {
-    numSamplesColDiv.html("");
-    numSamplesColDiv.append("label")
-        .attr('for', 'numSamplesColname')
+function askNumSamplesInput(numSamplesDiv) {
+    numSamplesDiv.html("");
+    numSamplesDiv.append("label")
+        .attr('for', 'numSamples')
         .attr('data-html','true')
         .attr('data-toggle', 'tooltip')
         .attr('title','Enter the header text corresponding to the number of samples column in your txt/tsv file (primary dataset)')
         .text('Number of Samples Column Name:');
-    numSamplesColDiv.append('input')
+    numSamplesDiv.append('input')
         .attr('class','form-control')
         .attr('name','numsamples-col')
+        .attr('id','numsamples-col')
         .attr('type','text')
-        .attr('onfocus',"this.value=''")
         .attr('value', "N")
         .attr('data-toggle','tooltip')
         .attr('data-html','true')
@@ -219,16 +220,84 @@ function askPvalueInput(pvalueColDiv) {
         .attr('data-html','true')
         .attr('title','Enter the header text corresponding to the p-value column in your txt/tsv file (primary dataset)');
 }
+function askMafInput(mafColDiv) {
+    mafColDiv.html("");
+    mafColDiv.append("label")
+        .attr('for', 'maf')
+        .attr('data-html','true')
+        .attr('data-toggle', 'tooltip')
+        .attr('title','Header text corresponding to the MAF column in your txt/tsv file (primary dataset)')
+        .text('MAF Column Name:');
+    mafColDiv.append('input')
+        .attr('class','form-control')
+        .attr('name','maf-col')
+        .attr('type','text')
+        .attr('onfocus',"this.value=''")
+        .attr('value', "MAF")
+        .attr('data-toggle','tooltip')
+        .attr('data-html','true')
+        .attr('title','Enter the header text corresponding to the MAF column in your txt/tsv file (primary dataset)');
+}
+function askNumCasesInput(studytype) {
+    var numCasesDiv = d3.select('#numCases');
+    numCasesDiv.html("");
+    if(studytype === 'cc') {
+        numCasesDiv.append("label")
+            .attr('for', 'numcases')
+            .attr('data-html','true')
+            .attr('data-toggle', 'tooltip')
+            .attr('title','Enter the number of cases in the study')
+            .text('Number of Cases:');
+        numCasesDiv.append('input')
+            .attr('class','form-control')
+            .attr('name','numcases')
+            .attr('id','numcases')
+            .attr('type','text')
+            .attr('value', 100)
+            .attr('data-toggle','tooltip')
+            .attr('data-html','true')
+            .attr('title','Enter the number of cases in the study')
+            .attr('onchange',"checkNumSamplesInput(this.value)");
+        numCasesDiv.append('div').attr('class','input-error').attr('id','numSamplesError-message');
+    }
+}
+function askStudytypeInput(studytypeDiv) {
+    studytypeDiv.html("");
+    studytypeDiv.append("label")
+        .attr('for', 'studytype')
+        .attr('data-toggle', 'tooltip')
+        .attr('title','Select whether the phenotype is quantitative, or whether  it is a case-control design')
+        .text('Select Study Type:');
+    studytypeDivSelect = studytypeDiv.append('p')
+        .append("select")
+        .attr('id','studytype')
+        .attr('name','studytype')
+        .attr('onchange','askNumCasesInput(this.value)');
+    studytypeDivSelect
+        .append('option')
+        .text('Quantitative')
+        .property('value','quant');
+    studytypeDivSelect
+        .append('option')
+        .text('Case-control')
+        .property('value', 'cc');
+}
 function askColocInputs() {
     statsDiv.html("");
+    statsDiv2.html("");
     var betaColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','beta');
     var stderrColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','stderr');
-    var numSamplesColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','numSamples');
+    var numSamplesDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','numSamples');
     var pvalueColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','p_value');
+    var mafColDiv = statsDiv2.append('div').attr('class','col-md-3').attr('id','maf');
+    var studytypeDiv = statsDiv2.append('div').attr('class','col-md-3').attr('id','studytype');
+    statsDiv2.append('div').attr('class','col-md-3').attr('id','numCases');
     askBetaInput(betaColDiv);
     askStdErrInput(stderrColDiv);
-    askNumSamplesInput(numSamplesColDiv);
+    askNumSamplesInput(numSamplesDiv);
     askPvalueInput(pvalueColDiv);
+    askMafInput(mafColDiv);
+    askStudytypeInput(studytypeDiv);
 }
 
 function inferVariant(snpbox) {
@@ -253,6 +322,7 @@ function addColoc2Inputs(colocinput) {
     }
     else {
         statsDiv.html("");
+        statsDiv2.html("");
         var pvalueColDiv = statsDiv.append('div').attr('class','col-md-3').attr('id','p_value');
         askPvalueInput(pvalueColDiv);
     }

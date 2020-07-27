@@ -4,6 +4,24 @@
 Created on Tue Nov 26 17:43:52 2019
 
 @author: naim
+
+This script is similar to merge_and_convert_to_html.py, but adds 
+the additional columns required for coloc2 secondary datasets
+
+Description file should contain the following information per row:
+    1. File name to merge
+    2. Description of the dataset
+    3. Chromosome column name
+    4. Basepair position column name
+    5. SNP ID column name
+    6. P-value column name
+    7. Beta column name
+    8. Standard error column name
+    9. Number of samples column name
+    10. Alternate or A1 allele column name
+    11. Reference or A2 allele column name
+    12. MAF column name
+    13. ProbeID column name
 """
 
 import argparse
@@ -16,10 +34,17 @@ import sys
 #from bs4 import BeautifulSoup as bs
 
 # Default column names:
-CHROM = 'CHROM'
-BP = 'BP'
-SNP = 'SNP'
-P = 'P'
+CHROM = 'CHR'
+BP = 'POS'
+SNP = 'SNPID'
+P = 'PVAL'
+BETA = 'BETA'
+SE = 'SE'
+N = 'N'
+ALT = 'A1'
+REF = 'A2'
+MAF = 'MAF'
+ProbeID = 'ProbeID'
 
 genomicWindowLimit = 2e6
 
@@ -143,7 +168,20 @@ if __name__=='__main__':
     parser.add_argument('filelist_filename', 
                         help='Filename containing the list of files to be merged together.\n \
                         The second column (tab-delimited) may contain descriptions of the datasets.\n \
-                        The remaining columns specify the column names for chromosome, basepair position, SNP name, P-value (in that order).')
+                        The remaining columns should contain the following information per row:\n \
+                            1. File name to merge\n \
+                            2. Description of the dataset\n \
+                            3. Chromosome column name\n \
+                            4. Basepair position column name\n \
+                            5. SNP ID column name\n \
+                            6. P-value column name\n \
+                            7. Beta column name\n \
+                            8. Standard error column name\n \
+                            9. Number of samples column name\n \
+                            10. Alternate or A1 allele column name\n \
+                            11. Reference or A2 allele column name\n \
+                            12. MAF column name\n \
+                            13. ProbeID column name')
     parser.add_argument('coordinates', help="The region coordinates to subset from each file (e.g. 1:500,000-600,000")
     parser.add_argument('outfilename', help="Desired output filename for the merged file")
     args = parser.parse_args()  
@@ -178,19 +216,26 @@ if __name__=='__main__':
     
     print('Verifying settings in filelist_filename')
     for i in np.arange(len(files)):
-        if not checkColnames(files[i], list(filelist.iloc[i,2:6])):
-            raise Exception('Column names given: ' + str(list(filelist.iloc[i,2:6])) + '\n Not all match for file ' + files[i])
+        if not checkColnames(files[i], list(filelist.iloc[i,2:])):
+            raise Exception('Column names given: ' + str(list(filelist.iloc[i,2:])) + '\n Not all match for file ' + files[i])
 
     print('Merging files')
     final_merge = '<!DOCTYPE html>\n<html>'
     for i in tqdm(np.arange(len(files))):
         df = pd.read_csv(files[i], sep='\t', skiprows=getNumHeaderLines(files[i]))
-        desired_cols = list(filelist.iloc[i,2:6])
+        desired_cols = list(filelist.iloc[i,2:])
         df = df[desired_cols].rename(columns={
                 desired_cols[0]: CHROM
                 ,desired_cols[1]: BP
                 ,desired_cols[2]: SNP
                 ,desired_cols[3]: P
+                ,desired_cols[4]: BETA
+                ,desired_cols[5]: SE
+                ,desired_cols[6]: N
+                ,desired_cols[7]: ALT
+                ,desired_cols[8]: REF
+                ,desired_cols[9]: MAF
+                ,desired_cols[10]: ProbeID
                 })
         if chrom == 23:
             df[CHROM] = np.repeat(chrom, df.shape[0])

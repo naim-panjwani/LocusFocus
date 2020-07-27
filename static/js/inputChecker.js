@@ -67,3 +67,11 @@ function checkSSInput(regiontext) {
         })
     }
 }
+
+function checkNumSamplesInput(numsamples) {
+    errordiv = d3.select("#numSamplesError-message");
+    errordiv.text("");
+    if(Number.isInteger(+numsamples) === false) {
+        errordiv.text("Must be integer")
+    }
+}

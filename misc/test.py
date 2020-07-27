@@ -328,7 +328,7 @@ default_altname = "ALT"
 MYDIR = os.getcwd()
 coordinates = 'hg38'
 gwasdata = pd.read_csv(os.path.join(os.getcwd(), 'data', 'sample_datasets', 'MI_GWAS_2019_1_205500-206000kbp_hg38.tsv'), sep='\t', encoding='utf-8')
-genomicWindowLimit = 2000000
+genomicWindowLimit = 2e6
 default_region = "1:205500000-206000000"
 
 ## Test mapAndCleanSNPs function
