@@ -30,7 +30,7 @@ function coordinateChange(newCoordinate) {
     $('#LD-populations').multiselect('destroy');
     $('#GTEx-tissues').multiselect('destroy');
     $('#region-genes').multiselect('destroy');
-    d3.select("#locus").property("value", "1:205500000-206000000");
+    d3.select("#locus").property("value", `${startingChr}:${startingPos}-${endingPos}`);
     if(newCoordinate === "hg38") {
         gtex_version = "v8";
         gtexurl = `/gtex/${gtex_version}/tissues_list`;
@@ -64,6 +64,7 @@ function askChromInput(chromColDiv) {
         .attr('name', 'chrom-col')
         .attr('type', 'text')
         .attr('value', '#CHROM')
+        .attr('onfocus',"this.value=''")
         .attr('data-toggle', 'tooltip')
         .attr('title', "Enter the header text corresponding to the chromosome column in your txt/tsv file (primary dataset)");
 }
@@ -79,6 +80,7 @@ function askPosInput(posColDiv) {
         .attr('name', 'pos-col')
         .attr('type','text')
         .attr('value','POS')
+        .attr('onfocus',"this.value=''")
         .attr('data-toggle', 'tooltip')
         .attr('title', "Enter the header text corresponding to the basepair coordinate position column in your txt/tsv file (primary dataset)");
 }
@@ -94,6 +96,7 @@ function askRefInput(refColDiv) {
         .attr('name', 'ref-col')
         .attr('type','text')
         .attr('value','REF')
+        .attr('onfocus',"this.value=''")
         .attr('data-toggle', 'tooltip')
         .attr('title', "Enter the header text corresponding to the reference allele column in your txt/tsv file (primary dataset)");
 }
@@ -109,6 +112,7 @@ function askAltInput(altColDiv) {
         .attr('name', 'alt-col')
         .attr('type','text')
         .attr('value','ALT')
+        .attr('onfocus',"this.value=''")
         .attr('data-toggle', 'tooltip')
         .attr('title', "Enter the header text corresponding to the alternate allele column in your txt/tsv file (primary dataset)");
 }
@@ -125,6 +129,7 @@ function askSNPInput(markerColDiv) {
         .attr('name', 'snp-col')
         .attr('type', 'text')
         .attr('value', "ID")
+        .attr('onfocus', "this.value=''")
         .attr('data-toggle', 'tooltip')
         .attr('data-html',"true")
         .attr('title', "<p>Enter the header text corresponding to the variant ID column in your txt/tsv file (primary dataset).</p><p>Accepted formats: rs7512462, 1_205899595_T_C_b37</p>");
@@ -155,6 +160,7 @@ function askBetaInput(betaColDiv) {
         .attr('name', 'beta-col')
         .attr('type','text')
         .attr('value', "BETA")
+        .attr('onfocus',"this.value=''")
         .attr('data-toggle', 'tooltip')
         .attr('data-html','true')
         .attr('title', 'Enter the header text corresponding to the beta column in your txt/tsv file (primary dataset)');
@@ -172,6 +178,7 @@ function askStdErrInput(stderrColDiv) {
         .attr('name','stderr-col')
         .attr('type','text')
         .attr('value', "SE")
+        .attr('onfocus',"this.value=''")
         .attr('data-toggle','tooltip')
         .attr('data-html','true')
         .attr('title','Enter the header text corresponding to the standard error column in your txt/tsv file (primary dataset)');
@@ -190,6 +197,7 @@ function askNumSamplesInput(numSamplesDiv) {
         .attr('id','numsamples-col')
         .attr('type','text')
         .attr('value', "N")
+        .attr('onfocus',"this.value=''")
         .attr('data-toggle','tooltip')
         .attr('data-html','true')
         .attr('title','Enter the header text corresponding to the number of samples column in your txt/tsv file (primary dataset)');
@@ -207,6 +215,7 @@ function askPvalueInput(pvalueColDiv) {
         .attr('name','pval-col')
         .attr('type','text')
         .attr('value', "P")
+        .attr('onfocus',"this.value=''")
         .attr('data-toggle','tooltip')
         .attr('data-html','true')
         .attr('title','Enter the header text corresponding to the p-value column in your txt/tsv file (primary dataset)');
@@ -224,6 +233,7 @@ function askMafInput(mafColDiv) {
         .attr('name','maf-col')
         .attr('type','text')
         .attr('value', "MAF")
+        .attr('onfocus',"this.value=''")
         .attr('data-toggle','tooltip')
         .attr('data-html','true')
         .attr('title','Enter the header text corresponding to the MAF column in your txt/tsv file (primary dataset)');
@@ -244,6 +254,7 @@ function askNumCasesInput(studytype) {
             .attr('id','numcases')
             .attr('type','text')
             .attr('value', 100)
+            .attr('onfocus',"this.value=''")
             .attr('data-toggle','tooltip')
             .attr('data-html','true')
             .attr('title','Enter the number of cases in the study')

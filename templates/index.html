@@ -44,41 +44,10 @@
 
 <body> 
   <div class="container">
-    <div class="row">
-      <div class="col-md-12 jumbotron text-center">
-        <h1>LocusFocus</h1>
-        <p><h4>Colocalization Testing Across Datasets</h4></p>
-        <p><h5>Version release: 1.3.0 alpha</h5></p>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-md-12 borderit">
-        <a href="/previous_session" role="button" class="btn btn-primary btn-lg">Session ID</a>
-        <a href="https://locusfocus.readthedocs.io" role="button" class="btn btn-primary btn-lg">Documentation</a>
-        <a href="/session_id/0d074aff-76f4-42ab-87ef-5e2fa34b04e8" role="button" class="btn btn-primary btn-lg">Example Output</a>
-        <a href="mailto:naim.panjwani@sickkids.ca" role="button" class="btn btn-primary btn-lg">Contact Us</a>
-        <a href="https://mailchi.mp/752ab1c4d516/locusfocus" role="button" class="btn btn-primary btn-lg">Subscribe</a>
-        <button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#citeModal">Citation</button>
-        <div id="citeModal" class="modal fade" role="dialog">
-          <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h4 class="modal-title">LocusFocus: A web-based colocalization tool for the annotation and functional follow-up of GWAS</h4>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-              </div>
-              <div class="modal-body">
-                <p>Authors:</p>
-                <p>Naim Panjwani, Fan Wang, Cheng Wang, Gengming He, Scott Mastromatteo, Allen Bao, Jiafen Gong, Johanna M Rommens, Lei Sun, Lisa J Strug</p>
-              </div>
-              <div class="modal-footer">
-                <p><a href="https://doi.org/10.1101/2020.01.02.891291">bioRxiv 2020.01.02.891291</a></p>
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="row" id="myjumbotron"></div>
+    <div class="row" id="navigation-bar"></div>
+
+
     <div class="inputs-and-upload-form">
     <form method=post enctype=multipart/form-data>
       <div class="row">
@@ -288,6 +257,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
   
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/navigation-bar.js') }}"></script>
   <script src="{{ url_for('static', filename='js/inputChecker.js') }}"></script>
   <!-- Bootstrap tooltips -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>

@@ -22,9 +22,11 @@
 
 <body>
     <div class="container">
+    <div class="row" id="myjumbotron"></div>
+    <div class="row" id="navigation-bar"></div>
     <div class="row">
-        <div class="col-md-6">
-            <div class="card border-primary mb-3" style="max-width: 20rem;">
+        <div class="col-md-12 d-flex justify-content-center align-items-center">
+            <div class="card border-primary mb-9" style="max-width: 60rem;">
                 <div class="card-header">Session ID</div>
                 <div class="card-body">
                     <h4 class="card-title" id="sessionid"></h4>
@@ -208,6 +210,7 @@
 
     <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
+  
   <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/plot.js') }}"></script>
@@ -226,7 +229,7 @@
             d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
                 d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(SSResponse => {
                     d3.json("{{ url_for('static', filename=coloc2_file) }}").then(coloc2Response => {
-                        d3.select("#sessionid").text(sessionid);
+                        d3.select("#sessionid").append('a').attr('href',`/session_id/${sessionid}`).text(sessionid);
                         var data = response;
                         var genesdata = genesResponse;
                         populate_genes(genesdata, data);
@@ -387,6 +390,7 @@
   </script>
   <!-- JQuery -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="{{ url_for('static', filename='js/navigation-bar.js') }}"></script>
   <!-- Bootstrap tooltips -->
   <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.4/umd/popper.min.js"></script>
   <!-- Bootstrap core JavaScript -->

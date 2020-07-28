@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>LocusFocus: Prioritize Genes and Tissues for Study from GWAS and eQTL Integration</title>
+  <title>LocusFocus: A Colocalization Tool to Prioritize Genes and Tissues from GWAS and eQTL Integration</title>
   <link rel="shortcut icon" href="#" />
    <!-- Font Awesome -->
    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css">
@@ -28,12 +28,8 @@
 
 <body> 
   <div class="container">
-    <div class="row">
-      <div class="col-md-12 jumbotron text-center">
-        <h1>LocusFocus: Prioritize Genes and Tissues from GWAS</h1>
-        <p><h4>Explore Your GWAS Results Overlaid on GTEx's eQTL Association Results</h4></p>
-      </div>
-    </div>
+    <div class="row" id="myjumbotron"></div>
+    <div class="row" id="navigation-bar"></div>
     <div class="row">
       <div class="col-md-12 borderit">
         <div class="col-md-8">
@@ -58,6 +54,7 @@
 
   <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
+  <script src="{{ url_for('static', filename='js/navigation-bar.js') }}"></script>
   
   <!-- <script src="{{ url_for('static', filename='js/app.js') }}"></script> -->
   <!-- Bootstrap tooltips -->
@@ -70,7 +67,6 @@
   <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.dataTables.min.js') }}"></script>
   <!-- Multiselect -->
   <script src="{{ url_for('static', filename='js/bootstrap-multiselect.js') }}"></script>
-
 </body>
 
 </html>

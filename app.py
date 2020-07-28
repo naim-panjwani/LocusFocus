@@ -923,15 +923,17 @@ def prev_session():
             sessionfile =  f'session_data/form_data-{my_session_id}.json'
             genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
             SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
+            coloc2_file = f'session_data/coloc2result-{my_session_id}.json'
             sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
             genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
+            coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
         else: # blank input
             raise InvalidUsage('Invalid input')
         # print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
         # print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
         # print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
-        if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath)):
+        if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
             raise InvalidUsage(f'Could not locate session {my_session_id}')
         return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
     return render_template('session_form.html')
@@ -943,15 +945,17 @@ def prev_session_input(old_session_id):
         sessionfile =  f'session_data/form_data-{my_session_id}.json'
         genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
         SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
+        coloc2_file = f'session_data/coloc2result-{my_session_id}.json'
         sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
         genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
         SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
+        coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
     else: # blank input
         raise InvalidUsage('Invalid input')
     print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
     print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
     print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
-    if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath)):
+    if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
         raise InvalidUsage(f'Could not locate session {my_session_id}')
     return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)
     
@@ -1447,7 +1451,8 @@ def index():
                                     ,'ref': REF
                                     ,'alt': ALT
                                 })
-                                numsamples = round(tempdf['ma_count'][0] / tempdf[MAF][0])
+                                tempdf.dropna(inplace=True)
+                                numsamples = round(tempdf['ma_count'].tolist()[0] / tempdf[MAF].tolist()[0])
                                 numsampleslist = np.repeat(numsamples, tempdf.shape[0]).tolist()
                                 tempdf = pd.concat([tempdf,pd.Series(numsampleslist,name='N')],axis=1)
                                 probeid = str(tissue) + ':' + str(agene)
@@ -1579,10 +1584,11 @@ def index():
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
             json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
             SS_time = datetime.now() - t1
-            t2_total = datetime.now() - t1_total
 
             ####################################################################################################
+            coloc2_time = 0
             if runcoloc2:
+                t1 = datetime.now() # timer for COLOC2 run
                 print('Calculating COLOC2 stats')
                 coloc2gwasfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2gwas_df-{my_session_id}.txt')
                 coloc2_gwasdf.dropna().to_csv(coloc2gwasfilepath, index=False, encoding='utf-8', sep="\t")
@@ -1599,6 +1605,7 @@ def index():
                     'ProbeID': coloc2df['ProbeID'].tolist()
                     ,'PPH4abf': coloc2df['PPH4abf'].tolist()
                 }
+                coloc2_time = datetime.now() - t1
             else:
                 coloc2_dict = {
                     'ProbeID': []
@@ -1608,6 +1615,7 @@ def index():
             coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
             json.dump(coloc2_dict, open(coloc2_filepath,'w'))
 
+            t2_total = datetime.now() - t1_total
             ####################################################################################################
             
 
@@ -1640,6 +1648,7 @@ def index():
                 f.write(f'For {num_nmiss_tissues} pairwise calculations out of {PvaluesMat.shape[0]-1}\n')
                 if num_nmiss_tissues != 0: f.write(f'Time per Mongo query: {gtex_all_queries_time/num_nmiss_tissues}\n')
                 if num_nmiss_tissues != 0: f.write(f'Time per SS calculation: {SS_time/num_nmiss_tissues}\n')
+                if coloc2_time != 0: f.write(f'Time for COLOC2 run: {coloc2_time}\n')
                 f.write(f'Total time: {t2_total}\n')
             
             # Compress session data files for easy download:
