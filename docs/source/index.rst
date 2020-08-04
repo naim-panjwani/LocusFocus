@@ -34,4 +34,5 @@ and more colocalization methods may be made available in future version releases
    local_installation
    help
    license
+   future
 
