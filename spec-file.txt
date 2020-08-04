@@ -79,6 +79,7 @@ https://repo.anaconda.com/pkgs/main/linux-64/krb5-1.17.1-h173b8e3_0.conda
 https://conda.anaconda.org/conda-forge/linux-64/libcblas-3.8.0-17_openblas.tar.bz2
 https://conda.anaconda.org/conda-forge/linux-64/liblapack-3.8.0-17_openblas.tar.bz2
 https://repo.anaconda.com/pkgs/main/linux-64/libtiff-4.1.0-h2733197_1.conda
+https://repo.anaconda.com/pkgs/main/linux-64/libxslt-1.1.34-hc22bd24_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/sqlite-3.32.3-h62c20be_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/tktable-2.10-h14c3975_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/unixodbc-2.3.7-h14c3975_0.conda
@@ -119,6 +120,7 @@ https://repo.anaconda.com/pkgs/main/noarch/jeepney-0.4.3-py_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/kiwisolver-1.2.0-py37hfd86e86_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/lazy-object-proxy-1.5.0-py37h7b6447c_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/locket-0.2.0-py37_1.conda
+https://repo.anaconda.com/pkgs/main/linux-64/lxml-4.5.2-py37hefd8a0e_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/markupsafe-1.1.1-py37h14c3975_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/mccabe-0.6.1-py37_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/mistune-0.8.4-py37h14c3975_1001.conda
@@ -128,6 +130,7 @@ https://repo.anaconda.com/pkgs/main/linux-64/pandocfilters-1.4.2-py37_1.conda
 https://repo.anaconda.com/pkgs/main/noarch/parso-0.7.0-py_0.conda
 https://repo.anaconda.com/pkgs/main/noarch/pathtools-0.1.2-py_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/pickleshare-0.7.5-py37_1001.conda
+https://conda.anaconda.org/conda-forge/noarch/port-for-0.4-py_1.tar.bz2
 https://repo.anaconda.com/pkgs/main/linux-64/psutil-5.7.0-py37h7b6447c_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/ptyprocess-0.6.0-py37_0.conda
 https://repo.anaconda.com/pkgs/main/noarch/pycodestyle-2.6.0-py_0.conda
@@ -212,6 +215,7 @@ https://repo.anaconda.com/pkgs/main/noarch/importlib_metadata-1.7.0-0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/isort-4.3.21-py37_0.conda
 https://repo.anaconda.com/pkgs/main/noarch/jinja2-2.11.2-py_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/jupyter_core-4.6.3-py37_0.conda
+https://conda.anaconda.org/conda-forge/noarch/livereload-2.6.2-pyh9f0ad1d_0.tar.bz2
 https://repo.anaconda.com/pkgs/main/linux-64/numpy-1.18.5-py37h7130bb8_0.conda
 https://repo.anaconda.com/pkgs/main/noarch/pygments-2.6.1-py_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/wheel-0.34.2-py37_0.conda
@@ -230,6 +234,7 @@ https://repo.anaconda.com/pkgs/main/noarch/pyopenssl-19.1.0-py_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/qt-5.6.3-h8bf5577_3.conda
 https://repo.anaconda.com/pkgs/main/linux-64/scipy-1.5.0-py37habc2bb6_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/secretstorage-3.1.2-py37_1.conda
+https://conda.anaconda.org/conda-forge/noarch/sphinx-autobuild-0.7.1-py_2.tar.bz2
 https://repo.anaconda.com/pkgs/main/noarch/dask-2.20.0-py_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/ipython-7.16.1-py37h5ca1d4c_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/keyring-21.2.1-py37_0.conda
