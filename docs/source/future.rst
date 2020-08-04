@@ -9,6 +9,9 @@ LocusFocus is `open source <https://github.com/naim-panjwani/LocusFocus>`_ and c
 Below is a list of improvements and features currently under development:
 
 - Enable uploading of compressed files (then convert to bgzip/tabix)
+- Implement a queue system to enable job submission and later retrieval
+- Explore other ways to enable saving of vector images
+- Implement SMR colocalization method
 - Enable immediate deletion of the session data
 - Enable option to match variant names by just chrom:pos information (currently should only be either all rsid's or all variant_id format)
 - Generate updated 1KG Phase 3 binary PLINK files for hg19 LD calculations (currently only have 2012 1KG file)
