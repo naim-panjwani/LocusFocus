@@ -42,7 +42,9 @@ outfilename <- argv$outfilename
 # P_values_filename <- "data/test_data/Pvalues.txt"
 # ld_matrix_filename <- "data/test_data/ldmat.txt"
 # outfilename <- "data/test_data/SSPvalues.txt"
-
+# P_values_filename <- "static/session_data/Pvalues-5def29d3-a173-42b7-a49e-6ea0a53e17da"
+# ld_matrix_filename <- "static/session_data/ldmat-5def29d3-a173-42b7-a49e-6ea0a53e17da"
+# outfilename <- "static/session_data/SSPvalues-5def29d3-a173-42b7-a49e-6ea0a53e17da"
 
 ###############################################################################
 ############ FUNCTIONS

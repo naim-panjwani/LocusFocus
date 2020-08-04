@@ -107,7 +107,33 @@ def getNumHeaderLines(vcf_filename, num_lines_to_check = 1000):
     return num_header_lines
 
 
-def fetchSNV(chrom, bp, ref, build):
+
+def fetchSNV(chrom, bp, ref, build, alt=''):
+    """
+    Parameters
+    ----------
+    chrom : str or int
+        human chromosome number (must be 1-23 or X).
+    bp : str or int
+        must be within chromosome range.
+    ref : str
+        reference allele.
+    build : str
+        build.lower() in ['hg19','hg38'] must be true.
+    alt : str, optional
+        alternate allele. The default is ''.
+
+    Raises
+    ------
+    InvalidUsage
+        Fails if invalid chromosome and or basepair positions entered.
+
+    Returns
+    -------
+    variantid : str
+        The standardized variant id in chr_pos_ref_alt_build format.
+
+    """
     variantid = '.'
     
     if ref is None or ref=='.':
@@ -154,7 +180,9 @@ def fetchSNV(chrom, bp, ref, build):
     return variantid
 
 
-def mapAndCleanSNPs(variantlist, regiontxt, build):
+
+
+def standardizeSNPs(variantlist, regiontxt, build):
     """
     Input: Variant names in any of these formats: rsid, chrom_pos_ref_alt, chrom:pos_ref_alt, chrom:pos_ref_alt_b37/b38 
     Output: chrom_pos_ref_alt_b37/b38 variant ID format.
@@ -162,12 +190,17 @@ def mapAndCleanSNPs(variantlist, regiontxt, build):
     If variant ID format is chr:pos, and the chr:pos has a unique biallelic SNV, then it will be assigned that variant
     """
     
+    if all(x=='.' for x in variantlist):
+        raise InvalidUsage('No variants provided')
+        
+    
     # Ensure valid region:
     chrom, startbp, endbp = parseRegionText(regiontxt, build)
     chrom = str(chrom).replace('23',"X")
 
     # Load dbSNP151 SNP names from region indicated
     dbsnp_filepath = ''
+    suffix = 'b37'
     if build.lower() in ["hg38", "grch38"]:
         suffix = 'b38'
         dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
@@ -215,7 +248,11 @@ def mapAndCleanSNPs(variantlist, regiontxt, build):
     variantlist = [asnp.split(';')[0].replace(':','_').replace('.','') for asnp in variantlist] # cleaning up the SNP names a bit
     stdvariantlist = []
     for variant in variantlist:
+        if variant == '':
+            stdvariantlist.append('.')
+            continue
         variantstr = variant.replace('chr','')
+        if re.search("^23_",variantstr): variantstr = variantstr.replace('23_','X_',1)
         if variantstr.startswith('rs'):
             try:
                 stdvariantlist.append(rsids[variantstr][0])
@@ -226,22 +263,24 @@ def mapAndCleanSNPs(variantlist, regiontxt, build):
             strlist = list(filter(None, strlist)) # remove empty strings
             try:
                 achr, astart, aend = parseRegionText(strlist[0]+":"+strlist[1]+"-"+str(int(strlist[1])+1), build)
-                if str(achr).replace('23','X') == str(chrom) and astart >= startbp and astart <= endbp:
+                achr = str(achr).replace('23','X')
+                if achr == str(chrom) and astart >= startbp and astart <= endbp:
                     variantstr = variantstr.replace("_"+str(suffix),"") + "_"+str(suffix)
                     if len(variantstr.split('_')) == 5:
                         stdvariantlist.append(variantstr)
                     else:
-                        raise InvalidUsage(f'Variant format not recognizable: {variant}', status_code=410)
+                        raise InvalidUsage(f'Variant format not recognizable: {variant}. Is it from another coordinate build system?', status_code=410)
                 else:
                     stdvariantlist.append('.')
             except:
-                raise InvalidUsage(f'Problem with variant {variant}')
+                raise InvalidUsage(f'Problem with variant {variant}', status_code=410)
         elif re.search("^\d+_\d+_*[A,T,G,C]*", variantstr.replace('X','23')):
             strlist = variantstr.split('_')
             strlist = list(filter(None, strlist)) # remove empty strings
             try:
                 achr, astart, aend = parseRegionText(strlist[0]+":"+strlist[1]+"-"+str(int(strlist[1])+1), build)
-                if str(achr).replace('23','X') == str(chrom) and astart >= startbp and astart <= endbp:
+                achr = str(achr).replace('23','X')
+                if achr == str(chrom) and astart >= startbp and astart <= endbp:
                     if len(strlist)==3:
                         aref=strlist[2]
                     else:
@@ -250,10 +289,115 @@ def mapAndCleanSNPs(variantlist, regiontxt, build):
                 else:
                     stdvariantlist.append('.')
             except:
-                raise InvalidUsage(f'Problem with variant {variant}')
+                raise InvalidUsage(f'Problem with variant {variant}', status_code=410)
         else:
             raise InvalidUsage(f'Variant format not recognized: {variant}', status_code=410)
     return stdvariantlist
+
+
+def cleanSNPs(variantlist, regiontext, build='hg19'):
+    """
+    Parameters
+    ----------
+    variantlist : list
+        list of variant IDs in rs id or chr_pos, chr_pos_ref_alt, chr_pos_ref_alt_build, etc formats
+    regiontext : str
+        the region of interest in chr:start-end format
+    build : str
+        build.lower() in ['hg19','hg38', 'grch37', 'grch38'] must be true
+
+    Returns
+    -------
+    A cleaner set of SNP names 
+        rs id's are cleaned to contain only one, 
+        non-rs id formats are standardized to chr_pos_ref_alt_build format)
+        any SNPs not in regiontext are returned as '.'
+    """
+
+    variantlist = [asnp.split(';')[0].replace(':','_').replace('.','') for asnp in variantlist] # cleaning up the SNP names a bit
+    std_varlist = standardizeSNPs(variantlist, regiontext, build)
+    final_varlist = [ e if (e.startswith('rs') and std_varlist[i] != '.') else std_varlist[i] for i, e in enumerate(variantlist) ]
+    
+    return final_varlist
+
+
+
+def torsid(variantlist, regiontext, build='hg19'):
+    """
+    Parameters
+    ----------
+    variantlist : list
+        List of variants in either rs id or other chr_pos, chr_pos_ref, chr_pos_ref_alt, chr_pos_ref_alt_build format.
+
+    Returns
+    -------
+    rsidlist : list
+        Corresponding rs id in the region if found.
+        Otherwise returns '.'
+    """
+    
+    if all(x=='.' for x in variantlist):
+        raise InvalidUsage('No variants provided')
+
+    variantlist = cleanSNPs(variantlist, regiontext)
+    
+    chrom, startbp, endbp = parseRegionText(regiontext, build)
+    chrom = str(chrom).replace('23',"X")
+
+    # Load dbSNP151 SNP names from region indicated
+    dbsnp_filepath = ''
+    suffix = 'b37'
+    if build.lower() in ["hg38", "grch38"]:
+        suffix = 'b38'
+        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
+    else:
+        suffix = 'b37'
+        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
+
+
+    # Load dbSNP file
+    tbx = pysam.TabixFile(dbsnp_filepath)
+    print('Compiling list of known variants in the region from dbSNP151')
+    chromcol = []
+    poscol = []
+    idcol = []
+    refcol = []
+    altcol = []
+    rsid = dict({}) # chr_pos_ref_alt_build (keys) for rsid output (values)
+    for row in tbx.fetch(str(chrom), startbp, endbp):
+        rowlist = str(row).split('\t')
+        chromi = rowlist[0].replace('chr','')
+        posi = rowlist[1]
+        idi = rowlist[2]
+        refi = rowlist[3]
+        alti = rowlist[4]
+        varstr = '_'.join([chromi, posi, refi, alti, suffix])
+        chromcol.append(chromi)
+        poscol.append(posi)
+        idcol.append(idi)
+        refcol.append(refi)
+        altcol.append(alti)
+        rsid[varstr] = idi
+        altalleles = alti.split(',') # could have more than one alt allele (multi-allelic)
+        if len(altalleles)>1:
+            varstr = '_'.join([chromi, posi, refi, altalleles[0], suffix])
+            rsid[varstr] = idi
+            for i in np.arange(len(altalleles)-1):
+                varstr = '_'.join([chromi, posi, refi, altalleles[i+1], suffix])
+                rsid[varstr] = idi
+    
+    finalvarlist = []
+    for variant in variantlist:
+        if not variant.startswith('rs'):
+            try:
+                finalvarlist.append(rsid[variant])
+            except:
+                finalvarlist.append('.')
+        else:
+            finalvarlist.append(variant)
+    
+    return finalvarlist
+
 
 def decomposeVariant(variant_list):
     """
@@ -317,6 +461,21 @@ def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build):
     gwas_data[default_snpname] = varlist
     return gwas_data
 
+
+class InvalidUsage(Exception):
+    status_code = 400
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
+
 #### Testing functions above
 ## Some global variables:
 default_chromname = "#CHROM"
@@ -333,10 +492,16 @@ default_region = "1:205500000-206000000"
 
 ## Test mapAndCleanSNPs function
 regiontext = '1:205000000-206000000'
-variantlist = ['rs2211330', '1_205001063_T_A,C', '1:205001063_T_C', 'rs7512462', '1_205930467']
+variantlist = ['rs2211330', '1_205001063_T_A,C', '1:205001063_T_C', 'rs7512462', '1_205930467','rs146984818']
 variantlist.extend(['X_115000731','rs62599779', 'X_115012777_CAA_C', 'rs782251282', 
-                    'X_115012777_C_CA,CAA,CAAA','X_115012777_C_CAA', 'X_115013906_C_T_b38', 
-                    'X_115013906_C_T_b38', 'rs17095917'])
+                    'X_115012777_C_CA,CAA,CAAA','X_115012777_C_CAA'
+                    #,'X_115013906_C_T_b38'
+                    #,'X_115013906_C_T_b38'
+                    , 'rs17095917'
+                    ,'X_115014354_CCCAGGAAGAAATGAGCA_C_b37'
+                    ,'23_115567075'
+                    ,'23_115567075_C_G'
+                    ,'X_115567075_C_G_b37'])
 chrom, startbp, endbp = parseRegionText(regiontext, coordinates)
 mapAndCleanSNPs(variantlist, regiontext, coordinates)
 regiontext = 'X:114000000-116000000'

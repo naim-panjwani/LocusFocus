@@ -19,6 +19,8 @@ from flask_uploads import UploadSet, configure_uploads, DATA
 
 from pymongo import MongoClient
 
+from pprint import pprint
+
 #import getSimpleSumStats
 
 genomicWindowLimit = 2000000
@@ -280,7 +282,8 @@ def fetchSNV(chrom, bp, ref, build):
     return variantid
 
 
-def mapAndCleanSNPs(variantlist, regiontxt, build):
+
+def standardizeSNPs(variantlist, regiontxt, build):
     """
     Input: Variant names in any of these formats: rsid, chrom_pos_ref_alt, chrom:pos_ref_alt, chrom:pos_ref_alt_b37/b38 
     Output: chrom_pos_ref_alt_b37/b38 variant ID format.
@@ -288,12 +291,17 @@ def mapAndCleanSNPs(variantlist, regiontxt, build):
     If variant ID format is chr:pos, and the chr:pos has a unique biallelic SNV, then it will be assigned that variant
     """
     
+    if all(x=='.' for x in variantlist):
+        raise InvalidUsage('No variants provided')
+        
+    
     # Ensure valid region:
     chrom, startbp, endbp = parseRegionText(regiontxt, build)
     chrom = str(chrom).replace('23',"X")
 
     # Load dbSNP151 SNP names from region indicated
     dbsnp_filepath = ''
+    suffix = 'b37'
     if build.lower() in ["hg38", "grch38"]:
         suffix = 'b38'
         dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
@@ -341,7 +349,11 @@ def mapAndCleanSNPs(variantlist, regiontxt, build):
     variantlist = [asnp.split(';')[0].replace(':','_').replace('.','') for asnp in variantlist] # cleaning up the SNP names a bit
     stdvariantlist = []
     for variant in variantlist:
+        if variant == '':
+            stdvariantlist.append('.')
+            continue
         variantstr = variant.replace('chr','')
+        if re.search("^23_",variantstr): variantstr = variantstr.replace('23_','X_',1)
         if variantstr.startswith('rs'):
             try:
                 stdvariantlist.append(rsids[variantstr][0])
@@ -352,22 +364,24 @@ def mapAndCleanSNPs(variantlist, regiontxt, build):
             strlist = list(filter(None, strlist)) # remove empty strings
             try:
                 achr, astart, aend = parseRegionText(strlist[0]+":"+strlist[1]+"-"+str(int(strlist[1])+1), build)
-                if str(achr).replace('23','X') == str(chrom) and astart >= startbp and astart <= endbp:
+                achr = str(achr).replace('23','X')
+                if achr == str(chrom) and astart >= startbp and astart <= endbp:
                     variantstr = variantstr.replace("_"+str(suffix),"") + "_"+str(suffix)
                     if len(variantstr.split('_')) == 5:
                         stdvariantlist.append(variantstr)
                     else:
-                        raise InvalidUsage(f'Variant format not recognizable: {variant}', status_code=410)
+                        raise InvalidUsage(f'Variant format not recognizable: {variant}. Is it from another coordinate build system?', status_code=410)
                 else:
                     stdvariantlist.append('.')
             except:
-                raise InvalidUsage(f'Problem with variant {variant}')
+                raise InvalidUsage(f'Problem with variant {variant}', status_code=410)
         elif re.search("^\d+_\d+_*[A,T,G,C]*", variantstr.replace('X','23')):
             strlist = variantstr.split('_')
             strlist = list(filter(None, strlist)) # remove empty strings
             try:
                 achr, astart, aend = parseRegionText(strlist[0]+":"+strlist[1]+"-"+str(int(strlist[1])+1), build)
-                if str(achr).replace('23','X') == str(chrom) and astart >= startbp and astart <= endbp:
+                achr = str(achr).replace('23','X')
+                if achr == str(chrom) and astart >= startbp and astart <= endbp:
                     if len(strlist)==3:
                         aref=strlist[2]
                     else:
@@ -376,10 +390,116 @@ def mapAndCleanSNPs(variantlist, regiontxt, build):
                 else:
                     stdvariantlist.append('.')
             except:
-                raise InvalidUsage(f'Problem with variant {variant}')
+                raise InvalidUsage(f'Problem with variant {variant}', status_code=410)
         else:
             raise InvalidUsage(f'Variant format not recognized: {variant}', status_code=410)
     return stdvariantlist
+
+
+
+
+def cleanSNPs(variantlist, regiontext, build):
+    """
+    Parameters
+    ----------
+    variantlist : list
+        list of variant IDs in rs id or chr_pos, chr_pos_ref_alt, chr_pos_ref_alt_build, etc formats
+    regiontext : str
+        the region of interest in chr:start-end format
+    build : str
+        build.lower() in ['hg19','hg38', 'grch37', 'grch38'] must be true
+
+    Returns
+    -------
+    A cleaner set of SNP names 
+        rs id's are cleaned to contain only one, 
+        non-rs id formats are standardized to chr_pos_ref_alt_build format)
+        any SNPs not in regiontext are returned as '.'
+    """
+
+    variantlist = [asnp.split(';')[0].replace(':','_').replace('.','') for asnp in variantlist] # cleaning up the SNP names a bit
+    std_varlist = standardizeSNPs(variantlist, regiontext, build)
+    final_varlist = [ e if (e.startswith('rs') and std_varlist[i] != '.') else std_varlist[i] for i, e in enumerate(variantlist) ]
+    
+    return final_varlist
+
+
+
+def torsid(variantlist, regiontext, build):
+    """
+    Parameters
+    ----------
+    variantlist : list
+        List of variants in either rs id or other chr_pos, chr_pos_ref, chr_pos_ref_alt, chr_pos_ref_alt_build format.
+
+    Returns
+    -------
+    rsidlist : list
+        Corresponding rs id in the region if found.
+        Otherwise returns '.'
+    """
+    
+    if all(x=='.' for x in variantlist):
+        raise InvalidUsage('No variants provided')
+
+    variantlist = cleanSNPs(variantlist, regiontext, build)
+    
+    chrom, startbp, endbp = parseRegionText(regiontext, build)
+    chrom = str(chrom).replace('23',"X")
+
+    # Load dbSNP151 SNP names from region indicated
+    dbsnp_filepath = ''
+    suffix = 'b37'
+    if build.lower() in ["hg38", "grch38"]:
+        suffix = 'b38'
+        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh38p7', 'All_20180418.vcf.gz')
+    else:
+        suffix = 'b37'
+        dbsnp_filepath = os.path.join(MYDIR, 'data', 'dbSNP151', 'GRCh37p13', 'All_20180423.vcf.gz')
+
+
+    # Load dbSNP file
+    tbx = pysam.TabixFile(dbsnp_filepath)
+    print('Compiling list of known variants in the region from dbSNP151')
+    chromcol = []
+    poscol = []
+    idcol = []
+    refcol = []
+    altcol = []
+    rsid = dict({}) # chr_pos_ref_alt_build (keys) for rsid output (values)
+    for row in tbx.fetch(str(chrom), startbp, endbp):
+        rowlist = str(row).split('\t')
+        chromi = rowlist[0].replace('chr','')
+        posi = rowlist[1]
+        idi = rowlist[2]
+        refi = rowlist[3]
+        alti = rowlist[4]
+        varstr = '_'.join([chromi, posi, refi, alti, suffix])
+        chromcol.append(chromi)
+        poscol.append(posi)
+        idcol.append(idi)
+        refcol.append(refi)
+        altcol.append(alti)
+        rsid[varstr] = idi
+        altalleles = alti.split(',') # could have more than one alt allele (multi-allelic)
+        if len(altalleles)>1:
+            varstr = '_'.join([chromi, posi, refi, altalleles[0], suffix])
+            rsid[varstr] = idi
+            for i in np.arange(len(altalleles)-1):
+                varstr = '_'.join([chromi, posi, refi, altalleles[i+1], suffix])
+                rsid[varstr] = idi
+    
+    finalvarlist = []
+    for variant in variantlist:
+        if not variant.startswith('rs'):
+            try:
+                finalvarlist.append(rsid[variant])
+            except:
+                finalvarlist.append('.')
+        else:
+            finalvarlist.append(variant)
+    
+    return finalvarlist
 
 
 def decomposeVariant(variant_list):
@@ -776,7 +896,9 @@ def get_gtex_data(version, tissue, gene, snp_list, raiseErrors = False):
     rsid_snps = [ x for x in snp_list if x.startswith('rs') ]
     b37_snps = [ x for x in snp_list if x.endswith('_b37') ]
     b38_snps = [ x for x in snp_list if x.endswith('_b38') ]
-    if len(rsid_snps) > 0:
+    if len(rsid_snps) > 0 and (len(b37_snps)>0 or len(b38_snps) > 0):
+        raise InvalidUsage("There is a mix of rsid and other variant id formats; please use a consistent format")
+    elif len(rsid_snps) > 0:
         rsids = True
     elif len(b37_snps) or len(b38_snps) > 0:
         rsids = False
@@ -821,6 +943,8 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
     if snp_list[0].startswith('rs'):
         rsids = True
     elif snp_list[0].endswith('_b37'):
+        rsids = False
+    elif snp_list[0].endswith('_b38'):
         rsids = False
     else:
         raise InvalidUsage('Variant naming format not supported; ensure all are rs ID\'s or formatted as chrom_pos_ref_alt_b37 eg. 1_205720483_G_A_b37')    
@@ -1186,7 +1310,13 @@ def index():
             # old code remnant:
             # if gtex_version=="V7": gene='ENSG00000174502.14'
             # if gtex_version=="V8": gene='ENSG00000174502.18'
-            gene = gtex_genes[0]
+            if len(gtex_genes)>0:
+                gene = gtex_genes[0]
+            elif coordinate == 'hg19':
+                gene = 'ENSG00000174502.14'
+            elif coordinate == 'hg38':
+                gene = 'ENSG00000174502.18'
+
 
 
 
@@ -1215,9 +1345,9 @@ def index():
             #######################################################
             if inferVariant:
                 # standardize variant id's:
-                variant_list = mapAndCleanSNPs(list(gwas_data[snpcol]), regionstr, coordinate)
+                variant_list = standardizeSNPs(list(gwas_data[snpcol]), regionstr, coordinate)
                 if all(x=='.' for x in variant_list):
-                    raise InvalidUsage(f'None of the variants provided could be mapped to {regiontext}!', status_code=410)
+                    raise InvalidUsage(f'None of the variants provided could be mapped to {regionstr}!', status_code=410)
                 # get the chrom, pos, ref, alt info from the standardized variant_list
                 vardf = decomposeVariant(variant_list)
                 gwas_data = pd.concat([vardf, gwas_data], axis=1)
@@ -1226,6 +1356,8 @@ def index():
                 refcol = default_refname
                 altcol = default_altname
             
+
+
             #######################################################
             # Subsetting GWAS file
             #######################################################
@@ -1240,6 +1372,18 @@ def index():
             chrom, startbp, endbp = parseRegionText(regionstr, coordinate)
 
             gwas_load_time = datetime.now() - t1
+
+            std_snp_list = []
+            thechr = gwas_data[chromcol].tolist()
+            thepos = gwas_data[poscol].tolist()
+            theref = gwas_data[refcol].tolist()
+            thealt = gwas_data[altcol].tolist()
+            buildstr = 'b37'
+            if coordinate == 'hg38':
+                buildstr = 'b38'
+            for i in np.arange(gwas_data.shape[0]):
+                std_snp = str(thechr[i]).replace('23','X') + "_" + str(thepos[i]) + "_" + str(theref[i]) + "_" + str(thealt[i]) + "_" + buildstr
+                std_snp_list.append(std_snp)
 
             ####################################################################################################
             # Get LD:
@@ -1358,6 +1502,7 @@ def index():
             else:
                 SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
                 SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
+                SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
             data['SS_region'] = [SS_start, SS_end]
             
             ####################################################################################################
@@ -1404,18 +1549,30 @@ def index():
             if SS_gwas_data.shape[0] == 0: InvalidUsage('No data points found for entered Simple Sum region', status_code=410)
             PvaluesMat = [list(SS_gwas_data[pcol])]
             SS_snp_list = list(SS_gwas_data[snpcol])
-            # SS_snp_list = [asnp.split(';')[0] for asnp in SS_snp_list] # cleaning up the SNP names a bit
+            SS_snp_list = cleanSNPs(SS_snp_list, regionstr, coordinate)
+            
+            # optimizing best match variant if given a mix of rsids and non-rsid variants
+            # varids = SS_snp_list
+            # if inferVariant:
+            #     rsidx = [i for i,e in enumerate(SS_snp_list) if e.startswith('rs')]
+            #     varids = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
+            #     SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate) 
             if SSlocustext == '':
                 SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
-            SS_snp_list = mapAndCleanSNPs(SS_snp_list, SSlocustext, coordinate)
+            #SS_std_snp_list = standardizeSNPs(SS_snp_list, SSlocustext, coordinate)
+            #SS_rsids = torsid(SS_std_snp_list, SSlocustext, coordinate)
             SS_positions = list(SS_gwas_data[poscol])
             if len(SS_positions) != len(set(SS_positions)):
                 dups = set([x for x in SS_positions if SS_positions.count(x) > 1])
                 raise InvalidUsage('Duplicate chromosome positions detected at: ' + str(dups))
+
+            SS_std_snp_list = [e for i,e in enumerate(std_snp_list) if SS_indices[i]]
+            
             # Extra file written:
             gwas_df = pd.DataFrame({
                 'Position': SS_positions,
                 'SNP': SS_snp_list,
+                'variant_id': SS_std_snp_list,
                 'P': list(SS_gwas_data[pcol])
             })
             gwas_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/gwas_df-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
@@ -1432,7 +1589,7 @@ def index():
                 print('Obtaining eQTL p-values for selected tissues and surrounding genes')
                 for tissue in gtex_tissues:
                     for agene in query_genes:
-                        gtex_eqtl_df = get_gtex_data(gtex_version, tissue, agene, SS_snp_list)
+                        gtex_eqtl_df = get_gtex_data(gtex_version, tissue, agene, SS_std_snp_list)
 #                        print('len(gtex_eqtl_df) '+ str(len(gtex_eqtl_df)))
 #                        print('gtex_eqtl_df.shape ' + str(gtex_eqtl_df.shape))
 #                        print('len(SS_snp_list) ' + str(len(SS_snp_list)))
@@ -1487,12 +1644,15 @@ def index():
                         secondary_dataset = tables[i]
                         if not set(coloc2eqtlcolnames).issubset(secondary_dataset):
                             raise InvalidUsage(f'You have chosen to run COLOC2. COLOC2 assumes eQTL data as secondary dataset, and you must have all of the following column names: {coloc2eqtlcolnames}')
+                        secondary_dataset['SNPID'] = cleanSNPs(secondary_dataset['SNPID'].tolist(),regionstr,coordinate)
                         secondary_dataset.set_index('SNPID', inplace=True)
-                        secondary_dataset = secondary_dataset[~secondary_dataset.index.duplicated()]
+                        secondary_dataset = secondary_dataset[~secondary_dataset.index.duplicated()].reset_index().drop(columns=['index'])
                         # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
-                        snp_df = pd.DataFrame(SS_snp_list, columns=['SNPID'])
-                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on='SNPID', how='left', sort=False).sort_values('index')
-                        pvalues = list(secondary_dataset['PVAL'])
+                        secondary_data_std_snplist = standardizeSNPs(secondary_dataset['SNPID'].tolist(), regionstr, coordinate)
+                        secondary_dataset = pd.concat([secondary_dataset, pd.DataFrame(secondary_data_std_snplist, columns=['SNPID.tmp'])], axis=1)
+                        snp_df = pd.DataFrame(SS_std_snp_list, columns=['SNPID.tmp'])
+                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on='SNPID.tmp', how='left', sort=False).sort_values('index')
+                        pvalues = list(secondary_data['PVAL'])
                         PvaluesMat.append(pvalues)
                         coloc2eqtl_df = pd.concat([coloc2eqtl_df, secondary_data.reindex(columns = coloc2eqtlcolnames)], axis=0)
                 else:
@@ -1500,25 +1660,30 @@ def index():
                     for i in np.arange(len(secondary_datasets)):
                         secondary_dataset = tables[i]
                         # remove duplicate SNPs
+                        secondary_dataset[SNP] = cleanSNPs(secondary_dataset[SNP].tolist(),regionstr,coordinate)
                         idx = pd.Index(list(secondary_dataset[SNP]))
-                        secondary_dataset = secondary_dataset[~idx.duplicated()]
+                        secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
                         # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
-                        snp_df = pd.DataFrame(SS_snp_list, columns=[SNP])
-                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP, how='left', sort=False).sort_values('index')
+                        secondary_data_std_snplist = standardizeSNPs(secondary_dataset[SNP].tolist(), regionstr, coordinate)
+                        std_snplist_df =  pd.DataFrame(secondary_data_std_snplist, columns=[SNP+'.tmp'])
+                        secondary_dataset = pd.concat([secondary_dataset,std_snplist_df], axis=1)
+                        snp_df = pd.DataFrame(SS_std_snp_list, columns=[SNP+'.tmp'])
+                        secondary_data = snp_df.reset_index().merge(secondary_dataset, on=SNP+'.tmp', how='left', sort=False).sort_values('index')
                         pvalues = list(secondary_data[P])
                         PvaluesMat.append(pvalues)
 
             ####################################################################################################
-            print('Extracting LD matrix')
             # 5. Get the LD matrix via PLINK subprocess call or use user-provided LD matrix:
             t1 = datetime.now() # timer for calculating the LD matrix
             plink_outfilename = f'session_data/ld-{my_session_id}'
             plink_outfilepath = os.path.join(MYDIR, 'static', plink_outfilename)
             if ldmat_filepath != '':
+                print('Extracting user-provided LD matrix')
                 ld_mat_snps = [f'chr{chrom}:{SS_pos}' for SS_pos in SS_positions]
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
                 ld_mat = ld_mat[SS_indices ][:,SS_indices]
             else:
+                print('Extracting LD matrix')
                 ld_mat_snps, ld_mat = plink_ldmat(coordinate, pops, chrom, SS_positions, plink_outfilepath)
                 ld_mat_positions = [int(snp.split(":")[1]) for snp in ld_mat_snps]
             np.fill_diagonal(ld_mat, np.diag(ld_mat) + ld_mat_diag_constant)

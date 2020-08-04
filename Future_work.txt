@@ -20,4 +20,5 @@ to do:
 - Allow assessment of beta correlations
 - Make P-P plot
 - Fix coloc2 chromosome X issue
+- add requirement for having REF and ALT columns for secondary datasets for better snp matching
 

@@ -4,6 +4,8 @@
 Created on Tue Nov 26 17:43:52 2019
 
 @author: naim
+For usage instructions, simply run (python version 3):
+python merge_and_convert_to_hmtl.py -h
 """
 
 import argparse
