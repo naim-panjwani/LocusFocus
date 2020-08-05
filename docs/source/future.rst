@@ -11,6 +11,7 @@ Below is a list of improvements and features currently under development:
 - Enable uploading of compressed files (then convert to bgzip/tabix)
 - Implement a queue system to enable job submission and later retrieval
 - Explore other ways to enable saving of vector images
+- Enable ability to upload a config file to replicate results
 - Implement SMR colocalization method
 - Enable immediate deletion of the session data
 - Enable option to match variant names by just chrom:pos information (currently should only be either all rsid's or all variant_id format)

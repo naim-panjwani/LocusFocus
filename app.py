@@ -81,7 +81,7 @@ client = MongoClient(conn)
 db = client.GTEx_V7 # For now
 
 available_gtex_versions = ["V7", "V8"]
-valid_populations = ["EUR", "AFR","EAS", "SAS", "AMR", "ASN"]
+valid_populations = ["EUR", "AFR","EAS", "SAS", "AMR", "ASN", "NFE"]
 
 ####################################
 # Helper functions
