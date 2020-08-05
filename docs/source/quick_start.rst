@@ -359,9 +359,9 @@ The remaining columns specify the column names for chromosome, basepair position
 
 For example, suppose we had three `genomewide association analyses (from Ben Neale) from the UK Biobank <https://docs.google.com/spreadsheets/d/1kvPoupSzsSFBNSztMzl04xMoSC3Kcx3CrjVf4yBmESU/edit?ts=5b5f17db#gid=227859291>`_:
 
-#. `Forced vital capacity (FVC) - 3062 <https://locusfocus.research.sickkids.ca/static/archive/3062.assoc.mod.ROI.slc26a9.tsv>`_
-#. `Forced expiratory volume in 1-second (FEV1) - 3063 <https://locusfocus.research.sickkids.ca/static/archive/3063.assoc.mod.ROI.slc26a9.tsv>`_
-#. `Peak expiratory flow (PEF) - 3064 <https://locusfocus.research.sickkids.ca/static/archive/3064.assoc.mod.ROI3.slc26a9.tsv>`_
+#. `Forced vital capacity (FVC) - 3062 <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/3062.assoc.mod.ROI.slc26a9.tsv>`_
+#. `Forced expiratory volume in 1-second (FEV1) - 3063 <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/3063.assoc.mod.ROI.slc26a9.tsv>`_
+#. `Peak expiratory flow (PEF) - 3064 <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/3064.assoc.mod.ROI3.slc26a9.tsv>`_
 
 The first few lines for FVC look as follows:
 
@@ -370,23 +370,24 @@ The first few lines for FVC look as follows:
 
    > head 3062.assoc.mod.ROI.slc26a9.tsv
 
-   variant	rsid	nCompleteSamples	AC	ytx	beta	se	tstat	pval	chr	pos
-   1:205860191:A:G	rs149104610	307638	7.58684e+03	2.89852e+02	-1.06502e-02	9.01042e-03	-1.18199e+00	2.37211e-01	1	205860191
-   1:205860462:G:A	rs183927606	307638	7.58336e+03	2.94623e+02	-1.03192e-02	9.01499e-03	-1.14467e+00	2.52347e-01	1	205860462
-   1:205860763:T:C	rs182878528	307638	7.57953e+03	2.92349e+02	-1.04035e-02	9.01627e-03	-1.15386e+00	2.48558e-01	1	205860763
-   1:205860874:A:G	rs573870089	307638	1.06676e+03	6.36134e+01	2.08202e-02	2.49968e-02	8.32914e-01	4.04894e-01	1	205860874
-   1:205861028:G:A	rs36039729	307638	4.44225e+04	2.35233e+03	9.40215e-04	3.81097e-03	2.46713e-01	8.05131e-01	1	205861028
-   1:205861107:C:T	rs9438396	307638	2.85296e+04	1.97301e+03	9.23118e-03	4.68786e-03	1.96917e+00	4.89347e-02	1	205861107
-   1:205861225:G:A	rs115170053	307638	5.08637e+03	3.62211e+02	6.28049e-03	1.11434e-02	5.63607e-01	5.73022e-01	1	205861225
-   1:205861433:G:C	rs6670490	307638	2.88292e+04	1.99373e+03	8.56608e-03	4.66254e-03	1.83721e+00	6.61794e-02	1	205861433
-   1:205862075:T:C	rs6665183	307638	2.18993e+04	1.26147e+03	1.50666e-04	5.70059e-03	2.64299e-02	9.78914e-01	1	205862075
+   variant rsid    nCompleteSamples        AC      ytx     beta    se      tstat   pval    chr     pos     variant ref     alt
+   1:205860191:A:G rs149104610     307638  7.58684e+03     2.89852e+02     -1.06502e-02    9.01042e-03     -1.18199e+00    2.37211e-01     1       205860191       A       G
+   1:205860462:G:A rs183927606     307638  7.58336e+03     2.94623e+02     -1.03192e-02    9.01499e-03     -1.14467e+00    2.52347e-01     1       205860462       G       A
+   1:205860763:T:C rs182878528     307638  7.57953e+03     2.92349e+02     -1.04035e-02    9.01627e-03     -1.15386e+00    2.48558e-01     1       205860763       T       C
+   1:205860874:A:G rs573870089     307638  1.06676e+03     6.36134e+01     2.08202e-02     2.49968e-02     8.32914e-01     4.04894e-01     1       205860874       A       G
+   1:205861028:G:A rs36039729      307638  4.44225e+04     2.35233e+03     9.40215e-04     3.81097e-03     2.46713e-01     8.05131e-01     1       205861028       G       A
+   1:205861107:C:T rs9438396       307638  2.85296e+04     1.97301e+03     9.23118e-03     4.68786e-03     1.96917e+00     4.89347e-02     1       205861107       C       T
+   1:205861225:G:A rs115170053     307638  5.08637e+03     3.62211e+02     6.28049e-03     1.11434e-02     5.63607e-01     5.73022e-01     1       205861225       G       A
+   1:205861433:G:C rs6670490       307638  2.88292e+04     1.99373e+03     8.56608e-03     4.66254e-03     1.83721e+00     6.61794e-02     1       205861433       G       C
+   1:205862075:T:C rs6665183       307638  2.18993e+04     1.26147e+03     1.50666e-04     5.70059e-03     2.64299e-02     9.78914e-01     1       205862075       T       C
+
 
 *Note that we modified the original file by adding the chromosome and position columns*
 
 The FEV1 and PEF phenotype association files look similar.
 
 To merge the summary statistics from these three files into a merged HTML file, we would first create a 
-`descriptor file <https://locusfocus.research.sickkids.ca/static/archive/slc26a9_uk_biobank_spirometry_files_to_merge.txt>`_ 
+`descriptor file <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_files_to_merge.txt>`_ 
 of all the files we would like to merge. See below for the case of combining these three files:
 
 .. code-block:: console
@@ -441,7 +442,7 @@ A description of the positional arguments may be issued with the -h or --help ar
 
 
 The above command will generate the merged 
-`slc26a9_uk_biobank_spirometry_merged.html <https://locusfocus.research.sickkids.ca/static/archive/slc26a9_uk_biobank_spirometry_merged.html>`_, 
+`slc26a9_uk_biobank_spirometry_merged.html <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_merged.html>`_, 
 file which can be used with LocusFocus.
 
 
