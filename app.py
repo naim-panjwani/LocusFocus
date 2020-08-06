@@ -1076,9 +1076,9 @@ def prev_session_input(old_session_id):
         coloc2_filepath = os.path.join(MYDIR, 'static', coloc2_file)
     else: # blank input
         raise InvalidUsage('Invalid input')
-    print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
-    print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
-    print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
+    # print(f'Session filepath: {sessionfilepath} is {str(os.path.isfile(sessionfilepath))}')
+    # print(f'Genes filepath: {genes_sessionfilepath} is {str(os.path.isfile(genes_sessionfilepath))}')
+    # print(f'SSPvalues filepath: {SSPvalues_filepath} is {str(os.path.isfile(SSPvalues_filepath))}')
     if not (os.path.isfile(sessionfilepath) and os.path.isfile(genes_sessionfilepath) and os.path.isfile(SSPvalues_filepath) and os.path.isfile(coloc2_filepath)):
         raise InvalidUsage(f'Could not locate session {my_session_id}')
     return render_template("plot.html", sessionfile = sessionfile, genesfile = genes_sessionfile, SSPvalues_file = SSPvalues_file, coloc2_file = coloc2_file, sessionid = my_session_id)

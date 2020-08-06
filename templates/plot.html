@@ -70,6 +70,9 @@
                 <div class="col-md-3">
                     <input id="colocPlot-redraw-btn" type="submit" class="btn btn-default" value="Update">
                 </div>
+                <div class="col-md-3">
+                    <input id="colocPlot-svg-btn" type="submit" class="btn btn-default" value="Generate SVG">
+                </div>
             </div>
             <p>
             <div class="alert alert-dismissible alert-info">
@@ -100,6 +103,9 @@
             <div class="row">
                 <div class="col-md-3">
                     <input id="heatmap-redraw-btn" type="submit" class="btn btn-default" value="Update">
+                </div>
+                <div class="col-md-3">
+                    <input id="heatmap-svg-btn" type="submit" class="btn btn-default" value="Generate SVG">
                 </div>
             </div>
             <p>
@@ -210,6 +216,9 @@
 
     <!-- JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.1/d3.js"></script>
+
+  <!-- Filesaver -->
+  <script type="module" src="{{ url_for('static', filename='js/file-saver/src/FileSaver.js') }}"></script>
   
   <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -253,6 +262,16 @@
                         if(coloc2Response['ProbeID'].length>0) {
                             buildColoc2Table(coloc2Response);
                         }
+
+                        // initialize popover and tooltip
+                        $(function () {
+                            $('[data-toggle="popover"]').popover()
+                        });
+                        $(document).ready(function(){
+                            $('[data-toggle="tooltip"]').tooltip({
+                                delay: { "show": 500, "hide": 100 }
+                            });
+                        });
                     });
                 });
             });
@@ -282,9 +301,9 @@
     }
 
     function optionChanged(newgene) {
-        var newurl=`/update/${sessionid}/${newgene}`
-        d3.select('#plot').text("")
-        d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing eQTLs for gene ${newgene}`)
+        var newurl=`/update/${sessionid}/${newgene}`;
+        d3.select('#plot').text("");
+        d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing eQTLs for gene ${newgene}`);
         // d3.json("{{ url_for('update_colocalizing_gene', session_id=sessionid, newgene=newgene) }}").then(response => {
         d3.json(newurl).then(newresponse => {
             d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
@@ -356,7 +375,63 @@
                     legend_offset = +legendOffset);
             });
         });
+
+        // initialize popover and tooltip
+        $(function () {
+            $('[data-toggle="popover"]').popover()
+        });
+        $(document).ready(function(){
+            $('[data-toggle="tooltip"]').tooltip({
+                delay: { "show": 500, "hide": 100 }
+            });
+        });
     });
+
+    // Listen for svg plot requests for colocalization plot:
+    var coloc_plot_svg_btn = d3.select('#colocPlot-svg-btn');
+    coloc_plot_svg_btn.on("click", function() {
+        d3.event.preventDefault();
+        
+        colocPlot_container = d3.select('#plot')
+            .select('div.plot-container')
+            .select('div.svg-container')
+            ;
+        
+        // Get input values:
+        var coloc_plot_width = d3.select('#colocPlotWidth').property("value");
+        var coloc_plot_height = d3.select('#colocPlotHeight').property("value");
+        
+        if(!coloc_plot_width) {
+            coloc_plot_width = 1080;
+        }
+        if(!coloc_plot_height) {
+            coloc_plot_height = 720;
+        }
+        
+        saveSvg(colocPlot_container, 'colocalization-plot.svg', coloc_plot_width, coloc_plot_height);
+    });
+
+    function saveSvg(svgDiv, name, w = 1080, h = 720) {
+        var svgEls = svgDiv.selectAll('.main-svg');
+        var head = `<svg class="main-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" style="background: rgb(255, 255, 255);">`;
+
+        var svgData = head;
+        svgEls.each(function(d,i) {
+            svgEl = d3.select(this);
+            svgData += svgEl.html();
+        });
+        svgData += "</svg>"
+        svgData = svgData.replace('"<', '"&lt;');
+        svgData = svgData.replace('<br>','\\r\\n');
+        // console.log(svgData);
+        var preface = '<?xml version="1.0" standalone="no"?>\r\n';
+        var svgBlob = new Blob([preface, svgData], {type:"image/svg+xml;charset=utf-8"});
+        saveAs(svgBlob, name);
+    }
+
+
+
+
 
     // Listen for redraw click events:
     var heatmap_redraw_btn = d3.select('#heatmap-redraw-btn');
@@ -385,6 +460,30 @@
         d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(SSResponse => {
             plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues, widthinput, heightinput, heatmap_fontsize);
         })
+    });
+
+    // Listen for svg plot requests for heatmap plot:
+    var heatmap_svg_btn = d3.select('#heatmap-svg-btn');
+    heatmap_svg_btn.on("click", function() {
+        d3.event.preventDefault();
+
+        heatmap_container = d3.select('#heatmap')
+            .select('div.plot-container')
+            .select('div.svg-container')
+            ;
+        
+        // Get input values:
+        var widthinput = +d3.select('#heatmapWidth').property("value");
+        var heightinput = +d3.select('#heatmapHeight').property("value");
+        
+        if(!widthinput) {
+            widthinput = 1080;
+        }
+        if(!heightinput) {
+            heightinput = 720;
+        }
+        
+        saveSvg(heatmap_container, 'SS-heatmap.svg', widthinput, heightinput);
     });
 
   </script>

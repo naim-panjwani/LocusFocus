@@ -346,7 +346,7 @@ function plot_gwas(data, genesdata,
   var ld_lt_20_trace = {
     x: ld_lt_20_group.map(i => positions[i]),
     y: ld_lt_20_group.map(i => log10pvalues[i]),
-    name: '< 0.2',
+    name: '&lt; 0.2',
     mode: 'markers',
     type: 'scatter',
     text: ld_lt_20_group.map(i => snps[i]),
@@ -592,7 +592,7 @@ function plot_gwas(data, genesdata,
   var locations = [];
   annotations_x2.push(tempx2);
   annotations_y2.push(-(genesdata[i]['geneRow'] * row_height) + text_height + gene_margin);
-  annotations_text2.push(`<i>${genesdata[i]['name']}</i>`);
+  annotations_text2.push(genesdata[i]['name']);
   locations.push('bottom');
 
   // var temp_data = [{
@@ -638,13 +638,13 @@ function plot_gwas(data, genesdata,
         rect_bins.push([-1,-1,-1,-1]); // don't output the genename text then
         annotations_x2.push(-1);
         annotations_y2.push(-1);
-        annotations_text2.push(`<i>${genesdata[i]['name']}</i>`);
+        annotations_text2.push(genesdata[i]['name']);
         locations.push('hidden');
       } else {
         rect_bins.push(curr_rect_bin); // put gene name text at the top of the gene
         annotations_x2.push(tempx2);
         annotations_y2.push(-(genesdata[i]['geneRow'] * row_height) + row_height);
-        annotations_text2.push(`<i>${genesdata[i]['name']}</i>`);
+        annotations_text2.push(genesdata[i]['name']);
         locations.push('top');
       }
     } else {
@@ -652,7 +652,7 @@ function plot_gwas(data, genesdata,
       rect_bins.push(curr_rect_bin);
       annotations_x2.push(tempx2);
       annotations_y2.push(-(genesdata[i]['geneRow'] * row_height) + text_height + gene_margin);
-      annotations_text2.push(`<i>${genesdata[i]['name']}</i>`);
+      annotations_text2.push(genesdata[i]['name']);
       locations.push('bottom');
     }
     // console.log(temp_data);
@@ -733,7 +733,8 @@ function plot_gwas(data, genesdata,
     yaxis: 'y1',
     showlegend: false,
     name: 'Gene name',
-    textposition: 'bottom'
+    textposition: 'bottom',
+    font: {style: 'italic'}
   }
   all_traces.push(genenames_trace2);
   
@@ -788,7 +789,6 @@ function plot_gwas(data, genesdata,
 var img_svg = d3.select("#svg-try");
 Plotly.newPlot('plot', all_traces, layout)
 
-
 // .then(
 //   function(gd)
 //   {
@@ -805,4 +805,7 @@ Plotly.newPlot('plot', all_traces, layout)
 // )
 
 }
+
+
+
 

@@ -51,21 +51,17 @@ genomicWindowLimit = 2e6
 ##############################
 ## Helper functions
 ##############################
-def parseRegionText(regiontext, build):
-    if build not in ['hg19', 'hg38']:
-        raise Exception(f'Unrecognized build: {build}')
-    regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
-    if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
-       raise Exception('Invalid coordinate format. e.g. 1:205,000,000-206,000,000')
-    chrom = regiontext.split(':')[0].lower().replace('chr','').upper()
+def parseRegionText(regiontext):
+    regiontext = regiontext.strip().replace(' ','')
+    chrom = regiontext.split(':')[0].replace('chr','').replace('Chr','')
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
-    chromLengths = pd.read_csv(os.path.join(MYDIR, 'data', build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
-    chromLengths.set_index('sequence',inplace=True)
-    if chrom in ['X','x'] or chrom == '23':
+    #chromLengths = pd.read_csv(os.path.join(MYDIR, 'data/hg19_chrom_lengths.txt'), sep="\t", encoding='utf-8')
+    #chromLengths.set_index('sequence',inplace=True)
+    if chrom == 'X':
         chrom = 23
-        maxChromLength = chromLengths.loc['chrX', 'length']
+        #maxChromLength = chromLengths.loc['chrX', 'length']
         try:
             startbp = int(startbp)
             endbp = int(endbp)
@@ -74,10 +70,7 @@ def parseRegionText(regiontext, build):
     else:
         try:
             chrom = int(chrom)
-            if chrom == 23:
-                maxChromLength = chromLengths.loc['chrX', 'length']
-            else:
-                maxChromLength = chromLengths.loc['chr'+str(chrom), 'length']
+            #maxChromLength = chromLengths.loc['chr'+str(chrom), 'length']
             startbp = int(startbp)
             endbp = int(endbp)
         except:
@@ -86,10 +79,8 @@ def parseRegionText(regiontext, build):
         raise Exception('Chromosome input must be between 1 and 23')
     elif startbp > endbp:
         raise Exception('Starting chromosome basepair position is greater than ending basepair position')
-    elif startbp > maxChromLength or endbp > maxChromLength:
-        raise Exception('Start or end coordinates are out of range')
-    elif (endbp - startbp) > genomicWindowLimit:
-        raise Exception(f'Entered region size is larger than {genomicWindowLimit/10**6} Mbp')
+#    elif startbp > maxChromLength or endbp > maxChromLength:
+#        raise Exception('Start or end coordinates are out of range')
     else:
         return chrom, startbp, endbp
 
@@ -216,14 +207,14 @@ if __name__=='__main__':
     
     print('Verifying settings in filelist_filename')
     for i in np.arange(len(files)):
-        if not checkColnames(files[i], list(filelist.iloc[i,2:])):
-            raise Exception('Column names given: ' + str(list(filelist.iloc[i,2:])) + '\n Not all match for file ' + files[i])
+        if not checkColnames(files[i], list(filelist.iloc[i,2:12])):
+            raise Exception('Column names given: ' + str(list(filelist.iloc[i,2:12])) + '\n Not all match for file ' + files[i])
 
     print('Merging files')
     final_merge = '<!DOCTYPE html>\n<html>'
     for i in tqdm(np.arange(len(files))):
         df = pd.read_csv(files[i], sep='\t', skiprows=getNumHeaderLines(files[i]))
-        desired_cols = list(filelist.iloc[i,2:])
+        desired_cols = list(filelist.iloc[i,2:12])
         df = df[desired_cols].rename(columns={
                 desired_cols[0]: CHROM
                 ,desired_cols[1]: BP
@@ -235,11 +226,12 @@ if __name__=='__main__':
                 ,desired_cols[7]: ALT
                 ,desired_cols[8]: REF
                 ,desired_cols[9]: MAF
-                ,desired_cols[10]: ProbeID
                 })
         if chrom == 23:
             df[CHROM] = np.repeat(chrom, df.shape[0])
         df = df.loc[ (df[CHROM]==chrom) & (df[BP]>=startbp) & (df[BP]<=endbp) ]
+        probeidcol = pd.DataFrame({ProbeID: np.repeat(filelist.iloc[i,12], df.shape[0])})
+        df = pd.concat([df, probeidcol], axis=1)
         h3tag = '<h3>'+file_descriptions[i]+'</h3>'
         df_html_str = df.to_html(index=False)
         final_merge += h3tag + df_html_str

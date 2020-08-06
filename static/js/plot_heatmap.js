@@ -43,7 +43,7 @@ function plot_heatmap(genes, tissues, SSPvalues, image_width=1080, image_height=
     }
     var data = [{
           z: newSSPvalues,
-          x: genes.map(gene => `<i>${gene}</i>`),
+          x: genes.map(gene => `${gene}`),
           y: tissues,
           //colorscale: 'Portland',
           type: 'heatmap',

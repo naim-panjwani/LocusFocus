@@ -28,21 +28,17 @@ genomicWindowLimit = 2e6
 ##############################
 ## Helper functions
 ##############################
-def parseRegionText(regiontext, build):
-    if build not in ['hg19', 'hg38']:
-        raise Exception(f'Unrecognized build: {build}')
-    regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
-    if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
-       raise Exception('Invalid coordinate format. e.g. 1:205,000,000-206,000,000')
-    chrom = regiontext.split(':')[0].lower().replace('chr','').upper()
+def parseRegionText(regiontext):
+    regiontext = regiontext.strip().replace(' ','')
+    chrom = regiontext.split(':')[0].replace('chr','').replace('Chr','')
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
     endbp = pos.split('-')[1].replace(',','')
-    chromLengths = pd.read_csv(os.path.join(MYDIR, 'data', build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
-    chromLengths.set_index('sequence',inplace=True)
-    if chrom in ['X','x'] or chrom == '23':
+    #chromLengths = pd.read_csv(os.path.join(MYDIR, 'data/hg19_chrom_lengths.txt'), sep="\t", encoding='utf-8')
+    #chromLengths.set_index('sequence',inplace=True)
+    if chrom == 'X':
         chrom = 23
-        maxChromLength = chromLengths.loc['chrX', 'length']
+        #maxChromLength = chromLengths.loc['chrX', 'length']
         try:
             startbp = int(startbp)
             endbp = int(endbp)
@@ -51,10 +47,7 @@ def parseRegionText(regiontext, build):
     else:
         try:
             chrom = int(chrom)
-            if chrom == 23:
-                maxChromLength = chromLengths.loc['chrX', 'length']
-            else:
-                maxChromLength = chromLengths.loc['chr'+str(chrom), 'length']
+            #maxChromLength = chromLengths.loc['chr'+str(chrom), 'length']
             startbp = int(startbp)
             endbp = int(endbp)
         except:
@@ -63,10 +56,8 @@ def parseRegionText(regiontext, build):
         raise Exception('Chromosome input must be between 1 and 23')
     elif startbp > endbp:
         raise Exception('Starting chromosome basepair position is greater than ending basepair position')
-    elif startbp > maxChromLength or endbp > maxChromLength:
-        raise Exception('Start or end coordinates are out of range')
-    elif (endbp - startbp) > genomicWindowLimit:
-        raise Exception(f'Entered region size is larger than {genomicWindowLimit/10**6} Mbp')
+#    elif startbp > maxChromLength or endbp > maxChromLength:
+#        raise Exception('Start or end coordinates are out of range')
     else:
         return chrom, startbp, endbp
 

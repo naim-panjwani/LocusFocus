@@ -29,6 +29,10 @@ Version History
    - Added GRCh38 re-aligned 1000 Genomes (phase 3) as option for LD matrix
    - Using GENCODE v26 for hg38 gene track
    - Added support for COLOC2 colocalization testing
+- v1.4.0 alpha (released Aug. 6, 2020)
+   - Added ability to export images as svg vector format
+   - Bug fix for the merge_and_convert_to_html_coloc2.py script
+   - More sample datasets added that are compatible for COLOC2 runs
 
 
 ******************

@@ -408,6 +408,22 @@ Each column (tab-separated) defines:
 5. rs ID column name (alternatively, you may specify a column with variant ID formatted as chrom_pos_ref_alt_b37; e.g. 1_205860191_A_G_b37)
 6. P-value
 
+
+Note that COLOC2 assumes an eQTL dataset as secondary input, and the 
+`merge_and_convert_to_html_coloc2.py script <https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html_coloc2.py>`_ 
+must be used, which requires the same inputs as above, plus the following:
+
+7. Beta  
+8. Standard error  
+9. Number of samples  
+10. A1 (minor) or alternate allele  
+11. A2 (major) or reference allele  
+12. Minor allele frequency (MAF)  
+13. Probe ID  
+
+While running COLOC2 is possible, we proceed below with the simpler example without COLOC2. 
+The steps to also include COLOC2, however, are similar.
+
 Then, to generate the merged html file while subsetting the region we may issue the command as follows:
 
 .. code-block:: console
