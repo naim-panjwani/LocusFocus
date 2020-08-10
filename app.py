@@ -1645,8 +1645,9 @@ def index():
                         if not set(coloc2eqtlcolnames).issubset(secondary_dataset):
                             raise InvalidUsage(f'You have chosen to run COLOC2. COLOC2 assumes eQTL data as secondary dataset, and you must have all of the following column names: {coloc2eqtlcolnames}')
                         secondary_dataset['SNPID'] = cleanSNPs(secondary_dataset['SNPID'].tolist(),regionstr,coordinate)
-                        secondary_dataset.set_index('SNPID', inplace=True)
-                        secondary_dataset = secondary_dataset[~secondary_dataset.index.duplicated()].reset_index().drop(columns=['index'])
+                        #secondary_dataset.set_index('SNPID', inplace=True)
+                        idx = pd.Index(list(secondary_dataset['SNPID']))
+                        secondary_dataset = secondary_dataset.loc[~idx.duplicated()].reset_index().drop(columns=['index'])
                         # merge to keep only SNPs already present in the GWAS/primary dataset (SS subset):
                         secondary_data_std_snplist = standardizeSNPs(secondary_dataset['SNPID'].tolist(), regionstr, coordinate)
                         secondary_dataset = pd.concat([secondary_dataset, pd.DataFrame(secondary_data_std_snplist, columns=['SNPID.tmp'])], axis=1)

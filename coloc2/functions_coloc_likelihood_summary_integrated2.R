@@ -58,16 +58,16 @@ process.dataset <- function(d, suffix, ave=TRUE, estimate_sdy=TRUE,correlation=0
         if(d$type == 'quant' & !('sdY' %in% nd)){
            if("N" %in% nd){ 
                 d$sdY <- sdY.est(d$varbeta, d$MAF, d$N,d$beta)
-                print(d$sdY)
+                # print(d$sdY)
            }else{
                 d$sdY  <- 1
            }
         }
     }
-    print("SdY")
-    print(d$sdY)
+    # print("SdY")
+    # print(d$sdY)
     d$sdY = 1
-    print(d$sdY)
+    # print(d$sdY)
     if(correlation != 0){
         df = data.frame(Z,V,sdy) 
         df$Z=d$beta/sqrt(d$varbeta) 
@@ -170,7 +170,6 @@ coloc.abf <- function(dataset1, dataset2, MAF=NULL,
   merged.df$SNP.PP.H4 <- exp(merged.df$internal.sum.lABF - my.denom.log.abf)
   
 ############################## 
-
   pp.abf <- combine.abf(merged.df$lABF.df1, merged.df$lABF.df2, p1, p2, p12)  
   common.snps <- nrow(merged.df)
   results <- c(nsnps=common.snps, pp.abf)
@@ -358,6 +357,14 @@ combine.abf <- function(l1, l2, p1, p2, p12) {
   lH0.abf <- 0
   lH1.abf <- log(p1) + logsum(l1)
   lH2.abf <- log(p2) + logsum(l2)
+  # print("l1")
+  # print(l1)
+  # print("l2")
+  # print(l2)
+  # print("logsum(l1) + logsum(l2)")
+  # print(logsum(l1) + logsum(l2))
+  # print("logsum(lsum)")
+  # print(logsum(lsum))
   lH3.abf <- log(p1) + log(p2) + logdiff(logsum(l1) + logsum(l2), logsum(lsum))
   lH4.abf <- log(p12) + logsum(lsum)
 

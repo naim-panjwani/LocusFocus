@@ -57,9 +57,9 @@ outfilename <- argv$outfilename
 #res2=coloc.eqtl.biom(eqtl.df=eQTL_file2,biom.df=GWAS_file2,p12=1e-6,useBETA=TRUE,outfolder=getwd(),prefix="output", plot=FALSE, save.coloc.output=FALSE, match_snpid=T)
 #res2[,c("ProbeID","PP.H4.abf")]
 
-#c25480de-a21a-4b07-9606-046e0484cdc1
-#gwas_filename <- "static/session_data/coloc2gwas_df-c25480de-a21a-4b07-9606-046e0484cdc1.txt"
-#eqtl_filename <- "static/session_data/coloc2eqtl_df-c25480de-a21a-4b07-9606-046e0484cdc1.txt"
+#82265b58-b4cb-47fe-922e-b08a7b9c994e
+#gwas_filename <- "static/session_data/coloc2gwas_df-82265b58-b4cb-47fe-922e-b08a7b9c994e.txt"
+#eqtl_filename <- "static/session_data/coloc2eqtl_df-82265b58-b4cb-47fe-922e-b08a7b9c994e.txt"
 
 if(!file.exists(gwas_filename)) stop(paste0("COLOC2: Did not find GWAS file: ", gwas_filename))
 if(!file.exists(eqtl_filename)) stop(paste0("COLOC2: Did not find eQTL file: ", eqtl_filename))
