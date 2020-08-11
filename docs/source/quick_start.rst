@@ -421,8 +421,16 @@ must be used, which requires the same inputs as above, plus the following:
 12. Minor allele frequency (MAF)  
 13. Probe ID  
 
+You may refer to the 
+`github page <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/>`_ 
+for more examples of datasets, where a  
+`sample descriptor file <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_files_to_merge_coloc2.txt>`_ 
+and `sample command <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/merge_command.sh>`_ 
+are provided for guidance to build a secondary dataset to also run COLOC2 colocalization.  
+
 While running COLOC2 is possible, we proceed below with the simpler example without COLOC2. 
-The steps to also include COLOC2, however, are similar.
+The steps to also include COLOC2, however, are similar.  
+
 
 Then, to generate the merged html file while subsetting the region we may issue the command as follows:
 
