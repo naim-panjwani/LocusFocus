@@ -40,8 +40,12 @@ outfilename <- argv$outfilename
 
 # test
 # P_values_filename <- "data/test_data/Pvalues.txt"
+id <- "c2fa1427-a503-4e36-939b-fa3e505177ec"
+#P_values_filename <- paste0('static/session_data/Pvalues-', id, '.txt')
 # ld_matrix_filename <- "data/test_data/ldmat.txt"
+#ld_matrix_filename <- paste0('static/session_data/ldmat-', id, '.txt')
 # outfilename <- "data/test_data/SSPvalues.txt"
+#outfilename <- paste0('static/session_data/SSPvalues-', id, '.txt')
 # P_values_filename <- "static/session_data/Pvalues-5def29d3-a173-42b7-a49e-6ea0a53e17da"
 # ld_matrix_filename <- "static/session_data/ldmat-5def29d3-a173-42b7-a49e-6ea0a53e17da"
 # outfilename <- "static/session_data/SSPvalues-5def29d3-a173-42b7-a49e-6ea0a53e17da"
@@ -215,7 +219,7 @@ for(i in 1:num_iterations) {
   }
   
   # do pretest (set_based_test)
-  tryCatch(
+  t <- try(
   {
     if(set_based_test(P_eqtl_i, ld_mat_i, num_iterations)) {
       P = simple_sum_p(P_gwas=P_gwas_i, P_eqtl=P_eqtl_i, ld.mat=ld_mat_i, cut=0, m=snp_count, meth='davies')
@@ -232,11 +236,12 @@ for(i in 1:num_iterations) {
       comp_used <- c(comp_used, "na")
     }
   }
-  , error = function(e) {
+  )
+  if("try-error" %in% class(t)) {
+      print(t[1])
       Pss <- c(Pss, -3)
       comp_used <- c(comp_used, "na")
-    } # could not compute a SS p-value (SNPs not dense enough?)
-  )
+    } # could not compute a SS p-value (SNPs not dense enough? can also get this if the LD matrix if not positive definite)
 }
 
 sessionid <- gsub(".txt", "", gsub("Pvalues-","",P_values_filename))
