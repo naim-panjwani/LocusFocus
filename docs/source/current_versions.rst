@@ -33,6 +33,8 @@ Version History
    - Added ability to export images as svg vector format
    - Bug fix for the merge_and_convert_to_html_coloc2.py script
    - More sample datasets added that are compatible for COLOC2 runs
+- v1.4.1 alpha (Oct. 6, 2020)
+   - Bug fix in identifying lead SNP
 
 
 ******************
