@@ -599,7 +599,7 @@ def getLeadSNPindex(leadsnpname, summaryStats, snpcol, pcol):
     if lead_snp=='': lead_snp = list(summaryStats.loc[ summaryStats.loc[:,pcol] == min(summaryStats.loc[:,pcol]) ].loc[:,snpcol])[0].split(';')[0]
     if lead_snp not in snp_list:
         raise InvalidUsage('Lead SNP not found', status_code=410)
-    lead_snp_position_index = list(summaryStats.loc[:,snpcol]).index(lead_snp)
+    lead_snp_position_index = snp_list.index(lead_snp)
     return lead_snp_position_index
 
 ####################################

@@ -10,7 +10,7 @@ options(warn=-1)
 # Check if required packages are installed:
 list.of.packages <- c("argparser", "CompQuadForm", "data.table")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)>0) install.packages(new.packages)
+if(length(new.packages)>0) install.packages(new.packages,repos = "http://cran.us.r-project.org")
 
 library(argparser, quietly=TRUE)
 library(CompQuadForm, quietly=TRUE)
