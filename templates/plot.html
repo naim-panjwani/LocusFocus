@@ -335,6 +335,7 @@
     // If unchecked p-value filter, redraw all points:
     function plot_fullgwas(pval_filter_box) {
         d3.select('#plot').text("");
+        d3.select('#plot_message').append("i").classed('fa',true).classed('fa-info-circle', true).text(`Please wait while re-drawing`);
         d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
             d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
                 var data = response;
@@ -350,14 +351,11 @@
                     font_size = 14,
                     legend_offset = 0.1,
                     pval_filter = false);
-                    d3.select('#plot_message').text("");
                 }
                 else {
-                    // d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing`);
-                    d3.select('#plot_message').append("i").classed('fa',true).classed('fa-info-circle', true).text(`Please wait while re-drawing`);
                     plot_gwas(data, genesdata);
-                    d3.select('#plot_message').text("");
                 }
+                d3.select('#plot_message').text("");
             });
         });
     }
