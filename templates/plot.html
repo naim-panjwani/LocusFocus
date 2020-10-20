@@ -41,7 +41,8 @@
         <div class="col-md-12">
             <h3>Colocalization Plot</h3>
             <select id="selGene" onchange="optionChanged(this.value)"></select>
-            <div id="plot_message"></div>
+            <div id="plot_message" class="isa_info"></div>
+            
             <div class="row">
                 <div class="col-md-6">
                     <input type="checkbox" id="pval-filter" name="pval-filter" onclick="plot_fullgwas(this)" checked><label for="pval-filter" style="margin: 0px; padding: 10px;  height:42px"
@@ -240,11 +241,13 @@
     var sessionid="{{ sessionid }}";
     var transpose=false;
     function init() {
+        // d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while loading colocalization plot`);
+        d3.select('#plot_message').append("i").classed('fa',true).classed('fa-info-circle', true).text(`Please wait while loading colocalization plot`);
+        d3.select("#sessionid").append('a').attr('href',`/session_id/${sessionid}`).text(sessionid);
         d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
             d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
                 d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(SSResponse => {
                     d3.json("{{ url_for('static', filename=coloc2_file) }}").then(coloc2Response => {
-                        d3.select("#sessionid").append('a').attr('href',`/session_id/${sessionid}`).text(sessionid);
                         var data = response;
                         var genesdata = genesResponse;
                         populate_genes(genesdata, data);
@@ -268,6 +271,7 @@
                             buildColoc2Table(coloc2Response);
                         }
                         plot_gwas(data, genesdata);
+                        d3.select('#plot_message').text("");
 
                         // initialize popover and tooltip
                         $(function () {
@@ -309,7 +313,8 @@
     function optionChanged(newgene) {
         var newurl=`/update/${sessionid}/${newgene}`;
         d3.select('#plot').text("");
-        d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing eQTLs for gene ${newgene}`);
+        // d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing eQTLs for gene ${newgene}`);
+        d3.select('#plot_message').append("i").classed('fa',true).classed('fa-info-circle', true).text(`Please wait while re-drawing eQTLs for gene ${newgene}`);
         // d3.json("{{ url_for('update_colocalizing_gene', session_id=sessionid, newgene=newgene) }}").then(response => {
         d3.json(newurl).then(newresponse => {
             d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
@@ -340,7 +345,8 @@
                 var data = response;
                 var genesdata = genesResponse;
                 if(pval_filter_box.checked === false) {
-                    d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing with all GWAS points (slow)`);
+                    // d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing with all GWAS points (slow)`);
+                    d3.select('#plot_message').append("i").classed('fa',true).classed('fa-info-circle', true).text(`Please wait while re-drawing with all GWAS points (slow)`);
                     plot_gwas(data, genesdata, 
                     eqtl_smoothing_window_size = -1,
                     percent_occupied_by_one_char = 0.020,
@@ -352,7 +358,8 @@
                     d3.select('#plot_message').text("");
                 }
                 else {
-                    d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing`);
+                    // d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing`);
+                    d3.select('#plot_message').append("i").classed('fa',true).classed('fa-info-circle', true).text(`Please wait while re-drawing`);
                     plot_gwas(data, genesdata);
                     d3.select('#plot_message').text("");
                 }

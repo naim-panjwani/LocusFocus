@@ -804,7 +804,7 @@ function plot_gwas(data, genesdata,
   };
 
 var img_svg = d3.select("#svg-try");
-Plotly.newPlot('plot', all_traces, layout)
+Plotly.newPlot('plot', all_traces, layout);
 
 // .then(
 //   function(gd)
