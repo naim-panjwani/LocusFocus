@@ -288,26 +288,21 @@
         });
     }
 
-    function populate_genes() {
+    function populate_genes(genesdata, response) {
         var selector = d3.select("#selGene");
-        d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
-            d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
-                var genesdata = genesResponse;
-                var genenames = genesdata.map(gene => gene['name']);
-                var geneindex = 0;
-                Object.keys(genenames).forEach((gene, i) => {
-                    if(genenames[i] === response['gene']) {
-                        geneindex = i;
-                    }
-                    selector
-                        .append("option")
-                        .text(genenames[i])
-                        .property('value', genenames[i]);
-                    
-                });
-                selector.property("selectedIndex", geneindex)
-            });
-        })
+        var genenames = genesdata.map(gene => gene['name']);
+        var geneindex = 0;
+        Object.keys(genenames).forEach((gene, i) => {
+            if(genenames[i] === response['gene']) {
+                geneindex = i;
+            }
+            selector
+                .append("option")
+                .text(genenames[i])
+                .property('value', genenames[i]);
+            
+        });
+        selector.property("selectedIndex", geneindex)
     }
 
     function optionChanged(newgene) {
