@@ -38,6 +38,8 @@ set_based_p <- argv$set_based_p
 if(as.character(set_based_p) == 'default') set_based_p <- NULL
 outfilename <- argv$outfilename
 
+ACONSTANT <- 6e-5
+
 # test
 # P_values_filename <- "data/test_data/Pvalues.txt"
 id <- "c2fa1427-a503-4e36-939b-fa3e505177ec"
@@ -46,9 +48,9 @@ id <- "c2fa1427-a503-4e36-939b-fa3e505177ec"
 #ld_matrix_filename <- paste0('static/session_data/ldmat-', id, '.txt')
 # outfilename <- "data/test_data/SSPvalues.txt"
 #outfilename <- paste0('static/session_data/SSPvalues-', id, '.txt')
-# P_values_filename <- "static/session_data/Pvalues-5def29d3-a173-42b7-a49e-6ea0a53e17da"
-# ld_matrix_filename <- "static/session_data/ldmat-5def29d3-a173-42b7-a49e-6ea0a53e17da"
-# outfilename <- "static/session_data/SSPvalues-5def29d3-a173-42b7-a49e-6ea0a53e17da"
+# P_values_filename <- "static/session_data/Pvalues-d21e2bbf-01a9-448d-9483-067f60dcd591.txt"
+# ld_matrix_filename <- "static/session_data/ldmat-d21e2bbf-01a9-448d-9483-067f60dcd591.txt"
+# outfilename <- "static/session_data/SSPvalues-d21e2bbf-01a9-448d-9483-067f60dcd591.txt"
 
 ###############################################################################
 ############ FUNCTIONS
@@ -112,6 +114,7 @@ get_a_diag<-function(eqtl_evid,m){
 }
 
 get_eigenvalues<-function(eqtl_evid,ld.mat,m){
+  diag(ld.mat) <- diag(ld.mat) + ACONSTANT
   chol_Sigma=chol(ld.mat)
   a_diag <- get_a_diag(eqtl_evid,m)
   
