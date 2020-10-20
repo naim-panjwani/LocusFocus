@@ -42,6 +42,12 @@
             <h3>Colocalization Plot</h3>
             <select id="selGene" onchange="optionChanged(this.value)"></select>
             <div id="plot_message"></div>
+            <div class="row">
+                <div class="col-md-6">
+                    <input type="checkbox" id="pval-filter" name="pval-filter" onclick="plot_fullgwas(this)" checked><label for="pval-filter" style="margin: 0px; padding: 10px;  height:42px"
+                    data-toggle="tooltip" data-html="true" title="<p>If unchecked, all GWAS p-values above 0.1 will be shown (slower to load and plot).</p>""> Uncheck to draw all GWAS points below P &lt; 0.1 (slow)
+                </div>
+            </div>
             <div id="plot"></div>
             <div class="row">
                 <div class="col-md-3">
@@ -242,7 +248,6 @@
                         var data = response;
                         var genesdata = genesResponse;
                         populate_genes(genesdata, data);
-                        plot_gwas(data, genesdata);
                         if(SSResponse['Tissues'].length === 0) {
                             d3.selectAll('.gtex_heatmap_message').append("p").attr("class","text-warning").text(`No GTEx tissues were selected`);
                         }
@@ -262,6 +267,7 @@
                         if(coloc2Response['ProbeID'].length>0) {
                             buildColoc2Table(coloc2Response);
                         }
+                        plot_gwas(data, genesdata);
 
                         // initialize popover and tooltip
                         $(function () {
@@ -325,6 +331,34 @@
     }
 
     init();
+
+    // If unchecked p-value filter, redraw all points:
+    function plot_fullgwas(pval_filter_box) {
+        d3.select('#plot').text("");
+        d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
+            d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
+                var data = response;
+                var genesdata = genesResponse;
+                if(pval_filter_box.checked === false) {
+                    d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing with all GWAS points (slow)`);
+                    plot_gwas(data, genesdata, 
+                    eqtl_smoothing_window_size = -1,
+                    percent_occupied_by_one_char = 0.020,
+                    inputHeight = 720,
+                    inputWidth = 1080,
+                    font_size = 14,
+                    legend_offset = 0.1,
+                    pval_filter = false);
+                    d3.select('#plot_message').text("");
+                }
+                else {
+                    d3.select('#plot_message').append("p").attr("class","text-warning").text(`Please wait while re-drawing`);
+                    plot_gwas(data, genesdata);
+                    d3.select('#plot_message').text("");
+                }
+            });
+        });
+    }
 
     // Listen for redraw click events:
     var coloc_plot_redraw_btn = d3.select('#colocPlot-redraw-btn');

@@ -35,6 +35,9 @@ Version History
    - More sample datasets added that are compatible for COLOC2 runs
 - v1.4.1 alpha (Oct. 6, 2020)
    - Bug fix in identifying lead SNP
+- v1.4.2 alpha (Oct. 9, 2020)
+   - Fixed issue where SS was not being computed due to non-singular matrix error
+   - Improved initial plotting time of colocalization plot by filtering out GWAS p-values less than 0.1 by default
 
 
 ******************
