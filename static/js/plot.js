@@ -4,7 +4,8 @@ function plot_gwas(data, genesdata,
   inputHeight = 720,
   inputWidth = 1080,
   font_size = 14,
-  legend_offset = 0.1) {
+  legend_offset = 0.1,
+  pval_filter = true) {
 
   var positions = data.positions;
   var pvalues = data.pvalues;
@@ -29,7 +30,23 @@ function plot_gwas(data, genesdata,
   // console.log(data);
   // console.log(genesdata);
 
-  var log10pvalues = pvalues.map(p => -Math.log10(p))
+  if(pval_filter) {
+    // pvalues2 = pvalues.filter(p => p < 0.1);
+    // pvalues = pvalues2;
+    pindices = [];
+    pvalues.map((p,i) => {
+      if(p<0.1) pindices.push(i);
+    });
+    pAtIndices = pindices.map(i => pvalues[i]);
+    positionsAtIndices = pindices.map(i => positions[i]);
+    ld_valuesAtIndices = pindices.map(i => ld_values[i]);
+    snpsAtIndices = pindices.map(i => snps[i]);
+    pvalues = pAtIndices;
+    positions = positionsAtIndices;
+    ld_values = ld_valuesAtIndices;
+    snps = snpsAtIndices;
+  }
+  var log10pvalues = pvalues.map(p => -Math.log10(p));
   var no_ld_info_snps = [], no_ld_info_snps_color = "#7f7f7f"; // grey
   var ld_lt_20_group = [], ld_lt_20_group_color = "#1f77b4"; // very low ld points (dark blue)
   var ld_20_group = [], ld_20_group_color = "#17becf"; // low ld points (light blue)
