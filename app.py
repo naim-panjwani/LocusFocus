@@ -11,6 +11,8 @@ from bs4 import BeautifulSoup as bs
 import re
 import pysam
 import secrets
+import glob
+import tarfile
 
 from flask import Flask, request, redirect, url_for, jsonify, render_template, flash, send_file
 from werkzeug.utils import secure_filename
@@ -599,7 +601,7 @@ def getLeadSNPindex(leadsnpname, summaryStats, snpcol, pcol):
     if lead_snp=='': lead_snp = list(summaryStats.loc[ summaryStats.loc[:,pcol] == min(summaryStats.loc[:,pcol]) ].loc[:,snpcol])[0].split(';')[0]
     if lead_snp not in snp_list:
         raise InvalidUsage('Lead SNP not found', status_code=410)
-    lead_snp_position_index = snp_list.index(lead_snp)
+    lead_snp_position_index = list(summaryStats.loc[:,snpcol]).index(lead_snp)
     return lead_snp_position_index
 
 ####################################
@@ -1825,7 +1827,10 @@ def index():
             downloadfilepath = os.path.join(MYDIR, 'static', downloadfile)
             files_to_compress = f'session_data/*{my_session_id}*'
             files_to_compress_path = os.path.join(MYDIR, 'static', files_to_compress)
-            compressrun = subprocess.run(args=['tar', 'zcvf', downloadfilepath, files_to_compress_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            with tarfile.open(downloadfilepath, "w") as tar:
+                for name in glob.glob(files_to_compress_path):
+                    tar.add(name)
+            # compressrun = subprocess.run(args=['tar', 'zcvfP', downloadfilepath, glob.glob(files_to_compress_path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             # if compressrun.returncode != 0:
             #     raise InvalidUsage(compressrun.stdout.decode('utf-8'), status_code=410)
 
