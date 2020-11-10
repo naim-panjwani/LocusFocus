@@ -42,7 +42,7 @@ ACONSTANT <- 6e-5
 
 # test
 # P_values_filename <- "data/test_data/Pvalues.txt"
-id <- "c2fa1427-a503-4e36-939b-fa3e505177ec"
+#id <- "6c8797f3-acec-4e59-82c3-f0bb82d9ba38"
 #P_values_filename <- paste0('static/session_data/Pvalues-', id, '.txt')
 # ld_matrix_filename <- "data/test_data/ldmat.txt"
 #ld_matrix_filename <- paste0('static/session_data/ldmat-', id, '.txt')
@@ -63,22 +63,10 @@ set_based_test <- function(summary_stats, ld, num_genes, alpha=0.05) {
   m <- length(Zsq)
   eigenvalues <- eigen(ld)$values
   pv <- abs(imhof(statistic, eigenvalues)$Qq)
-  if(is.null(set_based_p)) {
-    if(pv < (alpha / num_genes)) {
-      return(TRUE)
-    } else {
-      return(FALSE)
-    }
-  }
-  else if(!is.na(as.numeric(set_based_p))) {
-    if(pv < as.numeric(set_based_p)) {
-      return(TRUE)
-    } else {
-      return(FALSE)
-    }
-  }
-  else {
-    stop(paste0("Provided set-based p-value (", set_based_p,") is invalid."))
+  if(pv < (alpha / num_genes)) {
+    return(TRUE)
+  } else {
+    return(FALSE)
   }
 }
 
@@ -205,11 +193,12 @@ for(i in 1:num_iterations) {
   
   # Remove NA rows
   NArows = which(is.na(tempmat[,1]) | is.na(tempmat[,2]))
-  tempmat = tempmat[-NArows,]
+  if(length(NArows)>1) tempmat = tempmat[-NArows,]
   
   P_gwas_i <- as.numeric(tempmat[,1])
   P_eqtl_i <- as.numeric(tempmat[,2])
-  ld_mat_i <- ldmat[-NArows, -NArows]
+  ld_mat_i <- ldmat
+  if(length(NArows)>1) ld_mat_i <- ld_mat_i[-NArows, -NArows]
   
   # Count SNPs
   snp_count <- nrow(tempmat)
