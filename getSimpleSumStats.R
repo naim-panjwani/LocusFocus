@@ -63,10 +63,22 @@ set_based_test <- function(summary_stats, ld, num_genes, alpha=0.05) {
   m <- length(Zsq)
   eigenvalues <- eigen(ld)$values
   pv <- abs(imhof(statistic, eigenvalues)$Qq)
-  if(pv < (alpha / num_genes)) {
-    return(TRUE)
-  } else {
-    return(FALSE)
+  if(is.null(set_based_p)) {
+    if(pv < (alpha / num_genes)) {
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+  }
+  else if(!is.na(as.numeric(set_based_p))) {
+    if(pv < as.numeric(set_based_p)) {
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+  }
+  else {
+    stop(paste0("Provided set-based p-value (", set_based_p,") is invalid."))
   }
 }
 
