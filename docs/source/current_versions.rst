@@ -38,6 +38,9 @@ Version History
 - v1.4.2 alpha (Oct. 9, 2020)
    - Fixed issue where SS was not being computed due to non-singular matrix error
    - Improved initial plotting time of colocalization plot by filtering out GWAS p-values less than 0.1 by default
+- v1.4.3 alpha (Nov. 10, 2020)
+   - Fixed issue where the Simple Sum calculation was not being performed in the case where no missing data was present
+
 
 
 ******************
