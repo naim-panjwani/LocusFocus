@@ -27,7 +27,7 @@ from pprint import pprint
 
 genomicWindowLimit = 2000000
 one_sided_SS_window_size = 100000 # (100 kb on either side of the lead SNP)
-fileSizeLimit = 100 * 1024 * 1024 # in Bytes
+fileSizeLimit = 500 * 1024 * 1024 # in Bytes
 
 MYDIR = os.path.dirname(__file__)
 APP_STATIC = os.path.join(MYDIR, 'static')
