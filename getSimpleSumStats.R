@@ -42,15 +42,15 @@ ACONSTANT <- 6e-5
 
 # test
 # P_values_filename <- "data/test_data/Pvalues.txt"
-#id <- "6c8797f3-acec-4e59-82c3-f0bb82d9ba38"
+#id <- "0d074aff-76f4-42ab-87ef-5e2fa34b04e8"
 #P_values_filename <- paste0('static/session_data/Pvalues-', id, '.txt')
 # ld_matrix_filename <- "data/test_data/ldmat.txt"
 #ld_matrix_filename <- paste0('static/session_data/ldmat-', id, '.txt')
 # outfilename <- "data/test_data/SSPvalues.txt"
 #outfilename <- paste0('static/session_data/SSPvalues-', id, '.txt')
-# P_values_filename <- "static/session_data/Pvalues-d21e2bbf-01a9-448d-9483-067f60dcd591.txt"
-# ld_matrix_filename <- "static/session_data/ldmat-d21e2bbf-01a9-448d-9483-067f60dcd591.txt"
-# outfilename <- "static/session_data/SSPvalues-d21e2bbf-01a9-448d-9483-067f60dcd591.txt"
+# P_values_filename <- "static/session_data/Pvalues-0d074aff-76f4-42ab-87ef-5e2fa34b04e8.txt"
+# ld_matrix_filename <- "static/session_data/ldmat-0d074aff-76f4-42ab-87ef-5e2fa34b04e8.txt"
+# outfilename <- "static/session_data/SSPvalues-0d074aff-76f4-42ab-87ef-5e2fa34b04e8.txt"
 
 ###############################################################################
 ############ FUNCTIONS

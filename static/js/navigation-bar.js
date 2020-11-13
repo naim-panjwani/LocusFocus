@@ -44,7 +44,7 @@ var modalHeader = modalContent
 modalHeader
     .append('h4')
     .classed('modal-title',true)
-    .text("LocusFocus: A web-based colocalization tool for the annotation and functional follow-up of GWAS")
+    .text("LocusFocus: Web-based colocalization for the annotation and functional follow-up of GWAS")
 modalHeader
     .append('button')
     .attr('type',"button")
@@ -59,15 +59,15 @@ modalBody
     .text("Authors:");
 modalBody
     .append('p')
-    .text("Naim Panjwani, Fan Wang, Cheng Wang, Gengming He, Scott Mastromatteo, Allen Bao, Jiafen Gong, Johanna M Rommens, Lei Sun, Lisa J Strug");
+    .text("Naim Panjwani, Fan Wang, Scott Mastromatteo, Allen Bao, Cheng Wang, Gengming He, Jiafen Gong, Johanna M. Rommens, Lei Sun, Lisa J. Strug");
 var modalFooter = modalContent
     .append('div')
     .classed('modal-footer',true);
 modalFooter
     .append('p')
     .append('a')
-    .attr('href','https://doi.org/10.1101/2020.01.02.891291')
-    .text("bioRxiv 2020.01.02.891291");
+    .attr('href','https://doi.org/10.1371/journal.pcbi.1008336')
+    .text("PLoS Comput Biol 2020 16(10): e1008336.");
 modalFooter
     .append('button')
     .attr('type','button')
