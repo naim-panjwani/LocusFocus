@@ -205,7 +205,7 @@ def Xto23(l):
             if x!='.':
                 newl.append(int(str(x).strip().lower().replace('chr','')))
             else:
-                newl.append('.')
+                newl.append(np.nan)
         else:
             raise InvalidUsage('Chromosome unrecognized', status_code=410)
     return newl
