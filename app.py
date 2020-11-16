@@ -516,7 +516,7 @@ def decomposeVariant(variant_list):
     A pandas.dataframe with chromosome, pos, reference and alternate alleles columns
     """
     chromlist = [x.split('_')[0] if len(x.split('_'))==5 else x for x in variant_list]
-    chromlist = [int(x) for x in chromlist if x!="X"]
+    chromlist = [int(x) if x not in ["X","."] else x for x in chromlist]
     poslist = [int(x.split('_')[1]) if len(x.split('_'))==5 else x for x in variant_list]
     reflist = [x.split('_')[2] if len(x.split('_'))==5 else x for x in variant_list]
     altlist = [x.split('_')[3] if len(x.split('_'))==5 else x for x in variant_list]

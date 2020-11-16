@@ -21,13 +21,12 @@ def Xto23(l):
     return newl
 
 
-
 def parseRegionText(regiontext, build):
     if build not in ['hg19', 'hg38']:
         raise InvalidUsage(f'Unrecognized build: {build}', status_code=410)
     regiontext = regiontext.strip().replace(' ','').replace(',','').replace('chr','')
     if not re.search("^\d+:\d+-\d+$", regiontext.replace('X','23').replace('x','23')):
-       raise InvalidUsage('Invalid coordinate format. e.g. 1:205,000,000-206,000,000', status_code=410)
+       raise InvalidUsage(f'Invalid coordinate format. {regiontext} e.g. 1:205,000,000-206,000,000', status_code=410)
     chrom = regiontext.split(':')[0].lower().replace('chr','').upper()
     pos = regiontext.split(':')[1]
     startbp = pos.split('-')[0].replace(',','')
@@ -41,7 +40,7 @@ def parseRegionText(regiontext, build):
             startbp = int(startbp)
             endbp = int(endbp)
         except:
-            raise InvalidUsage("Invalid coordinates input", status_code=410)
+            raise InvalidUsage(f"Invalid coordinates input: {regiontext}", status_code=410)
     else:
         try:
             chrom = int(chrom)
@@ -52,7 +51,7 @@ def parseRegionText(regiontext, build):
             startbp = int(startbp)
             endbp = int(endbp)
         except:
-            raise InvalidUsage("Invalid coordinates input", status_code=410)
+            raise InvalidUsage(f"Invalid coordinates input {regiontext}", status_code=410)
     if chrom < 1 or chrom > 23:
         raise InvalidUsage('Chromosome input must be between 1 and 23', status_code=410)
     elif startbp > endbp:
@@ -65,14 +64,12 @@ def parseRegionText(regiontext, build):
         return chrom, startbp, endbp
 
 
-def subsetLocus(build, summaryStats, regiontext, columnnames):
+
+def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
     # regiontext format example: "1:205500000-206000000"
     if regiontext == "": regiontext = default_region
-    chromcol, poscol, snpcol, pcol = columnnames
     print('Parsing region text')
     chrom, startbp, endbp = parseRegionText(regiontext, build)
-    if (endbp - startbp) > genomicWindowLimit:
-        raise InvalidUsage(f'Entered region size is larger than {genomicWindowLimit} bp', status_code=410)
     print(chrom,startbp,endbp)
     print('Subsetting GWAS data to entered region')            
     bool1 = [x == chrom for x in Xto23(list(summaryStats[chromcol]))]
@@ -94,17 +91,18 @@ def subsetLocus(build, summaryStats, regiontext, columnnames):
 
 
 
-def getNumHeaderLines(vcf_filename, num_lines_to_check = 1000):
-    num_header_lines = 0
-    num_lines_checked = 0
-    with gzip.open(vcf_filename, 'rb') as f:
-        nextline = f.readline().decode('utf-8')
-        num_lines_checked += 1
-        while nextline[0:2] == "##" and num_lines_checked <= num_lines_to_check:
-            num_header_lines += 1
-            nextline = f.readline().decode('utf-8')
-            num_lines_checked += 1
-    return num_header_lines
+
+# def getNumHeaderLines(vcf_filename, num_lines_to_check = 1000):
+#     num_header_lines = 0
+#     num_lines_checked = 0
+#     with gzip.open(vcf_filename, 'rb') as f:
+#         nextline = f.readline().decode('utf-8')
+#         num_lines_checked += 1
+#         while nextline[0:2] == "##" and num_lines_checked <= num_lines_to_check:
+#             num_header_lines += 1
+#             nextline = f.readline().decode('utf-8')
+#             num_lines_checked += 1
+#     return num_header_lines
 
 
 
@@ -484,9 +482,9 @@ default_snpname = "ID"
 default_refname = "REF"
 default_altname = "ALT"
 
-MYDIR = os.getcwd()
+MYDIR = os.path.abspath(os.path.join(os.path.dirname( os.getcwd() )))
 coordinates = 'hg38'
-gwasdata = pd.read_csv(os.path.join(os.getcwd(), 'data', 'sample_datasets', 'MI_GWAS_2019_1_205500-206000kbp_hg38.tsv'), sep='\t', encoding='utf-8')
+gwasdata = pd.read_csv(os.path.join(MYDIR, 'data', 'sample_datasets', 'MI_GWAS_2019_1_205500-206000kbp_hg38.tsv'), sep='\t', encoding='utf-8')
 genomicWindowLimit = 2e6
 default_region = "1:205500000-206000000"
 
