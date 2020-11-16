@@ -40,7 +40,8 @@ Version History
    - Improved initial plotting time of colocalization plot by filtering out GWAS p-values less than 0.1 by default
 - v1.4.3 alpha (Nov. 10, 2020)
    - Fixed issue where the Simple Sum calculation was not being performed in the case where no missing data was present
-
+- v1.4.4 alpha (Nov. 16, 2020)
+   - Fixed rsid mapping bug
 
 
 ******************

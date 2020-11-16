@@ -582,7 +582,7 @@ def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
     print(chrom,startbp,endbp)
     print('Eliminating missing rows')
     summaryStats.dropna(subset=[chromcol,poscol,pcol],inplace=True)
-    summaryStats = summaryStats.loc[ [str(x) != '.' for x in list(summaryStats["#CHROM"])] ].copy()
+    summaryStats = summaryStats.loc[ [str(x) != '.' for x in list(summaryStats[chromcol])] ].copy()
     summaryStats.reset_index(drop=True, inplace=True)
     print('Subsetting GWAS data to entered region')            
     bool1 = [x == chrom for x in Xto23(list(summaryStats[chromcol]))]
