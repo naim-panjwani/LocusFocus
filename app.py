@@ -205,7 +205,7 @@ def Xto23(l):
             if x!='.':
                 newl.append(int(str(x).strip().lower().replace('chr','')))
             else:
-                newl.append(np.nan)
+                newl.append('.')
         else:
             raise InvalidUsage('Chromosome unrecognized', status_code=410)
     return newl
@@ -580,6 +580,10 @@ def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
     print('Parsing region text')
     chrom, startbp, endbp = parseRegionText(regiontext, build)
     print(chrom,startbp,endbp)
+    print('Eliminating missing rows')
+    summaryStats.dropna(subset=[chromcol,poscol,pcol],inplace=True)
+    summaryStats = summaryStats.loc[ [str(x) != '.' for x in list(summaryStats["#CHROM"])] ].copy()
+    summaryStats.reset_index(drop=True, inplace=True)
     print('Subsetting GWAS data to entered region')            
     bool1 = [x == chrom for x in Xto23(list(summaryStats[chromcol]))]
     bool2 = [x>=startbp and x<=endbp for x in list(summaryStats[poscol])]
@@ -1362,6 +1366,8 @@ def index():
                 poscol = default_posname
                 refcol = default_refname
                 altcol = default_altname
+                gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data["#CHROM"])] ].copy()
+                gwas_data = gwas_data.reset_index(drop=True, inplace=True)
             
 
 
