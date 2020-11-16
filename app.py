@@ -1367,7 +1367,7 @@ def index():
                 refcol = default_refname
                 altcol = default_altname
                 gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data["#CHROM"])] ].copy()
-                gwas_data = gwas_data.reset_index(drop=True, inplace=True)
+                gwas_data.reset_index(drop=True, inplace=True)
             
 
 
