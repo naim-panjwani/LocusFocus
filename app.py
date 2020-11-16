@@ -196,11 +196,16 @@ def isSorted(l):
 
 def Xto23(l):
     newl = []
+    validchroms = [str(i) for i in list(np.arange(1,24))]
+    validchroms.append('.')
     for x in l:
         if str(str(x).strip().lower().replace('chr','').upper()) == "X":
             newl.append(23)
-        elif str(str(x).strip().lower().replace('chr','')) in [str(i) for i in list(np.arange(1,24))]:
-            newl.append(int(str(x).strip().lower().replace('chr','')))
+        elif str(str(x).strip().lower().replace('chr','')) in validchroms:
+            if x!='.':
+                newl.append(int(str(x).strip().lower().replace('chr','')))
+            else:
+                newl.append('.')
         else:
             raise InvalidUsage('Chromosome unrecognized', status_code=410)
     return newl
