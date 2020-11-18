@@ -581,14 +581,14 @@ def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
     chrom, startbp, endbp = parseRegionText(regiontext, build)
     print(chrom,startbp,endbp)
     print('Eliminating missing rows')
-    summaryStats.dropna(subset=[chromcol,poscol,pcol],inplace=True)
+    #summaryStats.dropna(subset=[chromcol,poscol,pcol],inplace=True)
+    print('Subsetting GWAS data to entered region')
     summaryStats = summaryStats.loc[ [str(x) != '.' for x in list(summaryStats[chromcol])] ].copy()
-    summaryStats.reset_index(drop=True, inplace=True)
-    print('Subsetting GWAS data to entered region')            
     bool1 = [x == chrom for x in Xto23(list(summaryStats[chromcol]))]
     bool2 = [x>=startbp and x<=endbp for x in list(summaryStats[poscol])]
     bool3 = [not x for x in list(summaryStats.isnull().any(axis=1))]
-    gwas_indices_kept = [ (x and y) and z for x,y,z in zip(bool1,bool2,bool3)]
+    bool4 = [str(x) != '.' for x in list(summaryStats[chromcol])]
+    gwas_indices_kept = [ ((x and y) and z) and w for x,y,z,w in zip(bool1,bool2,bool3,bool4)]
     summaryStats = summaryStats.loc[ gwas_indices_kept ].copy()
     summaryStats.sort_values(by=[ poscol ], inplace=True)
     chromcolnum = list(summaryStats.columns).index(chromcol)
@@ -608,8 +608,6 @@ def getLeadSNPindex(leadsnpname, summaryStats, snpcol, pcol):
     snp_list = list(summaryStats.loc[:,snpcol])
     snp_list = [asnp.split(';')[0] for asnp in snp_list] # cleaning up the SNP names a bit
     if lead_snp=='': lead_snp = list(summaryStats.loc[ summaryStats.loc[:,pcol] == min(summaryStats.loc[:,pcol]) ].loc[:,snpcol])[0].split(';')[0]
-    print(f'Lead snp: {lead_snp}')
-    print(f'lead_snp not in snp_list: {lead_snp not in snp_list}')
     if lead_snp not in snp_list:
         raise InvalidUsage('Lead SNP not found', status_code=410)
     lead_snp_position_index = snp_list.index(lead_snp)

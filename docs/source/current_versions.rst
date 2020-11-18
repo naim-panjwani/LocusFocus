@@ -42,6 +42,8 @@ Version History
    - Fixed issue where the Simple Sum calculation was not being performed in the case where no missing data was present
 - v1.4.4 alpha (Nov. 16, 2020)
    - Fixed rsid mapping bug
+   - Fixed bug when matching the top SNP with secondary datasets
+   
 
 
 ******************
