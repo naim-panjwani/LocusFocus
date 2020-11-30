@@ -568,7 +568,7 @@ def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build):
         pos = poslist[i]
         ref = reflist[i]
         alt = altlist[i]
-        varlist.append('_'.join([chrom,pos,ref,alt,buildstr]))
+        varlist.append('_'.join([str(chrom),str(pos),ref,alt,buildstr]))
     gwas_data[default_snpname] = varlist
     return gwas_data
 
