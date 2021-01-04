@@ -300,7 +300,9 @@ def standardizeSNPs(variantlist, regiontxt, build):
     
     if all(x=='.' for x in variantlist):
         raise InvalidUsage('No variants provided')
-        
+    
+    if np.nan in variantlist:
+        raise InvalidUsage('Missing variant IDs detected in row(s): ' + str([ i+1 for i,x in enumerate(variantlist) if str(x) == 'nan' ]))
     
     # Ensure valid region:
     chrom, startbp, endbp = parseRegionText(regiontxt, build)
@@ -568,7 +570,7 @@ def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build):
         pos = poslist[i]
         ref = reflist[i]
         alt = altlist[i]
-        varlist.append('_'.join([chrom,pos,ref,alt,buildstr]))
+        varlist.append('_'.join([str(chrom),str(pos),ref,alt,buildstr]))
     gwas_data[default_snpname] = varlist
     return gwas_data
 

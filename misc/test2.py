@@ -8,18 +8,21 @@ from dask.delayed import delayed
 import subprocess
 import pysam
 
-
 def Xto23(l):
     newl = []
+    validchroms = [str(i) for i in list(np.arange(1,24))]
+    validchroms.append('.')
     for x in l:
         if str(str(x).strip().lower().replace('chr','').upper()) == "X":
             newl.append(23)
-        elif str(str(x).strip().lower().replace('chr','')) in [str(i) for i in list(np.arange(1,24))]:
-            newl.append(int(str(x).strip().lower().replace('chr','')))
+        elif str(str(x).strip().lower().replace('chr','')) in validchroms:
+            if x!='.':
+                newl.append(int(str(x).strip().lower().replace('chr','')))
+            else:
+                newl.append('.')
         else:
             raise InvalidUsage('Chromosome unrecognized', status_code=410)
     return newl
-
 
 def parseRegionText(regiontext, build):
     if build not in ['hg19', 'hg38']:
@@ -179,7 +182,6 @@ def fetchSNV(chrom, bp, ref, build, alt=''):
 
 
 
-
 def standardizeSNPs(variantlist, regiontxt, build):
     """
     Input: Variant names in any of these formats: rsid, chrom_pos_ref_alt, chrom:pos_ref_alt, chrom:pos_ref_alt_b37/b38 
@@ -291,6 +293,9 @@ def standardizeSNPs(variantlist, regiontxt, build):
         else:
             raise InvalidUsage(f'Variant format not recognized: {variant}', status_code=410)
     return stdvariantlist
+
+
+
 
 
 def cleanSNPs(variantlist, regiontext, build='hg19'):
@@ -409,7 +414,7 @@ def decomposeVariant(variant_list):
     A pandas.dataframe with chromosome, pos, reference and alternate alleles columns
     """
     chromlist = [x.split('_')[0] if len(x.split('_'))==5 else x for x in variant_list]
-    chromlist = [int(x) for x in chromlist if x!="X"]
+    chromlist = [int(x) if x not in ["X","."] else x for x in chromlist]
     poslist = [int(x.split('_')[1]) if len(x.split('_'))==5 else x for x in variant_list]
     reflist = [x.split('_')[2] if len(x.split('_'))==5 else x for x in variant_list]
     altlist = [x.split('_')[3] if len(x.split('_'))==5 else x for x in variant_list]
@@ -482,43 +487,33 @@ default_snpname = "ID"
 default_refname = "REF"
 default_altname = "ALT"
 
+# MYDIR = os.getcwd()
+# MYDIR = '/mnt/e/SCS_Data_Analytics/homework/24-Final_project/LocusFocus'
 MYDIR = os.path.abspath(os.path.join(os.path.dirname( os.getcwd() )))
-coordinates = 'hg38'
-gwasdata = pd.read_csv(os.path.join(MYDIR, 'data', 'sample_datasets', 'MI_GWAS_2019_1_205500-206000kbp_hg38.tsv'), sep='\t', encoding='utf-8')
+coordinates = 'hg19'
+coordinate = coordinates
+#gwasdata = pd.read_csv(os.path.join(os.getcwd(), 'data', 'sample_datasets', 'MI_GWAS_2019_1_205500-206000kbp_hg38.tsv'), sep='\t', encoding='utf-8')
+gwas_data = pd.read_csv(os.path.join(MYDIR, 'static', 'upload', 'File-chr18-only.txt'), sep='\t', encoding='utf-8')
 genomicWindowLimit = 2e6
-default_region = "1:205500000-206000000"
-
-## Test mapAndCleanSNPs function
-regiontext = '1:205000000-206000000'
-variantlist = ['rs2211330', '1_205001063_T_A,C', '1:205001063_T_C', 'rs7512462', '1_205930467','rs146984818']
-variantlist.extend(['X_115000731','rs62599779', 'X_115012777_CAA_C', 'rs782251282', 
-                    'X_115012777_C_CA,CAA,CAAA','X_115012777_C_CAA'
-                    #,'X_115013906_C_T_b38'
-                    #,'X_115013906_C_T_b38'
-                    , 'rs17095917'
-                    ,'X_115014354_CCCAGGAAGAAATGAGCA_C_b37'
-                    ,'23_115567075'
-                    ,'23_115567075_C_G'
-                    ,'X_115567075_C_G_b37'])
+regionstr = '18:57097214-57197214'
+regiontext = regionstr
+snpcol = 'RsID'
 chrom, startbp, endbp = parseRegionText(regiontext, coordinates)
-mapAndCleanSNPs(variantlist, regiontext, coordinates)
-regiontext = 'X:114000000-116000000'
-chrom, startbp, endbp = parseRegionText(regiontext, coordinates)
-mapAndCleanSNPs(variantlist, regiontext, coordinates)
 
-regiontext = '1:205000000-206000000'
-variantlist = list(gwasdata['SNP'])
-stdvarlist = mapAndCleanSNPs(variantlist, regiontext, coordinates)
-if all(x=='.' for x in stdvarlist):
-    print(f'None of the variants provided could be mapped to {regiontext}!')
-vardf = decomposeVariant(stdvarlist)
+variant_list = standardizeSNPs(list(gwas_data[snpcol]), regionstr, coordinate)
+if all(x=='.' for x in variant_list):
+    raise InvalidUsage(f'None of the variants provided could be mapped to {regionstr}!', status_code=410)
+vardf = decomposeVariant(variant_list)
+gwas_data = pd.concat([vardf, gwas_data], axis=1)
+chromcol = default_chromname
+poscol = default_posname
+refcol = default_refname
+altcol = default_altname
 
-gwasdata.drop(['chr','variant_pos','ref','alt'], axis=1, inplace=True)
-gwasdata2 = pd.concat([vardf, gwasdata], axis=1)
+gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data["#CHROM"])] ].copy()
+gwas_data.reset_index(drop=True, inplace=True)
 
-gwasdata3 = addVariantID(gwasdata2, default_chromname, default_posname, default_refname, default_altname)
 
-## Test subsetLocus function
-columnnames = ['chr', 'variant_pos', 'SNP', 'ref', 'alt', 'P']
-gwas_data, gwas_indices_kept = subsetLocus(build = coordinates, summaryStats = gwasdata, regiontext = regiontext, columnnames = columnnames)
-
+# Test converting SNPs to either hg19 or hg38 given just the rsid
+standardizeSNPs(list(gwas_data['RsID']), regionstr, 'hg19')
+standardizeSNPs(list(gwas_data['RsID']), '18:59430273-59523590', 'hg38')
