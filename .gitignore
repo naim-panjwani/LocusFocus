@@ -126,6 +126,7 @@ data/GTEx_Analysis_2016-01-15_v7_WholeGenomeSeq_635Ind_PASS_AB02_GQ20_HETX_MISS1
 start_webservice.sh
 data/GTEx_v7_eQTL/
 data/GTEx_v8_eQTL
+data/1000Genomes_GRCh37/
 data/1000Genomes_GRCh38/
 data/dbSNP151/
 *gtf

@@ -300,7 +300,9 @@ def standardizeSNPs(variantlist, regiontxt, build):
     
     if all(x=='.' for x in variantlist):
         raise InvalidUsage('No variants provided')
-        
+    
+    if np.nan in variantlist:
+        raise InvalidUsage('Missing variant IDs detected in row(s): ' + str([ i+1 for i,x in enumerate(variantlist) if str(x) == 'nan' ]))
     
     # Ensure valid region:
     chrom, startbp, endbp = parseRegionText(regiontxt, build)

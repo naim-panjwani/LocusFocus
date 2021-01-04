@@ -4,6 +4,7 @@
 Created on Mon Jul 15 09:59:02 2019
 
 @author: naim
+Does not work in Ubuntu - groupby requires large amount of memory; turicreate does not handle properly
 """
 
 import pandas as pd

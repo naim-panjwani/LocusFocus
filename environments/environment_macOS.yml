@@ -3,6 +3,7 @@ channels:
   - bioconda
   - r
   - defaults
+  - conda-forge
 dependencies:
   - libdeflate=1.0=h1de35cc_1
   - pysam=0.15.3=py37h726f235_1

@@ -1,36 +1,72 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jul 15 09:59:02 2019
+Created on Sat Jan  2 21:20:01 2021
 
 @author: naim
-Does not work in Ubuntu - groupby requires large amount of memory; dask does not handle properly
+Adapted from: https://maxhalford.github.io/blog/pandas-streaming-groupby/
+Works well in Ubuntu
 """
 
+import itertools
+# import multiprocessing as mp # Mongo does not support several write requests
 import pandas as pd
 import numpy as np
+import os
 import pymongo
 from pymongo import MongoClient
-from datetime import datetime
-import dask.dataframe as dd
-from dask.distributed import Client
 import subprocess
-import os
-import gzip
-import shutil
-import resource
+from datetime import datetime
 
-#passwd = pd.read_csv('.passwd', header=None, encoding='utf-8').iloc[0,0]
 
-tissues = pd.read_csv(os.path.join('data', 'GTEx_v8_eQTL','tissues.txt'), header=None)
-tissues = list(tissues.iloc[:,0])
-#files_list = [ 'GTEx_Analysis_v8_eQTL_all_associations_' + tissue.replace(' ','_') + '.allpairs_fixed.txt.gz' for tissue in tissues ]
-files_list = [ 'Pancreas.allpairs_fixed.txt.gz', 'Lung.allpairs_fixed.txt.gz' ]
+def stream_groupby_csv(path, key, agg, chunk_size=1e6, pool=None, **kwargs):
 
-# Initialize MongoDB database
-conn = "mongodb://localhost:27017"
-client = MongoClient(conn)
-db = client.GTEx_V8
+    # Make sure path is a list
+    if not isinstance(path, list):
+        path = [path]
+
+    # Chain the chunks
+    kwargs['chunksize'] = chunk_size
+    chunks = itertools.chain(*[
+        pd.read_csv(p, **kwargs)
+        for p in path
+    ])
+
+    results = []
+    orphans = pd.DataFrame()
+        
+    for chunk in chunks:
+
+        # Add the previous orphans to the chunk
+        chunk = pd.concat((orphans, chunk))
+
+        # Determine which rows are orphans
+        last_val = chunk[key].iloc[-1]
+        is_orphan = chunk[key] == last_val
+
+        # Put the new orphans aside
+        chunk, orphans = chunk[~is_orphan], chunk[is_orphan]
+
+        # If a pool is provided then we use apply_async
+        if pool:
+            results.append(pool.apply_async(agg, args=(chunk,)))
+        else:
+            results.append(agg(chunk))
+
+    # If a pool is used then we have to wait for the results
+    if pool:
+        results = [r.get() for r in results]
+    
+    results.append(agg(orphans)) # ensure last chunk (gene) is pushed as well!
+
+    return pd.concat(results)
+
+
+def agg(chunk):
+    """lambdas can't be serialized so we need to use a function"""
+    chunk.set_index('gene_id', inplace=True)
+    return chunk.groupby('gene_id').apply(push_variant_dict)
+
 
 def push_variant_dict(gene_df):
     variant_id = [str(x).replace('chr','').encode('utf-8') for x in list(gene_df['variant_id'])]
@@ -56,10 +92,19 @@ def push_variant_dict(gene_df):
     collection.insert_one(gene_dict)
 
 
-def decompress(f):
-    with gzip.open(f, 'rb') as f_in:
-        with open(f.replace('.gz',''), 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
+##########################################
+# MAIN
+##########################################
+
+conn = "mongodb://localhost:27017"
+client = MongoClient(conn)
+db = client.GTEx_V8
+
+tissues = pd.read_csv(os.path.join('data', 'GTEx_v8_eQTL','tissues.txt'), header=None)
+tissues = list(tissues.iloc[:,0])
+files_list = [ 'GTEx_Analysis_v8_eQTL_all_associations_' + tissue.replace(' ','_') + '.allpairs_fixed.txt.gz' for tissue in tissues ]
+# files_list = [ 'Pancreas.allpairs_fixed.txt.gz', 'Lung.allpairs_fixed.txt.gz' ]
+
 
 for file in files_list:
     tissue_name = file.split('.')[0].replace(' ','_').replace('GTEx_Analysis_v8_eQTL_all_associations_','')
@@ -70,20 +115,17 @@ for file in files_list:
             print('Decompressing ' + file)
             subprocess.run(args=['gunzip','-f',file])
             #decompress(file)
-        print('Reading file ' + file)
-        tissue_eqtls = dd.read_csv(file.replace('.gz',''), sep="\t", 
-                                   usecols=['gene_id', 'variant_id', 'pval_nominal',
-                                            'slope', 'slope_se', 'ma_samples', 'ma_count', 'maf'])
-        # tissue_eqtls = tissue_eqtls.set_index('gene_id')
-        # genes_dict_list = []
-        #tissue_eqtls = tissue_eqtls.loc[:, ~tissue_eqtls.columns.isin(['chr','pos'])]
         print('Parsing file ' + file + ' and creating tissue collection')
-        tissue_eqtls.groupby('gene_id').apply(push_variant_dict).compute()
-#        for i in np.arange(len(result)):
-#            genes_dict_list.append({
-#                    'gene_id': result.keys()[i]
-#                    ,'eqtl_variants': result[i]
-#                    })
+        results = stream_groupby_csv(
+            path=[ file.replace('.gz','') ],
+            key='gene_id',
+            agg=agg,
+            chunk_size=1e6,
+            #pool=mp.Pool(processes=4), # problem with opening too many write requests to mongo
+            sep="\t", 
+            usecols=['gene_id', 'variant_id', 'pval_nominal',
+                     'slope', 'slope_se', 'ma_samples', 'ma_count', 'maf']
+        )
         print(tissue_name + ' collection created')
         print(datetime.now().strftime('%c'))
         print('Now indexing by gene_id')
@@ -103,7 +145,7 @@ for file in files_list:
 print('Reading variant lookup file GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz')
 collection = db['variant_table']
 tbl_chunk = pd.read_csv(os.path.join('data','GTEx_v8_eQTL','GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz'), 
-                        sep="\t", chunksize=100, encoding='utf-8')
+                        sep="\t", chunksize=1e5, encoding='utf-8')
 print('Pushing variant information into variant_table collection by chunks')
 for tbl in tbl_chunk:
     tbl['chr'] = [int(str(x).replace('chr','').replace('X','23')) for x in list(tbl['chr'])]
@@ -125,10 +167,14 @@ print(datetime.now().strftime('%c'))
 
 
 
+# Test database results ok:
+# tissue_name = 'test'
+# collection = db[tissue_name]
+# collection.estimated_document_count()
 # gene = 'ENSG00000227232.5'
 # results = collection.find({'gene_id': gene})
 # temp = list(results)
 # len(temp)
 # temp[0]['gene_id'] == gene
 # temp[0]['eqtl_variants']
-
+# len(temp[0]['eqtl_variants'])
