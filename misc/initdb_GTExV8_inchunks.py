@@ -100,9 +100,10 @@ conn = "mongodb://localhost:27017"
 client = MongoClient(conn)
 db = client.GTEx_V8
 
-tissues = pd.read_csv(os.path.join('data', 'GTEx_v8_eQTL','tissues.txt'), header=None)
+tissues = pd.read_csv(os.path.join('data', 'GTEx_v8_eQTL','tissues4.txt'), header=None)
 tissues = list(tissues.iloc[:,0])
-files_list = [ 'GTEx_Analysis_v8_eQTL_all_associations_' + tissue.replace(' ','_') + '.allpairs_fixed.txt.gz' for tissue in tissues ]
+files_list = [ #'GTEx_Analysis_v8_eQTL_all_associations_' +
+              tissue.replace(' ','_') + '.allpairs_fixed.txt.gz' for tissue in tissues ]
 # files_list = [ 'Pancreas.allpairs_fixed.txt.gz', 'Lung.allpairs_fixed.txt.gz' ]
 
 
