@@ -1515,8 +1515,10 @@ def index():
             if SSlocustext != '':
                 SSchrom, SS_start, SS_end = parseRegionText(SSlocustext, coordinate)
             else:
-                SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
-                SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
+                #SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
+                #SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
+                SS_start = lead_snp_position - one_sided_SS_window_size
+                SS_end = lead_snp_position + one_sided_SS_window_size
                 SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
             data['SS_region'] = [SS_start, SS_end]
             
@@ -1726,7 +1728,7 @@ def index():
             ####################################################################################################
             print('Calculating Simple Sum stats')
             t1 = datetime.now() # timer for Simple Sum calculation time
-            Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
+            Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats_old.R')
             # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
             SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}.txt')
                         

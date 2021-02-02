@@ -100,13 +100,14 @@ conn = "mongodb://localhost:27017"
 client = MongoClient(conn)
 db = client.GTEx_V7
 
-tissues = pd.read_csv(os.path.join('data', 'GTEx_v7_eQTL','tissues.txt'), header=None)
+tissues = pd.read_csv(os.path.join('data', 'GTEx_v7_eQTL','tissues4.txt'), header=None)
 tissues = list(tissues.iloc[:,0])
-files_list = [ tissue.replace(' ','_') + '.allpairs_fixed.txt.gz' for tissue in tissues ]
+files_list = [ tissue.replace(' ','_') + '.allpairs.txt.gz' for tissue in tissues ]
 # files_list = [ 'Pancreas.allpairs_fixed.txt.gz', 'Lung.allpairs_fixed.txt.gz' ]
 
 
 for file in files_list:
+    #file = 'brain_test.allpairs.txt.gz'
     tissue_name = file.split('.')[0].replace(' ','_')
     file = os.path.join('data','GTEx_v7_eQTL', file)
     if tissue_name not in db.list_collection_names():
@@ -171,7 +172,7 @@ print(datetime.now().strftime('%c'))
 # tissue_name = 'test'
 # collection = db[tissue_name]
 # collection.estimated_document_count()
-# gene = 'ENSG00000227232.5'
+# gene = 'ENSG00000241860.2'
 # results = collection.find({'gene_id': gene})
 # temp = list(results)
 # len(temp)
