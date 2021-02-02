@@ -1728,7 +1728,7 @@ def index():
             ####################################################################################################
             print('Calculating Simple Sum stats')
             t1 = datetime.now() # timer for Simple Sum calculation time
-            Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats_old.R')
+            Rscript_code_path = os.path.join(MYDIR, 'getSimpleSumStats.R')
             # Rscript_path = subprocess.run(args=["which","Rscript"], stdout=subprocess.PIPE, universal_newlines=True).stdout.replace('\n','')
             SSresult_path = os.path.join(MYDIR, 'static', f'session_data/SSPvalues-{my_session_id}.txt')
                         
