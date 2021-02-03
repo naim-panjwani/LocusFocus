@@ -1517,8 +1517,8 @@ def index():
             else:
                 #SS_start = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] - one_sided_SS_window_size
                 #SS_end = list(gwas_data.loc[ gwas_data[pcol] == min(gwas_data[pcol]) ][poscol])[0] + one_sided_SS_window_size
-                SS_start = lead_snp_position - one_sided_SS_window_size
-                SS_end = lead_snp_position + one_sided_SS_window_size
+                SS_start = int(lead_snp_position - one_sided_SS_window_size)
+                SS_end = int(lead_snp_position + one_sided_SS_window_size)
                 SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
             data['SS_region'] = [SS_start, SS_end]
             
@@ -1532,7 +1532,7 @@ def index():
             sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
             json.dump(data, open(sessionfilepath, 'w'))
             genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
-            genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile) 
+            genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
             json.dump(genes_data, open(genes_sessionfilepath, 'w'))
 
             ####################################################################################################
