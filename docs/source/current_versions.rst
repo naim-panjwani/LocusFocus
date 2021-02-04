@@ -43,7 +43,9 @@ Version History
 - v1.4.4 alpha (Nov. 16, 2020)
    - Fixed rsid mapping bug
    - Fixed bug when matching the top SNP with secondary datasets
-   
+- v1.4.5 alpha (Feb. 04, 2020)
+   - Fixed issue where the SS window did not follow the user-specified lead SNP
+   - Added a function to clean up uploaded dataset of common file input reading issues
 
 
 ******************

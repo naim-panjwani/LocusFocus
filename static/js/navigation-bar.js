@@ -1,4 +1,4 @@
-var version = "1.4.4 alpha"
+var version = "1.4.5 alpha"
 var myjumbotron = d3.select("#myjumbotron").append('div').classed('col-md-12 jumbotron text-center', true);
 var navbar = d3.select("#navigation-bar").append('div').classed('col-md-12 borderit clearfix', true);
 

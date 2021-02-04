@@ -968,6 +968,19 @@ def get_gtex_data_pvalues(eqtl_data, snp_list):
     return list(gtex_data['pval'])
 
 
+def fix_gwasfile(infile):
+    outfile = infile.replace('.txt','_mod.txt')
+    with open(infile) as f:
+        with open(outfile, 'w') as fout:
+            filestr = f.readlines()
+            for line in filestr:
+                fout.write(line.replace('\t\t\n','\t\n'))
+    try:
+        gwas_data = pd.read_csv(outfile, sep="\t", encoding='utf-8')
+        return(gwas_data)
+    except:
+        raise InvalidUsage('Failed to load primary dataset. Please check formatting is adequate.', status_code=410)
+
 #####################################
 # API Routes
 #####################################
@@ -1236,7 +1249,11 @@ def index():
             print(f'GTEx version: {gtex_version}')
             print('Loading file')
             t1 = datetime.now() # timing started for GWAS loading/subsetting/cleaning
-            gwas_data = pd.read_csv(gwas_filepath, sep="\t", encoding='utf-8')
+            try:
+                gwas_data = pd.read_csv(gwas_filepath, sep="\t", encoding='utf-8')
+            except:
+                print('File not proper. Attempt fixing')
+                gwas_data = fix_gwasfile(gwas_filepath)
             
             inferVariant = request.form.get('markerCheckbox')
             chromcol, poscol, refcol, altcol = ('','','','')
@@ -1260,13 +1277,13 @@ def index():
                     print('No SNP ID column provided')
                 # Check whether data types are ok:
                 if not all(isinstance(x, int) for x in Xto23(list(gwas_data[chromcol]))):
-                    raise InvalidUsage(f'Chromosome column ({chromcol}) contains unrecognizable values')
+                    raise InvalidUsage(f'Chromosome column ({chromcol}) contains unrecognizable values', status_code=410)
                 if not all(isinstance(x, int) for x in list(gwas_data[poscol])):
-                    raise InvalidUsage(f'Position column ({poscol}) has non-integer entries')
+                    raise InvalidUsage(f'Position column ({poscol}) has non-integer entries', status_code=410)
             pcol = verifycol(formname = request.form['pval-col'], defaultname = default_pname, filecolnames = gwas_data.columns, error_message_='P-value column not found')
             columnnames.append(pcol)
             if not all(isinstance(x, float) for x in list(gwas_data[pcol])):
-                raise InvalidUsage(f'P-value column ({pcol}) has non-numeric entries')
+                raise InvalidUsage(f'P-value column ({pcol}) has non-numeric entries', status_code=410)
             runcoloc2 = request.form.get('coloc2check')
             if runcoloc2:
                 print('User would like COLOC2 results')
@@ -1317,9 +1334,9 @@ def index():
             print('GTEx tissues:',gtex_tissues)
             gtex_genes = request.form.getlist('region-genes')
             if len(gtex_tissues) > 0 and len(gtex_genes) == 0:
-                raise InvalidUsage('Please select one or more genes to complement your GTEx tissue(s) selection')
+                raise InvalidUsage('Please select one or more genes to complement your GTEx tissue(s) selection', status_code=410)
             elif len(gtex_genes) > 0 and len(gtex_tissues) == 0:
-                raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection')
+                raise InvalidUsage('Please select one or more tissues to complement your GTEx gene(s) selection', status_code=410)
             # old code remnant:
             # if gtex_version=="V7": gene='ENSG00000174502.14'
             # if gtex_version=="V8": gene='ENSG00000174502.18'

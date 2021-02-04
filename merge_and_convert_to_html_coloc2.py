@@ -229,6 +229,7 @@ if __name__=='__main__':
                 })
         if chrom == 23:
             df[CHROM] = np.repeat(chrom, df.shape[0])
+        df[CHROM] = [ int(x.lower().replace('chr','').replace('chrom','')) for x in list(df[CHROM]) ]
         df = df.loc[ (df[CHROM]==chrom) & (df[BP]>=startbp) & (df[BP]<=endbp) ]
         probeidcol = pd.DataFrame({ProbeID: np.repeat(filelist.iloc[i,12], df.shape[0])})
         df = pd.concat([df, probeidcol], axis=1)
