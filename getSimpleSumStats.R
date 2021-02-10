@@ -41,16 +41,10 @@ outfilename <- argv$outfilename
 ACONSTANT <- 6e-5
 
 # test
-# P_values_filename <- "data/test_data/Pvalues.txt"
-#id <- "0d074aff-76f4-42ab-87ef-5e2fa34b04e8"
+#id <- "81203c88-fdc6-4c93-b0c7-790a9d8d1e91"
 #P_values_filename <- paste0('static/session_data/Pvalues-', id, '.txt')
-# ld_matrix_filename <- "data/test_data/ldmat.txt"
 #ld_matrix_filename <- paste0('static/session_data/ldmat-', id, '.txt')
-# outfilename <- "data/test_data/SSPvalues.txt"
 #outfilename <- paste0('static/session_data/SSPvalues-', id, '.txt')
-# P_values_filename <- "static/session_data/Pvalues-0d074aff-76f4-42ab-87ef-5e2fa34b04e8.txt"
-# ld_matrix_filename <- "static/session_data/ldmat-0d074aff-76f4-42ab-87ef-5e2fa34b04e8.txt"
-# outfilename <- "static/session_data/SSPvalues-0d074aff-76f4-42ab-87ef-5e2fa34b04e8.txt"
 
 ###############################################################################
 ############ FUNCTIONS
@@ -226,6 +220,7 @@ for(i in 1:num_iterations) {
   t <- try(
   {
     if(set_based_test(P_eqtl_i, ld_mat_i, num_iterations)) {
+    #if(TRUE) {
       P = simple_sum_p(P_gwas=P_gwas_i, P_eqtl=P_eqtl_i, ld.mat=ld_mat_i, cut=0, m=snp_count, meth='davies')
       if(P==0 | P<0){
         P = simple_sum_p(P_gwas=P_gwas_i, P_eqtl=P_eqtl_i, ld.mat=ld_mat_i, cut=0, m=snp_count, meth='imhof')
