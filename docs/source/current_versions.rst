@@ -46,6 +46,9 @@ Version History
 - v1.4.5 alpha (Feb. 04, 2020)
    - Fixed issue where the SS window did not follow the user-specified lead SNP
    - Added a function to clean up uploaded dataset of common file input reading issues
+- v1.4.6 alpha (Feb. 16, 2020)
+   - Improved SNP rs ID matching with GTEx rs ID's
+   - Warning text is now displayed if a large number of SNPs do not match variants in GTEx
 
 
 ******************

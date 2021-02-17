@@ -293,7 +293,7 @@ def fetchSNV(chrom, bp, ref, build):
 def standardizeSNPs(variantlist, regiontxt, build):
     """
     Input: Variant names in any of these formats: rsid, chrom_pos_ref_alt, chrom:pos_ref_alt, chrom:pos_ref_alt_b37/b38 
-    Output: chrom_pos_ref_alt_b37/b38 variant ID format.
+    Output: chrom_pos_ref_alt_b37/b38 variant ID format, but looks at GTEx variant lookup table first.
     In the case of multi-allelic variants (e.g. rs2211330(T/A,C)), formats such as 1_205001063_T_A,C_b37 are accepted
     If variant ID format is chr:pos, and the chr:pos has a unique biallelic SNV, then it will be assigned that variant
     """
@@ -307,6 +307,24 @@ def standardizeSNPs(variantlist, regiontxt, build):
     # Ensure valid region:
     chrom, startbp, endbp = parseRegionText(regiontxt, build)
     chrom = str(chrom).replace('23',"X")
+    
+    # Load GTEx variant lookup table for region indicated
+    db = client.GTEx_V7
+    rsid_colname = 'rs_id_dbSNP147_GRCh37p13'
+    if build.lower() in ["hg38", "grch38"]:
+        db = client.GTEx_V8
+        rsid_colname = 'rs_id_dbSNP151_GRCh38p7'
+    collection = db['variant_table']
+    variants_query = collection.find(
+        { '$and': [ 
+            { 'chr': int(chrom.replace('X','23')) }, 
+            { 'variant_pos': { '$gte': int(startbp), '$lte': int(endbp) } } 
+            ]}
+        )
+    variants_list = list(variants_query)
+    variants_df = pd.DataFrame(variants_list)
+    variants_df = variants_df.drop(['_id'], axis=1)
+    
 
     # Load dbSNP151 SNP names from region indicated
     dbsnp_filepath = ''
@@ -365,7 +383,12 @@ def standardizeSNPs(variantlist, regiontxt, build):
         if re.search("^23_",variantstr): variantstr = variantstr.replace('23_','X_',1)
         if variantstr.startswith('rs'):
             try:
-                stdvariantlist.append(rsids[variantstr][0])
+                # Here's the difference from the first function version (we look at GTEx first)
+                if variant in list(variants_df[rsid_colname]):
+                    stdvar = variants_df['variant_id'].loc[ variants_df[rsid_colname] == variant].to_list()[0]
+                    stdvariantlist.append(stdvar)
+                else:
+                    stdvariantlist.append(rsids[variantstr][0])
             except:
                 stdvariantlist.append('.')
         elif re.search("^\d+_\d+_[A,T,G,C]+_[A,T,C,G]+,*", variantstr.replace('X','23')):
@@ -574,6 +597,29 @@ def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build):
     gwas_data[default_snpname] = varlist
     return gwas_data
 
+
+def verifyStdSNPs(stdsnplist, regiontxt, build):
+    # Ensure valid region:
+    chrom, startbp, endbp = parseRegionText(regiontxt, build)
+    chrom = str(chrom).replace('23',"X")
+    
+    # Load GTEx variant lookup table for region indicated
+    db = client.GTEx_V7
+    if build.lower() in ["hg38", "grch38"]:
+        db = client.GTEx_V8
+    collection = db['variant_table']
+    variants_query = collection.find(
+        { '$and': [ 
+            { 'chr': int(chrom.replace('X','23')) }, 
+            { 'variant_pos': { '$gte': int(startbp), '$lte': int(endbp) } } 
+            ]}
+        )
+    variants_list = list(variants_query)
+    variants_df = pd.DataFrame(variants_list)
+    variants_df = variants_df.drop(['_id'], axis=1)
+    gtex_std_snplist = list(variants_df['variant_id'])
+    isInGTEx = [ x for x in stdsnplist if x in gtex_std_snplist ]
+    return len(isInGTEx) / len(stdsnplist)
 
 
 def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
@@ -974,10 +1020,11 @@ def fix_gwasfile(infile):
         with open(outfile, 'w') as fout:
             filestr = f.readlines()
             for line in filestr:
-                fout.write(line.replace('\t\t\n','\t\n'))
+                if line[0:2] != "##":
+                    fout.write(line.replace('\t\t\n','\t\n'))
     try:
         gwas_data = pd.read_csv(outfile, sep="\t", encoding='utf-8')
-        return(gwas_data)
+        return gwas_data
     except:
         raise InvalidUsage('Failed to load primary dataset. Please check formatting is adequate.', status_code=410)
 
@@ -999,7 +1046,7 @@ class InvalidUsage(Exception):
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    return 'File Too Large', 413
+    return 'File Too Large', error
 
 @app.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
@@ -1230,6 +1277,8 @@ def index():
                     filename = secure_filename(file.filename)
                     filepath = os.path.join(MYDIR, app.config['UPLOAD_FOLDER'], filename)
                     file.save(filepath)
+                    if not os.path.isfile(filepath):
+                        request_entity_too_large(413)
                 gwas_filepath, ldmat_filepath, html_filepath = classify_files(filenames)
             upload_time = datetime.now() - t1
 
@@ -1385,7 +1434,7 @@ def index():
                 poscol = default_posname
                 refcol = default_refname
                 altcol = default_altname
-                gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data["#CHROM"])] ].copy()
+                gwas_data = gwas_data.loc[ [str(x) != '.' for x in list(gwas_data[chromcol])] ].copy()
                 gwas_data.reset_index(drop=True, inplace=True)
             
 
@@ -1416,7 +1465,15 @@ def index():
             for i in np.arange(gwas_data.shape[0]):
                 std_snp = str(thechr[i]).replace('23','X') + "_" + str(thepos[i]) + "_" + str(theref[i]) + "_" + str(thealt[i]) + "_" + buildstr
                 std_snp_list.append(std_snp)
-
+            
+            # Check that a good portion of these SNPs can be found
+            thresh = 0.8
+            snp_warning = False
+            temp = verifyStdSNPs(std_snp_list, regionstr, coordinate)
+            print(temp)
+            if verifyStdSNPs(std_snp_list, regionstr, coordinate) < thresh:
+                snp_warning = True
+            
             ####################################################################################################
             # Get LD:
             if ldmat_filepath == '':
@@ -1459,8 +1516,9 @@ def index():
             data['coordinate'] = coordinate
             data['gtex_version'] = gtex_version
             data['set_based_p'] = setbasedP
-            SSlocustext = request.form['SSlocus']
-            # SSlocus defined below
+            SSlocustext = request.form['SSlocus'] # SSlocus defined below
+            data['std_snp_list'] = std_snp_list
+            data['snp_warning'] = snp_warning
             
             
             #######################################################
@@ -1584,6 +1642,7 @@ def index():
             PvaluesMat = [list(SS_gwas_data[pcol])]
             SS_snp_list = list(SS_gwas_data[snpcol])
             SS_snp_list = cleanSNPs(SS_snp_list, regionstr, coordinate)
+            
             
             # optimizing best match variant if given a mix of rsids and non-rsid variants
             # varids = SS_snp_list

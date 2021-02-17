@@ -41,10 +41,10 @@ outfilename <- argv$outfilename
 ACONSTANT <- 6e-5
 
 # test
-#id <- "81203c88-fdc6-4c93-b0c7-790a9d8d1e91"
-#P_values_filename <- paste0('static/session_data/Pvalues-', id, '.txt')
-#ld_matrix_filename <- paste0('static/session_data/ldmat-', id, '.txt')
-#outfilename <- paste0('static/session_data/SSPvalues-', id, '.txt')
+# id <- "679e08ba-075a-4e08-8992-7c0c2b0f9f81"
+# P_values_filename <- paste0('static/session_data/Pvalues-', id, '.txt')
+# ld_matrix_filename <- paste0('static/session_data/ldmat-', id, '.txt')
+# outfilename <- paste0('static/session_data/SSPvalues-', id, '.txt')
 
 ###############################################################################
 ############ FUNCTIONS
@@ -199,12 +199,13 @@ for(i in 1:num_iterations) {
   
   # Remove NA rows
   NArows = which(is.na(tempmat[,1]) | is.na(tempmat[,2]))
-  if(length(NArows)>1) tempmat = tempmat[-NArows,]
+  if(length(NArows)>1) {
+    tempmat = tempmat[-NArows,]
+    ld_mat_i <- ldmat[-NArows, -NArows]
+  }
   
   P_gwas_i <- as.numeric(tempmat[,1])
   P_eqtl_i <- as.numeric(tempmat[,2])
-  ld_mat_i <- ldmat
-  if(length(NArows)>1) ld_mat_i <- ld_mat_i[-NArows, -NArows]
   
   # Count SNPs
   snp_count <- nrow(tempmat)

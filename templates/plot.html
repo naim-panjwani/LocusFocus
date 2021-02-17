@@ -38,6 +38,11 @@
     </div>
     <hr/>
     <div class="row">
+        <div class="col-md-12" id="snpWarning" name="snpWarning">            
+        </div>
+    </div>
+    <hr/>
+    <div class="row">
         <div class="col-md-12">
             <h3>Colocalization Plot</h3>
             <select id="selGene" onchange="optionChanged(this.value)"></select>
@@ -249,6 +254,10 @@
                 d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(SSResponse => {
                     d3.json("{{ url_for('static', filename=coloc2_file) }}").then(coloc2Response => {
                         var data = response;
+                        if(data["snp_warning"] === true) {
+                            d3.select('#snpWarning').append('div').classed('alert alert-warning',true).append('p').append('center').append('strong')
+                            .html('Warning: The number of SNPs that match GTEx variants is lower than 80%.<br> Please ensure variant names given are accurate, including REF and ALT columns.');
+                        }
                         var genesdata = genesResponse;
                         populate_genes(genesdata, data);
                         if(SSResponse['Tissues'].length === 0) {
