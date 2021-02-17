@@ -53,9 +53,12 @@ function buildParamsTable(data, sessionid) {
     var row = tbody.append('tr');
         row.append('td').text('Number of GTEx tissues selected');
         row.append('td').text(data['gtex_tissues'].length);
-    var row = tbody.append('tr');
-        row.append('td').text('Number of GTEx genes selected');
-        row.append('td').text(data['gtex_genes'].length);
+    gtexgenes = data['gtex_genes'];
+    if(typeof gtexgenes !== 'undefined') {
+        var row = tbody.append('tr');
+            row.append('td').text('Number of GTEx genes selected');
+            row.append('td').text(data['gtex_genes'].length);
+    }
     var row = tbody.append('tr');
         row.append('td').text('SS region');
         row.append('td').text(data['SS_region']);
