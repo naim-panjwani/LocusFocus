@@ -51,6 +51,7 @@ Version History
    - Warning text is now displayed if a large number of SNPs do not match variants in GTEx
 - v1.4.7 alpha (Feb. 17, 2020)
    - Added output table for parameters used in a particular app run
+   - Added output table to help guide and interpret SS colocalization results more easily
 
 ******************
 Datasets

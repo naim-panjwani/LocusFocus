@@ -140,7 +140,7 @@
     <div class="row">
         <div class="col-md-12">
             <div id="table-area">
-                <h3>Simple Sum -log10 P-values Table for GTEx Tissues Selected</h3>
+                <h3>Simple Sum -log10 P-values Table for GTEx Genes/Tissues Selected</h3>
                 <div class="gtex_heatmap_message"></div>
 
                 <div class="row">
@@ -167,6 +167,18 @@
                     0.05 / 6 = 8.3 &times; 10<sup>-3</sup>. Thus, Simple Sum colocalization tests above this threshold would be considered as significant.</strong>
                 </p>
             </div>
+        </div> <!-- col-md-12 closing div -->
+    </div> <!-- row closing div -->
+
+    <div class="row">
+        <div class="col-md-12">
+            <div id="table-area">
+                <h3>Number of SNPs Used for Simple Sum Calculation for GTEx Genes/Tissues Selected</h3>
+                <table id="numSSsnpsUsed-table" class="table table-striped table-bordered table-condensed table-sm sortable" cellspacing="0" width="90%">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div> <!-- table-area closing div -->
         </div> <!-- col-md-12 closing div -->
     </div> <!-- row closing div -->
     <hr/>
@@ -206,6 +218,18 @@
     </div> <!-- row closing div -->
     <hr/>
 
+    <div class="row">
+        <div class="col-md-12">
+            <div id="table-area">
+                <h3>Simple Sum Guidance Summary</h3>
+                <table id="SSguidance-table" class="table table-striped table-bordered table-condensed table-sm sortable" cellspacing="0" width="90%">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+                <div id="SS_guidance"></div>
+            </div> <!-- table-area closing div -->
+        </div> <!-- col-md-12 closing div -->
+    </div> <!-- row closing div -->
 
     <hr/>
     <div class="row">
@@ -241,6 +265,7 @@
   <script type="text/javascript" src="{{ url_for('static', filename='js/plot.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/plot_heatmap.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/heatmap_table.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/guidance_table.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/coloc2table.js') }}"></script>
   <script type="text/javascript">
     var thefile="{{ sessionfile }}";
@@ -259,7 +284,7 @@
                     d3.json("{{ url_for('static', filename=coloc2_file) }}").then(coloc2Response => {
                         var data = response;
                         if(data["snp_warning"] === true) {
-                            d3.select('#snpWarning').append('div').classed('alert alert-warning',true).append('p').append('center').append('strong')
+                            d3.select('#snpWarning').append('div').classed('alert alert-danger',true).append('p').append('center').append('strong')
                             .html('Warning: The number of SNPs that match GTEx variants is lower than 80%.<br> Please ensure variant names given are accurate, including REF and ALT columns.');
                         }
                         buildParamsTable(data, sessionid);
@@ -271,6 +296,7 @@
                         if(SSResponse['Tissues'].length>0) {
                             plot_heatmap(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
                             buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues);
+                            buildNTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.Num_SNPs_Used_for_SS);
                         }
                         if(SSResponse['Secondary_dataset_titles'].length === 0) {
                             d3.select('#secondary_datasets_message').append("p").attr("class","text-warning").text(`No secondary datasets uploaded`);
@@ -278,6 +304,7 @@
                         if(SSResponse['Secondary_dataset_titles'].length>0) {
                             list_secondary_SSPvalues(SSResponse.Secondary_dataset_titles, SSResponse.SSPvalues_secondary);
                         }
+                        buildSSguidanceTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues, SSResponse.SSPvalues_secondary);
                         if(coloc2Response['ProbeID'].length === 0) {
                             d3.select("#coloc2-message").append("p").attr("class","text-warning").text(`Insufficient data for COLOC2 calculations`);
                         }
@@ -341,6 +368,7 @@
         transpose = !transpose;
         d3.json("{{ url_for('static', filename=SSPvalues_file) }}").then(SSResponse => {
             buildTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues, transpose);
+            buildNTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.Num_SNPs_Used_for_SS, transpose);
         });
     }
 

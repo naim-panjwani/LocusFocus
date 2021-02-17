@@ -12,6 +12,11 @@ function buildParamsTable(data, sessionid) {
         .attr('class','th-sm')
         .text('Value');
     
+    chrom = data['chrom']
+    startbp = data['startbp'];
+    endbp = data['endbp'];
+    SS_start = data['SS_region'][0];
+    SS_end = data['SS_region'][1];
     
     // Table body:
     tbody = tableselect.append('tbody');
@@ -23,13 +28,13 @@ function buildParamsTable(data, sessionid) {
         row.append('td').text(data['lead_snp']);
     var row = tbody.append('tr');
         row.append('td').text('Chromosome');
-        row.append('td').text(data['chrom']);
+        row.append('td').text(chrom);
     var row = tbody.append('tr');
         row.append('td').text('Start position');
-        row.append('td').text(data['startbp']);
+        row.append('td').text(startbp);
     var row = tbody.append('tr');
         row.append('td').text('End position');
-        row.append('td').text(data['endbp']);
+        row.append('td').text(endbp);
     var row = tbody.append('tr');
         row.append('td').text('Build');
         row.append('td').text(data['coordinate']);
@@ -37,7 +42,7 @@ function buildParamsTable(data, sessionid) {
         row.append('td').text('Infer variants');
         row.append('td').text(data['inferVariant']);
     var row = tbody.append('tr');
-        row.append('td').text('Number of SNPs');
+        row.append('td').text(`Number of SNPs in ${chrom}:${startbp}-${endbp}`);
         row.append('td').text(data['snps'].length);
     var row = tbody.append('tr');
         row.append('td').text('LD Population');
@@ -54,6 +59,9 @@ function buildParamsTable(data, sessionid) {
     var row = tbody.append('tr');
         row.append('td').text('SS region');
         row.append('td').text(data['SS_region']);
+    var row = tbody.append('tr');
+        row.append('td').text(`Number of SNPs in ${chrom}:${SS_start}-${SS_end}`);
+        row.append('td').text(data['num_SS_snps']);
     var row = tbody.append('tr');
         row.append('td').text('First stage -log10(SS P-value) threshold');
         row.append('td').text(data['set_based_p']);

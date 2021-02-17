@@ -1601,20 +1601,7 @@ def index():
                 SSlocustext = str(chrom) + ":" + str(SS_start) + "-" + str(SS_end)
             data['SS_region'] = [SS_start, SS_end]
             
-            ####################################################################################################
-            # Indicate that the request was a success
-            data['success'] = True
-            print('Loading a success')
-
-            # Save data in JSON format for plotting
-            sessionfile = f'session_data/form_data-{my_session_id}.json'
-            sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
-            json.dump(data, open(sessionfilepath, 'w'))
-            genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
-            genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
-            json.dump(genes_data, open(genes_sessionfilepath, 'w'))
-
-            ####################################################################################################
+            
             # # Getting Simple Sum P-values
             # 2. Subset the region (step 1 was determining the region to do the SS calculation on - see above SS_start and SS_end variables):
             t1 = datetime.now() # timer for subsetting SS region
@@ -1661,7 +1648,7 @@ def index():
             SS_positions = list(SS_gwas_data[poscol])
             if len(SS_positions) != len(set(SS_positions)):
                 dups = set([x for x in SS_positions if SS_positions.count(x) > 1])
-                raise InvalidUsage('Duplicate chromosome positions detected at: ' + str(dups))
+                raise InvalidUsage('Duplicate chromosome basepair positions detected at: ' + str(dups))
 
             SS_std_snp_list = [e for i,e in enumerate(std_snp_list) if SS_indices[i]]
             
@@ -1674,6 +1661,7 @@ def index():
             })
             gwas_df.to_csv(os.path.join(MYDIR, 'static', f'session_data/gwas_df-{my_session_id}.txt'), index=False, encoding='utf-8', sep="\t")
             SS_region_subsetting_time = datetime.now() - t1
+            data['num_SS_snps'] = gwas_df.shape[0]
             
             ####################################################################################################
             # 3. Determine the genes to query
@@ -1830,19 +1818,30 @@ def index():
                 if SSPvalues[i] > 0:
                     SSPvalues[i] = np.format_float_scientific((-np.log10(SSPvalues[i])), precision=2)
             SSPvaluesMatGTEx = np.empty(0)
+            num_SNP_used_for_SSMat = np.empty(0)
+            comp_usedMat = np.empty(0)
             SSPvaluesSecondary = []
+            numSNPsSSPSecondary = []
+            compUsedSecondary = []
             if len(gtex_tissues)>0:
                 SSPvaluesMatGTEx = np.array(SSPvalues[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
+                num_SNP_used_for_SSMat = np.array(num_SNP_used_for_SS[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
+                comp_usedMat = np.array(comp_used[0:(len(gtex_tissues) * len(query_genes))]).reshape(len(gtex_tissues), len(query_genes))
             if len(SSPvalues) > len(gtex_tissues) * len(query_genes):
                 SSPvaluesSecondary = SSPvalues[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
+                numSNPsSSPSecondary = num_SNP_used_for_SS[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
+                compUsedSecondary = comp_used[(len(gtex_tissues) * len(query_genes)) : (len(SSPvalues))]
             SSPvalues_dict = {
                 'Genes': query_genes
                 ,'Tissues': gtex_tissues
                 ,'Secondary_dataset_titles': table_titles
                 ,'SSPvalues': SSPvaluesMatGTEx.tolist() # GTEx pvalues
+                #,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
+                ,'Num_SNPs_Used_for_SS': num_SNP_used_for_SSMat.tolist()
+                ,'Computation_method': comp_usedMat.tolist()
                 ,'SSPvalues_secondary': SSPvaluesSecondary
-                ,'Num_SNPs_Used_for_SS': [int(x) for x in num_SNP_used_for_SS]
-                ,'Computation method': comp_used
+                ,'Num_SNPs_Used_for_SS_secondary': numSNPsSSPSecondary
+                ,'Computation_method_secondary': compUsedSecondary
             }
             print(SSPvalues_dict)
             SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
@@ -1881,7 +1880,22 @@ def index():
             json.dump(coloc2_dict, open(coloc2_filepath,'w'))
 
             t2_total = datetime.now() - t1_total
+            
             ####################################################################################################
+            # Indicate that the request was a success
+            data['success'] = True
+            print('Loading a success')
+
+            # Save data in JSON format for plotting
+            sessionfile = f'session_data/form_data-{my_session_id}.json'
+            sessionfilepath = os.path.join(MYDIR, 'static', sessionfile)
+            json.dump(data, open(sessionfilepath, 'w'))
+            genes_sessionfile = f'session_data/genes_data-{my_session_id}.json'
+            genes_sessionfilepath = os.path.join(MYDIR, 'static', genes_sessionfile)
+            json.dump(genes_data, open(genes_sessionfilepath, 'w'))
+
+            ####################################################################################################
+            
             
 
             timing_file = f'session_data/times-{my_session_id}.txt'
