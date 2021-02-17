@@ -37,8 +37,11 @@
         </div>
     </div>
     <hr/>
+    <div class="row"><div class="col-md-12" id="snpWarning" name="snpWarning"></div></div>
     <div class="row">
-        <div class="col-md-12" id="snpWarning" name="snpWarning">            
+        <div class="col-md-12">
+            <table id="params-table" class="table table-striped table-bordered table-condensed table-sm sortable" cellspacing="0" width="90%">
+            </table>
         </div>
     </div>
     <hr/>
@@ -234,6 +237,7 @@
   
   <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='js/params_table.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/plot.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/plot_heatmap.js') }}"></script>
   <script type="text/javascript" src="{{ url_for('static', filename='js/heatmap_table.js') }}"></script>
@@ -258,6 +262,7 @@
                             d3.select('#snpWarning').append('div').classed('alert alert-warning',true).append('p').append('center').append('strong')
                             .html('Warning: The number of SNPs that match GTEx variants is lower than 80%.<br> Please ensure variant names given are accurate, including REF and ALT columns.');
                         }
+                        buildParamsTable(data, sessionid);
                         var genesdata = genesResponse;
                         populate_genes(genesdata, data);
                         if(SSResponse['Tissues'].length === 0) {

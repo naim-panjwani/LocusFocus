@@ -619,7 +619,7 @@ def verifyStdSNPs(stdsnplist, regiontxt, build):
     variants_df = variants_df.drop(['_id'], axis=1)
     gtex_std_snplist = list(variants_df['variant_id'])
     isInGTEx = [ x for x in stdsnplist if x in gtex_std_snplist ]
-    return len(isInGTEx) / len(stdsnplist)
+    return len(isInGTEx)
 
 
 def subsetLocus(build, summaryStats, regiontext, chromcol, poscol, pcol):
@@ -1469,9 +1469,8 @@ def index():
             # Check that a good portion of these SNPs can be found
             thresh = 0.8
             snp_warning = False
-            temp = verifyStdSNPs(std_snp_list, regionstr, coordinate)
-            print(temp)
-            if verifyStdSNPs(std_snp_list, regionstr, coordinate) < thresh:
+            numGTExMatches = verifyStdSNPs(std_snp_list, regionstr, coordinate)
+            if numGTExMatches / len(std_snp_list) < thresh:
                 snp_warning = True
             
             ####################################################################################################
@@ -1503,6 +1502,7 @@ def index():
             
             data = {}
             data['snps'] = snp_list
+            data['inferVariant'] = inferVariant
             data['pvalues'] = list(gwas_data[pcol])
             data['lead_snp'] = lead_snp
             data['ld_values'] = r2
@@ -1513,12 +1513,16 @@ def index():
             data['ld_populations'] = pops
             data['gtex_tissues'] = gtex_tissues
             data['gene'] = genenames(gene, coordinate)[0]
+            data['gtex_genes'] = [ genenames(agene, coordinate)[0] for agene in gtex_genes ]
             data['coordinate'] = coordinate
             data['gtex_version'] = gtex_version
             data['set_based_p'] = setbasedP
             SSlocustext = request.form['SSlocus'] # SSlocus defined below
             data['std_snp_list'] = std_snp_list
+            data['runcoloc2'] = runcoloc2
             data['snp_warning'] = snp_warning
+            data['thresh'] = thresh
+            data['numGTExMatches'] = numGTExMatches
             
             
             #######################################################
