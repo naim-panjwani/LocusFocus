@@ -187,7 +187,7 @@ if __name__=='__main__':
                 })
         if chrom == 23:
             df[CHROM] = np.repeat(chrom, df.shape[0])
-        df[CHROM] = [ int(x.lower().replace('chr','').replace('chrom','')) for x in list(df[CHROM]) ]
+        df[CHROM] = [ int(str(x).lower().replace('chr','').replace('chrom','')) for x in list(df[CHROM]) ]
         df = df.loc[ (df[CHROM]==chrom) & (df[BP]>=startbp) & (df[BP]<=endbp) ]
         h3tag = '<h3>'+file_descriptions[i]+'</h3>'
         df_html_str = df.to_html(index=False)
