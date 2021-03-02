@@ -352,7 +352,7 @@ to simplify the generation of the merged HTML dataset. To run both Simple Sum an
 `merge_and_convert_to_html_coloc2.py <https://github.com/naim-panjwani/LocusFocus/blob/master/merge_and_convert_to_html.py>`_ script.
 
 
-The first step in creating the HTML file is to create a tab-separated `descriptor file <https://locusfocus.research.sickkids.ca/static/archive/slc26a9_uk_biobank_spirometry_files_to_merge.txt>`_
+The first step in creating the HTML file is to create a tab-separated `descriptor file <https://github.com/naim-panjwani/LocusFocus/blob/master/data/sample_datasets/slc26a9_uk_biobank_spirometry_files_to_merge.txt>`_
 containing the list of files to be merged together (first column). The second column (tab-delimited) 
 may contain descriptions of the datasets. 
 The remaining columns specify the column names for chromosome, basepair position, SNP name, P-value (in that order).
