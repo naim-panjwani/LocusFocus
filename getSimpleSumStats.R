@@ -41,7 +41,7 @@ outfilename <- argv$outfilename
 ACONSTANT <- 6e-5
 
 # test
-# id <- "679e08ba-075a-4e08-8992-7c0c2b0f9f81"
+# id <- "afbf22bb-2754-4982-b16d-171d94f7da79"
 # P_values_filename <- paste0('static/session_data/Pvalues-', id, '.txt')
 # ld_matrix_filename <- paste0('static/session_data/ldmat-', id, '.txt')
 # outfilename <- paste0('static/session_data/SSPvalues-', id, '.txt')
@@ -187,6 +187,22 @@ P_gwas <- Pmat[1,]
 P_eqtl <- matrix(Pmat[2:nrow(Pmat),],nrow=nrow(Pmat)-1,ncol=ncol(Pmat))
 ldmat <- as.matrix(ldmat)
 
+# Remove any NA variants due to no LD:
+if(!all(is.na(ldmat))) {
+  i<-1
+  while(any(is.na(ldmat)) & i<=nrow(ldmat)) {
+    ldNA <- which(is.na(ldmat[i,]))
+    if(!all(is.na(ldNA))) {
+      ldmat <- ldmat[-ldNA, -ldNA]
+      P_gwas <- P_gwas[-ldNA]
+      P_eqtl <- P_eqtl[,-ldNA]
+    }
+    i <- i + 1
+  }
+} else {
+  stop("LD matrix has all missing values")
+}
+
 num_iterations = nrow(P_eqtl)
 
 Pss <- NULL
@@ -196,12 +212,13 @@ comp_used <- NULL
 for(i in 1:num_iterations) {
   
   tempmat <- cbind(P_gwas, P_eqtl[i,])
+  ld_mat_i <- ldmat
   
   # Remove NA rows
   NArows = which(is.na(tempmat[,1]) | is.na(tempmat[,2]))
   if(length(NArows)>1) {
     tempmat = tempmat[-NArows,]
-    ld_mat_i <- ldmat[-NArows, -NArows]
+    ld_mat_i <- ld_mat_i[-NArows, -NArows]
   }
   
   P_gwas_i <- as.numeric(tempmat[,1])
