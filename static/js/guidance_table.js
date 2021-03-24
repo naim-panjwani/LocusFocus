@@ -30,7 +30,7 @@ function buildSSguidanceTable(genes, tissues, SSP, SSP2) {
         .attr('class','th-sm')
         .text('Value');
 
-    var numGTEx = SSP.length;
+    var numGTEx = 0;
     var numSecondary = SSP2.length;
     var numNoeQTL = 0;
     var numFirstStage = 0;
@@ -38,6 +38,7 @@ function buildSSguidanceTable(genes, tissues, SSP, SSP2) {
     var numFailed = 0;
     for(i=0; i<tissues.length; i++) { // for each tissue
         for(j=0; j<genes.length; j++) { // for each gene
+            numGTEx += 1
             if(SSP[i][j] == -1) {
                 numNoeQTL += 1
             } else if(SSP[i][j] == -2) {

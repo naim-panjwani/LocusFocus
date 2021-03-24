@@ -52,6 +52,9 @@ Version History
 - v1.4.7 alpha (Feb. 17, 2020)
    - Added output table for parameters used in a particular app run
    - Added output table to help guide and interpret SS colocalization results more easily
+- v1.4.8 alpha (Mar. 24, 2020)
+   - Fixed SS computation issue when LD matrix has missing values
+   - Fixed wrong output for the total number of GTEx datasets in the SS guidance table
 
 ******************
 Datasets

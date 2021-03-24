@@ -1843,7 +1843,6 @@ def index():
                 ,'Num_SNPs_Used_for_SS_secondary': numSNPsSSPSecondary
                 ,'Computation_method_secondary': compUsedSecondary
             }
-            print(SSPvalues_dict)
             SSPvalues_file = f'session_data/SSPvalues-{my_session_id}.json'
             SSPvalues_filepath = os.path.join(MYDIR, 'static', SSPvalues_file)
             json.dump(SSPvalues_dict, open(SSPvalues_filepath, 'w'))
