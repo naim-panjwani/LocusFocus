@@ -1,7 +1,7 @@
 .. _current_versions:
 
 ##################
-Current versions
+Versions
 ##################
 
 ***************************

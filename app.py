@@ -1678,6 +1678,8 @@ def index():
 #                        print('len(gtex_eqtl_df) '+ str(len(gtex_eqtl_df)))
 #                        print('gtex_eqtl_df.shape ' + str(gtex_eqtl_df.shape))
 #                        print('len(SS_snp_list) ' + str(len(SS_snp_list)))
+                        #print(SS_std_snp_list)
+                        #print(gtex_eqtl_df.dropna())
                         if len(gtex_eqtl_df) > 0:
                             #gtex_eqtl_df.fillna(-1, inplace=True)
                             pvalues = list(gtex_eqtl_df['pval'])
@@ -1694,14 +1696,15 @@ def index():
                                     ,'alt': ALT
                                 })
                                 tempdf.dropna(inplace=True)
-                                numsamples = round(tempdf['ma_count'].tolist()[0] / tempdf[MAF].tolist()[0])
-                                numsampleslist = np.repeat(numsamples, tempdf.shape[0]).tolist()
-                                tempdf = pd.concat([tempdf,pd.Series(numsampleslist,name='N')],axis=1)
-                                probeid = str(tissue) + ':' + str(agene)
-                                probeidlist = np.repeat(probeid, tempdf.shape[0]).tolist()
-                                tempdf = pd.concat([tempdf, pd.Series(probeidlist,name='ProbeID')],axis=1)
-                                tempdf = tempdf.reindex(columns = coloc2eqtlcolnames)
-                                coloc2eqtl_df = pd.concat([coloc2eqtl_df, tempdf], axis=0)
+                                if len(tempdf.index) != 0:
+                                    numsamples = round(tempdf['ma_count'].tolist()[0] / tempdf[MAF].tolist()[0])
+                                    numsampleslist = np.repeat(numsamples, tempdf.shape[0]).tolist()
+                                    tempdf = pd.concat([tempdf,pd.Series(numsampleslist,name='N')],axis=1)
+                                    probeid = str(tissue) + ':' + str(agene)
+                                    probeidlist = np.repeat(probeid, tempdf.shape[0]).tolist()
+                                    tempdf = pd.concat([tempdf, pd.Series(probeidlist,name='ProbeID')],axis=1)
+                                    tempdf = tempdf.reindex(columns = coloc2eqtlcolnames)
+                                    coloc2eqtl_df = pd.concat([coloc2eqtl_df, tempdf], axis=0)
                         else:
                             pvalues = np.repeat(np.nan, len(SS_snp_list))
                         PvaluesMat.append(pvalues)
@@ -1856,6 +1859,10 @@ def index():
                 coloc2gwasfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2gwas_df-{my_session_id}.txt')
                 coloc2_gwasdf.dropna().to_csv(coloc2gwasfilepath, index=False, encoding='utf-8', sep="\t")
                 coloc2eqtlfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2eqtl_df-{my_session_id}.txt')
+                print(coloc2_gwasdf.shape[0])
+                print(coloc2eqtl_df.shape[0])
+                if coloc2_gwasdf.shape[0] == 0 or coloc2eqtl_df.shape[0] == 0:
+                    raise InvalidUsage(f'Empty datasets for coloc2. Cannot proceed. GWAS numRows: {coloc2_gwasdf.shape[0]}; eQTL numRows: {coloc2eqtl_df.shape[0]}. May be due to inability to match with GTEx variants. Please check position, REF/ALT allele correctness, and or SNP names.')
                 coloc2eqtl_df.dropna().to_csv(coloc2eqtlfilepath, index=False, encoding='utf-8', sep="\t")
                 Rscript_code_path = os.path.join(MYDIR, 'coloc2', 'run_coloc2.R')
                 coloc2result_path = os.path.join(MYDIR, 'static', f'session_data/coloc2result_df-{my_session_id}.txt')
