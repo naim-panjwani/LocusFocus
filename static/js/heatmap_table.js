@@ -165,7 +165,7 @@ function buildNTable(genes, tissues, num_SS_snps_used, transpose = false) {
 
 
 
-function list_secondary_SSPvalues(titles, SSPvalues) {
+function list_secondary_SSPvalues(titles, SSPvalues, SSPvaluesN) {
     var tbody = d3.select("#secondary-table").select("tbody");
 
     // Column headers
@@ -174,6 +174,10 @@ function list_secondary_SSPvalues(titles, SSPvalues) {
         .append('th')
         .attr('class', 'th-sm')
         .text('Simple Sum -log10P');
+    secondaryTable.select('thead').select('tr')
+        .append('th')
+        .attr('class', 'th-sm')
+        .text('Number of SNPs Used in SS Calculation')
     
     
     // Table body:
@@ -181,6 +185,7 @@ function list_secondary_SSPvalues(titles, SSPvalues) {
         var row = tbody.append('tr');
         row.append('td').text(titles[i]);
         row.append('td').text(SSPvalues[i]);
+        row.append('td').text(SSPvaluesN[i]);
     }
 
     // Add DataTables functionality:
@@ -202,3 +207,5 @@ function list_secondary_SSPvalues(titles, SSPvalues) {
         });
     });
 }
+
+

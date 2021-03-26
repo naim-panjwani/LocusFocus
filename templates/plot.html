@@ -188,7 +188,7 @@
         <div class="col-md-12">
             <div id="table-area">
                 <h3>Simple Sum -log10 P-values Table for Secondary Datasets Uploaded</h3>
-                <div id="secondary_datasets_message"></div>
+                <div class="secondary_datasets_message"></div>
                 <!--
                 <div class="row">
                     <div class="col-md-12"><input id="transpose-button" type="submit" ame="transpose-button" class="btn btn-default" value="Transpose" onclick="transposeTable();"/></div>
@@ -299,10 +299,11 @@
                             buildNTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.Num_SNPs_Used_for_SS);
                         }
                         if(SSResponse['Secondary_dataset_titles'].length === 0) {
-                            d3.select('#secondary_datasets_message').append("p").attr("class","text-warning").text(`No secondary datasets uploaded`);
+                            d3.select('.secondary_datasets_message').append("p").attr("class","text-warning").text(`No secondary datasets uploaded`);
                         }
                         if(SSResponse['Secondary_dataset_titles'].length>0) {
-                            list_secondary_SSPvalues(SSResponse.Secondary_dataset_titles, SSResponse.SSPvalues_secondary);
+                            list_secondary_SSPvalues(SSResponse.Secondary_dataset_titles, SSResponse.SSPvalues_secondary, SSResponse.Num_SNPs_Used_for_SS_secondary);
+                            list_secondary_SSPvaluesN(SSResponse.Secondary_dataset_titles, SSResponse.Num_SNPs_Used_for_SS_secondary);
                         }
                         buildSSguidanceTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues, SSResponse.SSPvalues_secondary);
                         if(coloc2Response['ProbeID'].length === 0) {
