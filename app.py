@@ -297,7 +297,7 @@ def standardizeSNPs(variantlist, regiontxt, build):
     In the case of multi-allelic variants (e.g. rs2211330(T/A,C)), formats such as 1_205001063_T_A,C_b37 are accepted
     If variant ID format is chr:pos, and the chr:pos has a unique biallelic SNV, then it will be assigned that variant
     """
-    
+
     if all(x=='.' for x in variantlist):
         raise InvalidUsage('No variants provided')
     
@@ -1730,6 +1730,9 @@ def index():
                     print('Saving uploaded secondary datasets for coloc2 run')
                     for i in np.arange(len(secondary_datasets)):
                         secondary_dataset = tables[i]
+                        if secondary_dataset.shape[0] == 0:
+                            print(f'No data for table {table_titles[i]}')
+                            continue
                         if not set(coloc2eqtlcolnames).issubset(secondary_dataset):
                             raise InvalidUsage(f'You have chosen to run COLOC2. COLOC2 assumes eQTL data as secondary dataset, and you must have all of the following column names: {coloc2eqtlcolnames}')
                         secondary_dataset['SNPID'] = cleanSNPs(secondary_dataset['SNPID'].tolist(),regionstr,coordinate)
@@ -1748,6 +1751,9 @@ def index():
                     print('Obtaining p-values for uploaded secondary dataset(s)')
                     for i in np.arange(len(secondary_datasets)):
                         secondary_dataset = tables[i]
+                        if secondary_dataset.shape[0] == 0:
+                            print(f'No data for table {table_titles[i]}')
+                            continue
                         # remove duplicate SNPs
                         secondary_dataset[SNP] = cleanSNPs(secondary_dataset[SNP].tolist(),regionstr,coordinate)
                         idx = pd.Index(list(secondary_dataset[SNP]))
