@@ -303,7 +303,6 @@
                         }
                         if(SSResponse['Secondary_dataset_titles'].length>0) {
                             list_secondary_SSPvalues(SSResponse.Secondary_dataset_titles, SSResponse.SSPvalues_secondary, SSResponse.Num_SNPs_Used_for_SS_secondary);
-                            list_secondary_SSPvaluesN(SSResponse.Secondary_dataset_titles, SSResponse.Num_SNPs_Used_for_SS_secondary);
                         }
                         buildSSguidanceTable(SSResponse.Genes, SSResponse.Tissues, SSResponse.SSPvalues, SSResponse.SSPvalues_secondary);
                         if(coloc2Response['ProbeID'].length === 0) {
