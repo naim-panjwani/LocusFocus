@@ -618,7 +618,11 @@ def verifyStdSNPs(stdsnplist, regiontxt, build):
     variants_df = pd.DataFrame(variants_list)
     variants_df = variants_df.drop(['_id'], axis=1)
     gtex_std_snplist = list(variants_df['variant_id'])
+    print(f'gtex_std_snplist[0:10]: {gtex_std_snplist[0:10]}')
+    print(f'len(gtex_std_snplist): {len(gtex_std_snplist)}')
     isInGTEx = [ x for x in stdsnplist if x in gtex_std_snplist ]
+    print(f'isInGTEx[0:10]: {isInGTEx[0:10]}')
+    print(f'len(isInGTEx): {len(isInGTEx)}')
     return len(isInGTEx)
 
 
@@ -1198,7 +1202,7 @@ def regionCheck(build, regiontext):
     endbp = pos.split('-')[1].replace(',','')
     chromLengths = pd.read_csv(os.path.join(MYDIR, 'data', build + '_chrom_lengths.txt'), sep="\t", encoding='utf-8')
     chromLengths.set_index('sequence',inplace=True)
-    if chrom == 'X' or chrom == '23':
+    if chrom in ['X','x'] or chrom == '23':
         chrom = 23
         maxChromLength = chromLengths.loc['chrX', 'length']
         try:
@@ -1469,6 +1473,8 @@ def index():
             # Check that a good portion of these SNPs can be found
             thresh = 0.8
             snp_warning = False
+            print(f'std_snp_list[0:10]: {std_snp_list[0:10]}')
+            print(f'len(std_snp_list): {len(std_snp_list)}')
             numGTExMatches = verifyStdSNPs(std_snp_list, regionstr, coordinate)
             if numGTExMatches / len(std_snp_list) < thresh:
                 snp_warning = True
@@ -1492,7 +1498,6 @@ def index():
                 print('---------------------------------')
                 t1 = datetime.now() # timer started for loading user-defined LD matrix
                 ld_mat = pd.read_csv(ldmat_filepath, sep="\t", encoding='utf-8', header=None)
-                gwas_data_numRows = gwas_data.shape[0]
                 ld_mat = ld_mat.loc[ gwas_indices_kept, gwas_indices_kept ]
                 r2 = list(ld_mat.iloc[:, lead_snp_position_index])
                 ld_mat = np.matrix(ld_mat)
@@ -1608,8 +1613,10 @@ def index():
             print('SS_start: ' + str(SS_start))
             print('SS_end:' + str(SS_end))
             chromList = [('chr' + str(chrom).replace('23','X')), str(chrom).replace('23','X')]
+            if 'X' in chromList:
+                chromList.extend(['chr23','23'])
             gwas_chrom_col = pd.Series([str(x) for x in list(gwas_data[chromcol])])
-            SS_chrom_bool = [x for x in gwas_chrom_col.isin(chromList) if x == True]
+            SS_chrom_bool = [str(x).replace('23','X') for x in gwas_chrom_col.isin(chromList) if x == True]
             SS_indices = SS_chrom_bool & (gwas_data[poscol] >= SS_start) & (gwas_data[poscol] <= SS_end)
             SS_gwas_data = gwas_data.loc[ SS_indices ]
             if runcoloc2:

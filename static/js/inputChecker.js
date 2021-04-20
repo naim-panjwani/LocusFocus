@@ -1,6 +1,6 @@
 
 function loadGenes(build, region) {
-    var chrom = parseInt(region.split(':')[0].toLowerCase().replace('chr',''));
+    var chrom = parseInt(region.split(':')[0].toLowerCase().replace('chr','').replace('x','23'));
     var startbp = parseInt(region.split(':')[1].split('-')[0].replaceAll(',',''));
     var endbp = parseInt(region.split(':')[1].split('-')[1].replaceAll(',',''));
     var genesdiv = d3.select("#region-genes");
