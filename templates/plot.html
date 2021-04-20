@@ -414,6 +414,8 @@
         var percent_occupied_by_one_char = d3.select('#pctOneChar').property('value');
         var coloc_plot_fontsize = d3.select('#colocPlotFontSize').property('value');
         var legendOffset = d3.select('#legendOffset').property('value');
+        var selectedgene = d3.select('#selGene').property('value');
+        var url=`/update/${sessionid}/${selectedgene}`;
 
         if(!coloc_plot_width) {
             coloc_plot_width = 1080;
@@ -438,7 +440,7 @@
         d3.select('#plot').text("");
 
         // Redraw colocalization plot with updated parameters
-        d3.json("{{ url_for('static', filename=sessionfile) }}").then(response => {
+        d3.json(url).then(response => {
             d3.json("{{ url_for('static', filename=genesfile) }}").then(genesResponse => {
                 var data = response;
                 var genesdata = genesResponse;
