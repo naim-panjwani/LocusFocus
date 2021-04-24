@@ -22,6 +22,7 @@ from flask_uploads import UploadSet, configure_uploads, DATA
 from pymongo import MongoClient
 
 from pprint import pprint
+import htmltableparser
 
 #import getSimpleSumStats
 
@@ -1533,6 +1534,7 @@ def index():
             #######################################################
             # Loading any secondary datasets uploaded
             #######################################################
+            t1 = datetime.now()
             secondary_datasets = {}
             table_titles = []
             if html_filepath != '':
@@ -1544,16 +1546,22 @@ def index():
                 soup = bs(html, 'lxml')
                 table_titles = soup.find_all('h3')
                 table_titles = [x.text for x in table_titles]
-                tables = pd.read_html(html_filepath)
+                #tables = pd.read_html(html_filepath)
+                tables = soup.find_all('table')
+                hp = htmltableparser.HTMLTableParser()
                 for i in np.arange(len(tables)):
-                    table = tables[i]
-                    secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
+                    try:
+                        table = hp.parse_html_table(tables[i])
+                        secondary_datasets[table_titles[i]] = table.fillna(-1).to_dict(orient='records')
+                    except:
+                        secondary_datasets[table_titles[i]] = []
             data['secondary_dataset_titles'] = table_titles
             if runcoloc2:
                 data['secondary_dataset_colnames'] = ['CHR', 'POS', 'SNPID', 'PVAL', BETA, SE, 'N', ALT, REF, MAF, ProbeID]
             else:
                 data['secondary_dataset_colnames'] = [CHROM, BP, SNP, P]
             data.update(secondary_datasets)
+            sec_data_load_time = datetime.now() - t1
 
             ####################################################################################################
             t1 = datetime.now() # set timer for extracting GTEx data for selected gene:
@@ -1736,7 +1744,7 @@ def index():
                 if runcoloc2:
                     print('Saving uploaded secondary datasets for coloc2 run')
                     for i in np.arange(len(secondary_datasets)):
-                        secondary_dataset = tables[i]
+                        secondary_dataset = pd.DataFrame(secondary_datasets[list(secondary_datasets.keys())[i]])
                         if secondary_dataset.shape[0] == 0:
                             print(f'No data for table {table_titles[i]}')
                             continue
