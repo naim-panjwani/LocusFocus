@@ -619,11 +619,7 @@ def verifyStdSNPs(stdsnplist, regiontxt, build):
     variants_df = pd.DataFrame(variants_list)
     variants_df = variants_df.drop(['_id'], axis=1)
     gtex_std_snplist = list(variants_df['variant_id'])
-    print(f'gtex_std_snplist[0:10]: {gtex_std_snplist[0:10]}')
-    print(f'len(gtex_std_snplist): {len(gtex_std_snplist)}')
     isInGTEx = [ x for x in stdsnplist if x in gtex_std_snplist ]
-    print(f'isInGTEx[0:10]: {isInGTEx[0:10]}')
-    print(f'len(isInGTEx): {len(isInGTEx)}')
     return len(isInGTEx)
 
 
@@ -1474,8 +1470,6 @@ def index():
             # Check that a good portion of these SNPs can be found
             thresh = 0.8
             snp_warning = False
-            print(f'std_snp_list[0:10]: {std_snp_list[0:10]}')
-            print(f'len(std_snp_list): {len(std_snp_list)}')
             numGTExMatches = verifyStdSNPs(std_snp_list, regionstr, coordinate)
             if numGTExMatches / len(std_snp_list) < thresh:
                 snp_warning = True
@@ -1765,7 +1759,7 @@ def index():
                 else:
                     print('Obtaining p-values for uploaded secondary dataset(s)')
                     for i in np.arange(len(secondary_datasets)):
-                        secondary_dataset = tables[i]
+                        secondary_dataset = pd.DataFrame(secondary_datasets[list(secondary_datasets.keys())[i]])
                         if secondary_dataset.shape[0] == 0:
                             print(f'No data for table {table_titles[i]}')
                             continue
