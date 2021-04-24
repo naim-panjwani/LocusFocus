@@ -22,7 +22,7 @@ copyright = '2019, Naim Panjwani'
 author = 'Naim Panjwani'
 
 # The full version, including alpha/beta/rc tags
-release = '1.4.8 alpha'
+release = '1.4.9 alpha'
 
 
 # -- General configuration ---------------------------------------------------

@@ -10,7 +10,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup as bs
 import re
 import pysam
-import secrets
+import mysecrets
 import glob
 import tarfile
 
@@ -69,7 +69,7 @@ app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
 ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld', 'html'])
 app.config['UPLOADED_FILES_ALLOW'] = ALLOWED_EXTENSIONS
-app.secret_key = secrets.mysecret
+app.secret_key = mysecrets.mysecret
 files = UploadSet('files', DATA)
 configure_uploads(app, files)
 
@@ -253,7 +253,7 @@ def fetchSNV(chrom, bp, ref, build):
     try:
         regiontxt = str(chrom) + ":" + str(bp) + "-" + str(int(bp)+1)
     except:
-        raise InvalidUsage(f'Invalid input for str(chrom):str(bp)')
+        raise InvalidUsage(f'Invalid input for {str(chrom):str(bp)}')
     chrom, startbp, endbp = parseRegionText(regiontxt, build)
     chrom = str(chrom).replace('chr','').replace('23',"X")
     
@@ -1540,7 +1540,6 @@ def index():
                 soup = bs(html, 'lxml')
                 table_titles = soup.find_all('h3')
                 table_titles = [x.text for x in table_titles]
-                #tables = pd.read_html(html_filepath)
                 tables = soup.find_all('table')
                 hp = htmltableparser.HTMLTableParser()
                 for i in np.arange(len(tables)):
@@ -1741,6 +1740,8 @@ def index():
                         secondary_dataset = pd.DataFrame(secondary_datasets[list(secondary_datasets.keys())[i]])
                         if secondary_dataset.shape[0] == 0:
                             print(f'No data for table {table_titles[i]}')
+                            pvalues = np.repeat(np.nan, len(SS_snp_list))
+                            PvaluesMat.append(pvalues)
                             continue
                         if not set(coloc2eqtlcolnames).issubset(secondary_dataset):
                             raise InvalidUsage(f'You have chosen to run COLOC2. COLOC2 assumes eQTL data as secondary dataset, and you must have all of the following column names: {coloc2eqtlcolnames}')
@@ -1762,6 +1763,8 @@ def index():
                         secondary_dataset = pd.DataFrame(secondary_datasets[list(secondary_datasets.keys())[i]])
                         if secondary_dataset.shape[0] == 0:
                             print(f'No data for table {table_titles[i]}')
+                            pvalues = np.repeat(np.nan, len(SS_snp_list))
+                            PvaluesMat.append(pvalues)
                             continue
                         # remove duplicate SNPs
                         secondary_dataset[SNP] = cleanSNPs(secondary_dataset[SNP].tolist(),regionstr,coordinate)

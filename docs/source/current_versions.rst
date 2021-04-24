@@ -55,6 +55,9 @@ Version History
 - v1.4.8 alpha (Mar. 24, 2020)
    - Fixed SS computation issue when LD matrix has missing values
    - Fixed wrong output for the total number of GTEx datasets in the SS guidance table
+   * Note: this version had an issue with uploaded secondary datasets with missing tables where the SS statistics were not assigned to the correct dataset
+- v1.4.9 alpha (Apr. 23, 2020)
+   - Fixed issue where uploaded secondary datasets with missing tables are properly dealt with
 
 ******************
 Datasets

@@ -4,6 +4,7 @@
 Created on Fri Apr 23 19:53:19 2021
 
 @author: naim
+from https://srome.github.io/Parsing-HTML-Tables-in-Python-with-BeautifulSoup-and-pandas/
 """
 
 import requests
