@@ -560,7 +560,7 @@ def decomposeVariant(variant_list):
     return df
 
 
-def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build):
+def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build = "hg19"):
     """
     
     Parameters
@@ -583,12 +583,12 @@ def addVariantID(gwas_data, chromcol, poscol, refcol, altcol, build):
     """
     varlist = []
     buildstr = 'b37'
-    if build == 'hg38':
+    if build.lower() == 'hg38':
         buildstr = 'b38'
     chromlist = list(gwas_data[chromcol])
     poslist = list(gwas_data[poscol])
-    reflist = list(gwas_data[refcol])
-    altlist = list(gwas_data[altcol])
+    reflist = [x.upper() for x in list(gwas_data[refcol])]
+    altlist = [x.upper() for x in list(gwas_data[altcol])]
     for i in np.arange(gwas_data.shape[0]):
         chrom = chromlist[i]
         pos = poslist[i]
