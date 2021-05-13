@@ -1371,7 +1371,7 @@ def index():
                 raise InvalidUsage(f'Duplicate column names provided: {columnnames}')
             gwas_data = gwas_data[ columnnames ]
             if snpcol == '':
-                gwas_data = addVariantID(gwas_data, chromcol, poscol, refcol, altcol)
+                gwas_data = addVariantID(gwas_data, chromcol, poscol, refcol, altcol, coordinate)
                 snpcol = default_snpname
 
             # LD:
