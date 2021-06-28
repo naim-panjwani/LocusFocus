@@ -11,3 +11,6 @@ eQTL association results have been stored locally in a MongoDB database.
 
 Full documentation is available at https://locusfocus.readthedocs.io.
 The application may be accessed at https://locusfocus.research.sickkids.ca.
+
+Furthermore, for R functions that extend the Simple Sum functionality as described in the [SS2 paper]("https://") (e.g. the computation of an LD matrix for a meta-analysis study), you may refer to the (SimpleSumColocalization)[https://github.com/naim-panjwani/SimpleSumColocalization] GitHub repository. The SS2 implementation in the current LocusFocus application is via the [getSimpleSumStats.R](https://github.com/naim-panjwani/LocusFocus/blob/master/getSimpleSumStats.R) script, and applies the two stages described in [the paper]("https://").
+
