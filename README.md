@@ -15,5 +15,5 @@ The application may be accessed at https://locusfocus.research.sickkids.ca.
 
 ## SS2 Extension Functions
 
-For R functions that extend the Simple Sum functionality as described in the [SS2 paper]("https://") (e.g. the computation of an LD matrix for a meta-analysis study) by Wang et al., you may refer to the [SimpleSumColocalization](https://github.com/naim-panjwani/SimpleSumColocalization) GitHub repository. The SS2 implementation in the current LocusFocus [web application](https://locusfocus.research.sickkids.ca) is via the [getSimpleSumStats.R](https://github.com/naim-panjwani/LocusFocus/blob/master/getSimpleSumStats.R) script, and applies the two stages described in [the SS2 paper]("https://").
+For R functions that extend the Simple Sum functionality as described in the [SS2 paper]("https://") (e.g. the computation of an LD matrix for a meta-analysis study) by Wang et al., you may refer to the [SimpleSum2Colocalization](https://github.com/FanWang0216/SimpleSum2Colocalization) GitHub repository. The SS2 implementation in the current LocusFocus [web application](https://locusfocus.research.sickkids.ca) is via the [getSimpleSumStats.R](https://github.com/naim-panjwani/LocusFocus/blob/master/getSimpleSumStats.R) script, and applies the two stages described in [the SS2 paper]("https://").
 
