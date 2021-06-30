@@ -9,8 +9,8 @@ LD information is calculated using PLINK on the 1000 Genomes Project to enable v
 
 eQTL association results have been stored locally in a MongoDB database. 
 
-Full documentation is available at https://locusfocus.readthedocs.io.
-The application may be accessed at https://locusfocus.research.sickkids.ca.
+Full documentation is available at https://locusfocus.readthedocs.io.  
+The application may be accessed at https://locusfocus.research.sickkids.ca.  
 
 
 ## SS2 Extension Functions
