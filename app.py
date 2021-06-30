@@ -1631,9 +1631,10 @@ def index():
                     ,betacol: BETA
                     ,stderrcol: SE
                     ,mafcol: MAF
-                    ,numsamplescol: numsamplescol
+                    ,numsamplescol: 'N'
                 })
                 coloc2_gwasdf = coloc2_gwasdf.reindex(columns=coloc2gwascolnames)
+                # print(coloc2_gwasdf)
             #print(gwas_data.shape)
             #print(SS_gwas_data.shape)
             #print(SS_gwas_data)
@@ -1877,8 +1878,6 @@ def index():
                 coloc2gwasfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2gwas_df-{my_session_id}.txt')
                 coloc2_gwasdf.dropna().to_csv(coloc2gwasfilepath, index=False, encoding='utf-8', sep="\t")
                 coloc2eqtlfilepath = os.path.join(MYDIR, 'static', f'session_data/coloc2eqtl_df-{my_session_id}.txt')
-                print(coloc2_gwasdf.shape[0])
-                print(coloc2eqtl_df.shape[0])
                 if coloc2_gwasdf.shape[0] == 0 or coloc2eqtl_df.shape[0] == 0:
                     raise InvalidUsage(f'Empty datasets for coloc2. Cannot proceed. GWAS numRows: {coloc2_gwasdf.shape[0]}; eQTL numRows: {coloc2eqtl_df.shape[0]}. May be due to inability to match with GTEx variants. Please check position, REF/ALT allele correctness, and or SNP names.')
                 coloc2eqtl_df.dropna().to_csv(coloc2eqtlfilepath, index=False, encoding='utf-8', sep="\t")
