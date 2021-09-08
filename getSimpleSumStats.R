@@ -216,7 +216,7 @@ for(i in 1:num_iterations) {
   
   # Remove NA rows
   NArows = which(is.na(tempmat[,1]) | is.na(tempmat[,2]))
-  if(length(NArows)>1) {
+  if(length(NArows)>=1) {
     tempmat = tempmat[-NArows,]
     ld_mat_i <- ld_mat_i[-NArows, -NArows]
   }
