@@ -38,13 +38,14 @@ set_based_p <- argv$set_based_p
 if(as.character(set_based_p) == 'default') set_based_p <- NULL
 outfilename <- argv$outfilename
 
-ACONSTANT <- 6e-5
-
 # test
-# id <- "afbf22bb-2754-4982-b16d-171d94f7da79"
+# id <- "f4f9f7ac-64ea-4cd3-9c15-887eabd38a02"
 # P_values_filename <- paste0('static/session_data/Pvalues-', id, '.txt')
 # ld_matrix_filename <- paste0('static/session_data/ldmat-', id, '.txt')
 # outfilename <- paste0('static/session_data/SSPvalues-', id, '.txt')
+# set_based_p <- NULL
+
+ACONSTANT <- 6e-5
 
 ###############################################################################
 ############ FUNCTIONS
@@ -195,7 +196,7 @@ if(!all(is.na(ldmat))) {
     if(!all(is.na(ldNA))) {
       ldmat <- ldmat[-ldNA, -ldNA]
       P_gwas <- P_gwas[-ldNA]
-      P_eqtl <- P_eqtl[,-ldNA]
+      P_eqtl <- P_eqtl[,-ldNA, drop=FALSE]
     }
     i <- i + 1
   }
