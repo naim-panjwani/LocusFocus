@@ -337,6 +337,41 @@ function addColoc2Inputs(colocinput) {
 }
 
 
+function loadGenes(build, region) {
+    var chrom = parseInt(region.split(':')[0].toLowerCase().replace('chr','').replace('x','23'));
+    var startbp = parseInt(region.split(':')[1].split('-')[0].replaceAll(',',''));
+    var endbp = parseInt(region.split(':')[1].split('-')[1].replaceAll(',',''));
+    var genesdiv = d3.select("#region-genes");
+    var genesMsgDiv = d3.select("#genes-select");
+    d3.json(`/genenames/${build}/${chrom}/${startbp}/${endbp}`).then(response => {
+        genesdiv.text('');
+        var genenames = response.map(k => k);
+        if(genenames.length === 0) {
+            genesMsgDiv.text(`No Genes Found in ${region} (${build})`);
+        }
+        else {
+            genesMsgDiv.text(`Select Genes Found in ${region} (${build})`);
+        }
+        for(var i = 0; i < genenames.length; i++) {
+            genesdiv
+                .append("option")
+                .attr('value', genenames[i])
+                .text(genenames[i]);
+        }
+        $('#region-genes').multiselect('destroy');
+        $(document).ready(function() {
+            $("#region-genes").multiselect({
+                enableFiltering: true,
+                includeSelectAllOption: true,
+                maxHeight: 400,
+                buttonWidth: '400px',
+                checkboxName: function(option) {
+                    return 'multiselect[]';
+                }
+            });
+        });
+    });
+}
 
 
 function init() {
@@ -389,6 +424,9 @@ function init() {
     //         source: response
     //     });
     // });
+
+    console.log("Loading genes:")
+    loadGenes('hg19', '1:205,500,000-206,000,000');
       
     d3.json(gtexurl).then(response => {
         var gtex_tissues = response.map(k => k);
