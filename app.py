@@ -10,7 +10,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup as bs
 import re
 import pysam
-import mysecrets
+#import mysecrets
 import glob
 import tarfile
 
@@ -69,7 +69,7 @@ app.config['UPLOADED_FILES_DEST'] = os.path.join(MYDIR, 'static/upload/')
 app.config['MAX_CONTENT_LENGTH'] = fileSizeLimit
 ALLOWED_EXTENSIONS = set(['txt', 'tsv', 'ld', 'html'])
 app.config['UPLOADED_FILES_ALLOW'] = ALLOWED_EXTENSIONS
-app.secret_key = mysecrets.mysecret
+#app.secret_key = mysecrets.mysecret
 files = UploadSet('files', DATA)
 configure_uploads(app, files)
 
@@ -1986,5 +1986,5 @@ def index():
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
 
