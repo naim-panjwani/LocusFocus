@@ -1,0 +1,21 @@
+version: '3'
+services:
+  web:
+    build: flask
+    ports:
+      - '5000:5000'
+    environment:
+      - DATABASE_URL=mongodb://db:27017
+    volumes:
+      - ./flask:/app
+    depends_on:
+      - db
+    stop_signal: SIGINT
+  db:
+    image: mongo
+    ports:
+      - '27017:27017'
+    volumes:
+      - db:/data/db
+volumes:
+  db:

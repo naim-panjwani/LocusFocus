@@ -79,7 +79,9 @@ collapsed_genes_df_hg38 = pd.read_csv(os.path.join(MYDIR, 'data/collapsed_gencod
 collapsed_genes_df = collapsed_genes_df_hg19 # For now
 ld_mat_diag_constant = 1e-6
 
-conn = "mongodb://localhost:27017"
+#conn = "mongodb://db:27017"
+conn = os.getenv('DATABASE_URL', 'mongodb://localhost:27017')
+print(conn)
 client = MongoClient(conn)
 db = client.GTEx_V7 # For now
 
