@@ -19,7 +19,7 @@ pytz==2020.1
 PyYAML==5.4
 six==1.15.0
 soupsieve==2.0.1
-tqdm==4.46.1
+tqdm==4.66.3
 uuid==1.30
 Werkzeug==2.2.3
 zope.interface==5.1.0
